@@ -19,3 +19,10 @@ known-first-party = ["core", "config"]
 
 [tool.ruff.format]
 quote-style = "double"
+
+[tool.coverage.run]
+source = ["."]
+omit = ["*/migrations/*", "manage.py", "config/wsgi.py", "config/asgi.py"]
+
+[tool.coverage.report]
+fail_under = 80
