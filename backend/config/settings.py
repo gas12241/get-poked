@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework_simplejwt.token_blacklist",
     "core",
+    "cards",
 ]
 
 MIDDLEWARE = [
@@ -140,3 +141,10 @@ CORS_ALLOW_CREDENTIALS = True
 # Pokémon TCG API (see docs/decisions.md #022)
 
 POKEMON_TCG_API_KEY = env("POKEMON_TCG_API_KEY", default="")
+
+# Proactive pacing delay (seconds) between sync requests, on top of reactive
+# retry/backoff — the authenticated per-minute rate limit isn't documented
+# anywhere (see docs/decisions.md #022). Same value in every environment;
+# tests override it via override_settings to avoid real sleeps.
+SYNC_REQUEST_DELAY_SECONDS = 0.25
+SYNC_RETRY_BACKOFF_FACTOR = 1

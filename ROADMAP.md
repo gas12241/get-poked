@@ -14,6 +14,8 @@
 
 Depends on Phase 1.
 
+Status: Complete — see TODO.md and docs/decisions.md #025/#026.
+
 Database
 
 - Set model

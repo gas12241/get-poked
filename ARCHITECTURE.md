@@ -67,7 +67,9 @@ The sync command is triggered manually (e.g. `python manage.py sync_cards`) rath
 
 Rate limiting: the sync command authenticates with an API key (1,000 requests/day unauthenticated vs. 20,000/day with a key — a key is required given the catalog size). The key is a secret, read from an environment variable, never committed. Requests are proactively paced with a small fixed delay, plus exponential backoff on 429/transient errors, since the API's per-minute limit for authenticated requests isn't documented — combining both is more robust than relying on either alone. If the command dies partway through, re-running it resumes naturally via the diff-by-set design above (already-imported sets are skipped), with no separate checkpointing needed. See docs/decisions.md #022.
 
-Open item, to confirm before implementation: whether the Pokémon TCG API exposes a reliable "set fully released" or "last updated" signal to detect when an already-imported set has new/changed cards. See docs/decisions.md.
+Resolved: the Set object does expose an `updatedAt` field, verified live against the real API — stored in `Set.details` for a possible future "detect changed sets automatically" enhancement, not built as part of Phase 2. See docs/decisions.md #025.
+
+Card/Set/Type models, plus `Attack`/`Weakness`/`Resistance` (attacks, weaknesses, and resistances are normalized as their own tables, not JSON), live in a dedicated `cards` app — see docs/database.md and docs/decisions.md #025.
 
 ---
 

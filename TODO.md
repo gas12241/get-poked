@@ -49,3 +49,13 @@
 ## Documentation
 
 - [x] Update README
+
+---
+
+## Phase 2 — Database & Import
+
+- [x] Set/Card/Type models, plus Attack/Weakness/Resistance as related tables (see docs/database.md, docs/decisions.md #025) — dedicated `cards` app
+- [x] Import Pokémon cards — `sync_cards` management command (diff-by-set upsert, `--set`/`--force` flags, rate-limited + retrying HTTP client)
+- [x] Backend tests — 21 passing (models + sync logic + management command + retry/backoff), fixtures built from real API payloads
+- [x] Full sync run against the real API — verified: 174/174 sets imported, 20,479 cards (matches the API's own `totalCount`)
+- [x] Fixed a real bug found via the live sync run: dropped the `(set, number, language)` unique constraint after real data disproved the uniqueness assumption behind it (see docs/decisions.md #026) — `tcg_id` is the actual identity guarantee

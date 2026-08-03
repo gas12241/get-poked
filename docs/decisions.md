@@ -313,6 +313,25 @@ Why
 
 ---
 
+## Decision 025
+
+Card/Set models and sync command: new `cards` app, several fields promoted out of `details`, pricing links kept but not pricing numbers, two prior open items resolved
+
+Why
+
+- **New `cards` Django app**, not added to `core` — ARCHITECTURE.md's own "Django responsibilities" list separates "Card import" from "Authentication," and `core` today is purely the auth/health-check layer. Phase 5 (Collections/Favorites) and Phase 6 (Quiz) will define models FK'ing into Card, so `cards.models.Card` reads correctly as the card-domain app's own model
+- **Verified live against the real API** (its docs site 403s on fetches, same as earlier in this project, so the actual `api.pokemontcg.io` endpoints were queried directly): `hp`/`number` are strings, not numbers; Trainer-supertype cards have no `hp`/`types` fields at all (confirms Decision 017's design was necessary, not speculative); `evolvesTo` is an array (branching evolutions, e.g. Eevee → 8 eeveelutions) while `evolvesFrom` is a single string; `subtypes` (evolution stage/card category) is confirmed distinct from `types` (elemental type, already normalized via the `Type` model) — verified simultaneously on the same card (Eevee: `types: ["Colorless"]`, `subtypes: ["Basic"]`)
+- **Resolves two prior open items**: neither the Card nor Set object has any language field at all, strongly suggesting the API is English-only by nature (Decision 006's open item); the Set object has an `updatedAt` field (Decision 008's open item) — it exists, but timestamp-diffing logic isn't built now (would be scope creep beyond models + sync command), it's simply stored in `Set.details` for a possible future enhancement, per Decision 016's already-cheap promotion path
+- **Real schema gap found and fixed**: `Set` had no field for the API's own set identifier, but the sync command cannot resolve which local Set a card belongs to without one. Added `tcg_id` (required), plus `image_symbol`/`image_logo` as real columns (ARCHITECTURE.md's "Guess the Set" quiz mode names a use for the symbol specifically) and a `details` JSON field for genuinely render-only leftovers (`ptcgoCode`, `legalities`, `printedTotal`, `total`, `updatedAt`)
+- **More Card fields promoted to real columns than originally planned**: `artist`, `national_pokedex_numbers`, `subtypes`, `evolves_from`, `evolves_to` — all cheap (scalar or simple array fields), no new tables needed
+- **`attacks`/`weaknesses`/`resistances` promoted to full related tables** (`Attack`, `Weakness`, `Resistance`, each FK'd to Card; `Weakness`/`Resistance.type` reuse the `Type` lookup table rather than duplicating type-name strings a third time) — a deliberate scope expansion beyond Decision 016's "defer until a query need exists" default, chosen despite no current feature needing to query by attack damage or weakness type. Recreated (deleted and reinserted) on every sync of a card rather than diffed, since they're pure derived data from the API, never user-edited
+- **Pricing (`tcgplayer`/`cardmarket`) numbers excluded entirely, but their `url` fields kept** as `tcgplayer_url`/`cardmarket_url` — a stored price snapshot would silently go stale under the diff-by-set design (an already-`imported` set is never revisited), actively misleading rather than just unused, and the API's own docs disclaim pricing as informational-only anyway. A link to the live pricing page doesn't have this problem, since it points at a page that updates itself rather than a frozen number
+- **One migration** for all six models (`Set`, `Type`, `Card`, `Attack`, `Weakness`, `Resistance`) — introduced together with FK/M2M dependencies and no independent history to preserve
+- **`responses`, not `requests-mock`**, for mocking the sync command's HTTP calls in tests — fits this project's existing `unittest`-style `TestCase`/`APITestCase` pattern better, and supports both ordered/sequential responses (needed for the 429-then-success retry test) and ignores query-string differences by default (needed since pagination varies `page`/`q` params against the same URL)
+- Django admin registered for all six models now (cheap, and this phase explicitly ends in "verify real data landed correctly") — `Attack`/`Weakness`/`Resistance` as `TabularInline` on the Card admin page
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

@@ -28,11 +28,17 @@ Fields
 - language (default `en`; see docs/decisions.md #006)
 - image_small
 - image_large
-- details (JSON — attacks, weaknesses, resistances, retreat cost, artist, flavor text, national dex numbers, legalities. Render-only data with no current search/filter/query need; see docs/decisions.md #016 for what would trigger promoting a field out of here into its own column/table)
+- artist
+- national_pokedex_numbers (array of ints — empty on Trainer/Energy cards)
+- subtypes (array of strings — evolution stage/card category, e.g. `["Basic"]`, `["Item"]`. Distinct from `type`/`Type` below, which is elemental type)
+- evolves_from (single string, blank on non-Pokémon cards)
+- evolves_to (array of strings — a Pokémon can branch into multiple evolutions, e.g. Eevee)
+- tcgplayer_url / cardmarket_url (link to the live pricing page — not the price itself; see docs/decisions.md #025 for why the link is kept but the pricing numbers are not)
+- details (JSON — retreat cost, converted retreat cost, legalities, rules (Trainer rule text). Render-only data with no current search/filter/query need; see docs/decisions.md #016 for what would trigger promoting a field out of here into its own column/table. Everything else originally slated for this blob — artist, national dex numbers, subtypes, evolution fields, attacks/weaknesses/resistances — has since been promoted to real columns/tables; see docs/decisions.md #025)
 
 Relationships
 
-Belongs to one Set. Many-to-many with Type (see below).
+Belongs to one Set. Many-to-many with Type (see below). Has many Attack, Weakness, Resistance (see below).
 
 Constraints
 
@@ -57,7 +63,68 @@ Fields
 
 Relationship
 
-Many-to-many with Card, via a join table. Normalized (rather than a JSON array on Card) since type is a stated search/filter requirement over a small fixed set — see docs/decisions.md #016.
+Many-to-many with Card, via a join table. Normalized (rather than a JSON array on Card) since type is a stated search/filter requirement over a small fixed set — see docs/decisions.md #016. Also referenced by Weakness and Resistance below (same elemental-type vocabulary).
+
+---
+
+### Attack
+
+Purpose
+
+Represents one attack printed on a card. A card can have zero or more.
+
+Fields
+
+- id
+- card
+- name
+- cost (JSON array of energy type name strings, e.g. `["Metal", "Metal", "Colorless"]` — an ordered multiset, doesn't map cleanly to a Type M2M)
+- converted_energy_cost
+- damage
+- text
+- order (position among the card's attacks)
+
+Relationship
+
+Belongs to one Card. Recreated (deleted and reinserted) on every sync of that card, rather than diffed — see docs/decisions.md #025.
+
+---
+
+### Weakness
+
+Purpose
+
+Represents one weakness printed on a card.
+
+Fields
+
+- id
+- card
+- type
+- value (e.g. `"×2"`)
+
+Relationship
+
+Belongs to one Card, references one Type. Recreated on every sync of that card.
+
+---
+
+### Resistance
+
+Purpose
+
+Represents one resistance printed on a card.
+
+Fields
+
+- id
+- card
+- type
+- value (e.g. `"-20"`)
+
+Relationship
+
+Belongs to one Card, references one Type. Recreated on every sync of that card.
 
 ---
 
@@ -70,11 +137,14 @@ Stores Pokémon sets.
 Fields
 
 - id
+- tcg_id (the Pokémon TCG API's own set identifier, e.g. `"base1"` — required for the sync command to resolve which local Set a card belongs to; a gap in this doc caught while building the sync command, see docs/decisions.md #025)
 - name
 - series
 - release_date
 - language (default `en`; see docs/decisions.md #006)
 - imported (boolean, default False — marks whether this set's cards have been fully synced; see docs/decisions.md #008)
+- image_symbol / image_logo (real columns, not JSON — ARCHITECTURE.md's "Guess the Set" quiz mode names a use for the symbol specifically)
+- details (JSON — ptcgoCode, legalities, printedTotal, total, updatedAt. Render-only, same treatment as Card's `details`; `updatedAt` is available here for a possible future "detect changed sets automatically" enhancement, not built yet — see docs/decisions.md #025)
 
 Relationship
 
