@@ -12,6 +12,8 @@
 
 # Phase 2
 
+Depends on Phase 1.
+
 Database
 
 - Set model
@@ -27,6 +29,8 @@ Backend tests
 
 # Phase 3
 
+Depends on Phase 2 (needs Card/Set data to search, filter, and display).
+
 Search
 
 Filtering
@@ -40,6 +44,8 @@ Frontend tests
 ---
 
 # Phase 4
+
+Independent — can be built in parallel with Phase 2/3.
 
 Authentication
 
@@ -55,6 +61,8 @@ Authentication tests
 
 # Phase 5
 
+Depends on Phase 2 (Card model) and Phase 4 (User accounts) — Collections and Favorites reference both.
+
 Collections
 
 Owned cards
@@ -66,6 +74,8 @@ Statistics
 ---
 
 # Phase 6
+
+Depends on Phase 2 (Card data to quiz from). Playing a quiz does not require Phase 4; saving a score does (see docs/decisions.md #011).
 
 Quiz System
 
@@ -82,6 +92,8 @@ Score tracking
 ---
 
 # Phase 7
+
+Depends on Phases 1–6 being functionally complete.
 
 Polish
 

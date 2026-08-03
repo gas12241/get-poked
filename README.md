@@ -4,7 +4,7 @@
 
 A full-stack web application built with React and Django that allows users to:
 
-- Browse every Pokémon TCG card
+- Browse every English-language Pokémon TCG card
 - Search by Pokémon, set, rarity, type, and more
 - Create and manage personal collections
 - Sign in with Google or email/password
@@ -24,7 +24,7 @@ A full-stack web application built with React and Django that allows users to:
 
 ### Quiz Modes
 
-- Guess the Pokémon
+- Guess the Card
 - Guess the Set
 - Guess the HP
 - Future quiz modes
@@ -36,7 +36,10 @@ A full-stack web application built with React and Django that allows users to:
 Frontend
 
 - React
+- TypeScript
 - Vite
+- React Query (server state)
+- Zustand (client state)
 
 Backend
 
