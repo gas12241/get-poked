@@ -11,7 +11,9 @@ describe('HealthCheck', () => {
   it('shows loading, then success status once the backend responds', async () => {
     renderWithProviders(<HealthCheck />);
 
-    expect(screen.getByText('Checking backend connection...')).toBeInTheDocument();
+    expect(
+      screen.getByText('Checking backend connection...'),
+    ).toBeInTheDocument();
 
     expect(await screen.findByText('Backend status: ok')).toBeInTheDocument();
   });
