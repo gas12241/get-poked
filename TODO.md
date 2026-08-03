@@ -42,7 +42,7 @@
 
 ## CI
 
-- [ ] Create GitHub Actions workflow: backend tests (with Postgres service container), frontend tests, lint, type check, migration check, coverage reporting (see docs/decisions.md #020)
+- [x] Create GitHub Actions workflow: backend tests (with Postgres service container), frontend tests, lint, type check, migration check, coverage reporting (see docs/decisions.md #020) — verified via a real run on PR #1, both jobs green
 
 ---
 
