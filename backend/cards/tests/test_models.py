@@ -26,7 +26,7 @@ class CardModelTests(TestCase):
         )
         self.assertEqual(card.types.count(), 0)
 
-    def test_unique_constraint_blocks_duplicate_set_number_language(self):
+    def test_tcg_id_is_the_uniqueness_guarantee(self):
         Card.objects.create(
             tcg_id="base1-1",
             set=self.set_obj,
@@ -38,37 +38,38 @@ class CardModelTests(TestCase):
         )
         with self.assertRaises(IntegrityError):
             Card.objects.create(
-                tcg_id="base1-1-dup",
+                tcg_id="base1-1",
                 set=self.set_obj,
                 name="Card A Duplicate",
-                number="1",
+                number="99",
                 supertype="Pokémon",
                 image_small="https://example.com/small.png",
                 image_large="https://example.com/large.png",
             )
 
-    def test_unique_constraint_allows_same_number_different_set(self):
-        other_set = Set.objects.create(tcg_id="base2", name="Jungle", series="Base")
+    def test_allows_multiple_cards_sharing_a_number(self):
+        # No (set, number, language) uniqueness — real data disproves that
+        # assumption (e.g. Celebrations: Classic Collection's #15 is 4 distinct
+        # cards; Black Bolt's #60 is too). tcg_id is the real identity guarantee.
         Card.objects.create(
-            tcg_id="base1-1",
+            tcg_id="cel25c-15_A1",
             set=self.set_obj,
-            name="Card A",
-            number="1",
+            name="Venusaur",
+            number="15",
             supertype="Pokémon",
             image_small="https://example.com/small.png",
             image_large="https://example.com/large.png",
         )
-        # Should not raise: different set, same number.
         Card.objects.create(
-            tcg_id="base2-1",
-            set=other_set,
-            name="Card B",
-            number="1",
-            supertype="Pokémon",
+            tcg_id="cel25c-15_A2",
+            set=self.set_obj,
+            name="Here Comes Team Rocket!",
+            number="15",
+            supertype="Trainer",
             image_small="https://example.com/small.png",
             image_large="https://example.com/large.png",
         )
-        self.assertEqual(Card.objects.count(), 2)
+        self.assertEqual(Card.objects.filter(set=self.set_obj, number="15").count(), 2)
 
 
 class TypeModelTests(TestCase):

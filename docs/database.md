@@ -42,7 +42,7 @@ Belongs to one Set. Many-to-many with Type (see below). Has many Attack, Weaknes
 
 Constraints
 
-Unique together: (set, number, language) — the same card number can exist once per language within a set.
+No (set, number, language) uniqueness — an earlier assumption, disproven by real sync data (see docs/decisions.md #026). `tcg_id` is the actual uniqueness guarantee.
 
 Indexes
 

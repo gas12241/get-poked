@@ -48,12 +48,10 @@ class Card(models.Model):
     types = models.ManyToManyField(Type, related_name="cards", blank=True)
 
     class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["set", "number", "language"],
-                name="unique_card_set_number_language",
-            ),
-        ]
+        # No (set, number, language) uniqueness constraint: real data disproves the
+        # assumption that a printed number is unique within a set (e.g. Celebrations:
+        # Classic Collection's card #15 is 4 distinct cards; Black Bolt's #60 is too).
+        # tcg_id (already unique) is the real identity guarantee. See docs/decisions.md #026.
         indexes = [
             models.Index(fields=["name"]),
             models.Index(fields=["rarity"]),

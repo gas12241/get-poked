@@ -332,6 +332,19 @@ Why
 
 ---
 
+## Decision 026
+
+Dropped the `(set, number, language)` unique constraint on Card — real sync data disproved the assumption behind it
+
+Why
+
+- Earlier research (during initial planning, before any real data existed) concluded every printed card gets a unique number within a set. Running the actual sync against the live API falsified this **twice**: `cel25c` (Celebrations: Classic Collection) card #15 is genuinely 4 distinct cards (Venusaur, a Trainer card, Claydol, Rocket's Zapdos) sharing one printed number as a special 4-way "puzzle" promo mechanic; `zsv10pt5` (Black Bolt, a current-era set) hit the same collision on #60 — not just one obscure legacy exception
+- `tcg_id` (the API's own identifier, already `unique=True` and already what the sync's upsert keys on) was never at risk — it correctly distinguishes `cel25c-15_A1` from `cel25c-15_A2`, etc. The dropped constraint wasn't protecting anything real; it was actively blocking real data from importing
+- Fixed via a second migration removing the constraint, rather than special-casing the specific sets — no code exists that special-cases would improve, and `tcg_id` already fully covers actual card identity
+- A concrete example of why a "prove it live" sync run matters even after research and unit tests pass: fixture-based tests only exercise the shapes you thought to construct, not what the full real catalog actually contains
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).
