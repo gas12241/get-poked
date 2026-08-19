@@ -71,12 +71,92 @@ docs/
 
 ---
 
+## Setup
+
+### Prerequisites
+
+- Python 3.11
+- Node 22
+- PostgreSQL, running locally
+
+### Backend
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt -r requirements-dev.txt
+```
+
+Create the database and user (matching whatever you put in `.env` below):
+
+```bash
+createdb get_poked
+createuser get_poked
+```
+
+Copy the environment template and fill in the blanks:
+
+```bash
+cp .env.example .env
+```
+
+- `SECRET_KEY` — any long random string for local dev
+- `DB_PASSWORD` — the password for the Postgres user you created
+- `POKEMON_TCG_API_KEY` — get one at https://dev.pokemontcg.io/ (needed to run the card sync; the app itself works without it)
+
+Apply migrations:
+
+```bash
+python manage.py migrate
+```
+
+### Frontend
+
+```bash
+cd frontend
+cp .env.example .env
+npm install
+```
+
+---
+
 ## Running
 
-(To be completed later.)
+Backend (from `backend/`, with the virtualenv active):
+
+```bash
+python manage.py runserver
+```
+
+Runs at http://localhost:8000. Health check: http://localhost:8000/api/v1/health/
+
+Frontend (from `frontend/`):
+
+```bash
+npm run dev
+```
+
+Runs at http://localhost:5173.
+
+Populate the card database (optional, one-time — pulls from the live Pokémon TCG API):
+
+```bash
+python manage.py sync_cards
+```
 
 ---
 
 ## Running Tests
 
-(To be completed later.)
+Backend (from `backend/`, with the virtualenv active):
+
+```bash
+python manage.py test
+```
+
+Frontend (from `frontend/`):
+
+```bash
+npm run test:run
+```
