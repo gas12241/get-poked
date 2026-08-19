@@ -345,6 +345,34 @@ Why
 
 ---
 
+## Decision 027
+
+`react-router-dom` adopted for frontend page navigation (Phase 3)
+
+Why
+
+- Phase 3 needed a card list page and a card detail page. The alternative — a router-free single component switching views via local state — has no shareable/bookmarkable URLs and no working browser back/forward, and would need revisiting anyway once Phase 4/5/6 add their own pages (login, collections, quiz)
+- `createBrowserRouter`/`RouterProvider` (the current React Router idiom) is set up once in `App.tsx`; `main.tsx` is untouched since `App` already owns rendering the router
+- `renderWithProviders` (the shared test helper) gained an optional `route` param that wraps the tree in a `MemoryRouter`, needed for any component reading `useParams`/`useNavigate`
+
+---
+
+## Decision 028
+
+Cards/Sets/Types read API: `django-filter`, an added `Types` endpoint, unpaginated Set/Type lists, `AllowAny` for browsing
+
+Why
+
+- **`django-filter`** for `rarity`/`supertype`/`set`/`type` filtering on `GET /api/v1/cards/` — DRF's own recommended idiom for this exact case (a declarative `FilterSet`), rather than hand-parsing query params, which gets more verbose as filters stack up. `type` is a custom `CharFilter` (`types__name`, case-insensitive) so the frontend passes a human-readable name (`?type=Fire`) instead of needing a Type id first
+- **`GET /api/v1/types/` added**, not previously listed in docs/api.md — the frontend needs the ~18 elemental types to populate a filter dropdown, and hardcoding that list client-side would drift from the DB, which is the actual source of truth after Phase 2's sync. A small, obvious extension of the Card/Set API work already underway, not a separate feature
+- **`Set` and `Type` list endpoints are unpaginated** (`pagination_class = None`), unlike `Card`. Both are small, slow-growing lookup lists (174 sets, ~18 types) that the frontend needs *in full* at once to populate filter dropdowns — paginating them at the default page size would silently truncate the dropdown to the first page instead of showing every option
+- **`AllowAny` on all three viewsets**, overriding the global `IsAuthenticated` default — browsing cards requires no login, matching the precedent already established for quiz-playing (Decision 011)
+- **Default `PageNumberPagination`, page size 24**, capped at `max_page_size=100` via a small subclass (`cards.pagination.StandardPagination`) — prevents a client from requesting an unreasonably large page against a 20,479-row table
+- **Explicit default ordering** (`Card` by `name, number`; `Set` by `name`) added to both querysets after DRF/Postgres warned that paginating an unordered queryset can yield inconsistent results across pages — a real correctness issue, not just a lint nag, caught by actually running the tests rather than assumed away
+- Found and fixed while building this: Testing Library's automatic DOM cleanup between tests never registers under this project's `globals: false` Vitest config (auto-cleanup relies on detecting a global `afterEach`), so tests were silently leaking mounted DOM between runs. Fixed with an explicit `cleanup()` call in `afterEach` in `test/setup.ts` — a latent bug in the shared frontend test infrastructure, not scoped to this feature, but only surfaced once a test asserted on text that appeared twice across leaked renders
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

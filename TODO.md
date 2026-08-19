@@ -59,3 +59,14 @@
 - [x] Backend tests — 21 passing (models + sync logic + management command + retry/backoff), fixtures built from real API payloads
 - [x] Full sync run against the real API — verified: 174/174 sets imported, 20,479 cards (matches the API's own `totalCount`)
 - [x] Fixed a real bug found via the live sync run: dropped the `(set, number, language)` unique constraint after real data disproved the uniqueness assumption behind it (see docs/decisions.md #026) — `tcg_id` is the actual identity guarantee
+
+---
+
+## Phase 3 — Search/Filter/Pagination/Card Details
+
+- [x] Backend: `GET /api/v1/cards/` (search, filter by rarity/supertype/set/type, pagination, sorting), `GET /api/v1/cards/{id}/`, `GET /api/v1/sets/`, `GET /api/v1/types/` — `django-filter`, explicit List/Detail serializers, `AllowAny` (see docs/decisions.md #028)
+- [x] Backend tests — 17 passing (pagination shape, each filter individually and combined, search, ordering, nested detail data, 404, no-auth-required)
+- [x] Verified against real synced data: pagination/search/filtering/nested detail all correct against the full 20,479-card dataset
+- [x] Frontend: `react-router-dom` adopted (see docs/decisions.md #027) — `CardListPage` (search, filters, pagination) and `CardDetailPage` (full detail incl. attacks/weaknesses/resistances)
+- [x] Frontend tests — 14 passing (list rendering, filter/search query params, pagination controls, detail rendering); fixed a latent test-cleanup bug in shared test infra along the way (see docs/decisions.md #028)
+- [x] Manual end-to-end verification: both servers running live, browsed/searched/filtered/paginated real cards and navigated into a detail page in an actual browser

@@ -33,6 +33,8 @@ Backend tests
 
 Depends on Phase 2 (needs Card/Set data to search, filter, and display).
 
+Status: Complete — see TODO.md and docs/decisions.md #027/#028.
+
 Search
 
 Filtering

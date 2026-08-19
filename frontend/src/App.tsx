@@ -1,12 +1,14 @@
-import HealthCheck from './components/HealthCheck';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import CardListPage from './pages/CardListPage';
+import CardDetailPage from './pages/CardDetailPage';
+
+const router = createBrowserRouter([
+  { path: '/', element: <CardListPage /> },
+  { path: '/cards/:id', element: <CardDetailPage /> },
+]);
 
 function App() {
-  return (
-    <>
-      <h1>Get Poked</h1>
-      <HealthCheck />
-    </>
-  );
+  return <RouterProvider router={router} />;
 }
 
 export default App;
