@@ -95,6 +95,14 @@ p {
   margin: 0;
 }
 
+.disclaimer {
+  margin-top: auto;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text);
+}
+
 code,
 .counter {
   font-family: var(--mono);
