@@ -144,14 +144,16 @@ Returns a paginated list of cards. Uses the List serializer (see Conventions).
 
 Supports
 
-- search
-- filtering
-- pagination (`?page=`, `?page_size=`)
-- sorting
+- search — `?search=` (partial, case-insensitive match on `name`)
+- filtering — `?rarity=`, `?supertype=`, `?set=` (Set id), `?type=` (elemental type name, case-insensitive, e.g. `Fire`); any combination applies as AND
+- pagination — `?page=`, `?page_size=` (default 24, max 100)
+- sorting — `?ordering=` (`name`, `number`, `rarity`; prefix `-` to reverse)
+
+No authentication required (see docs/decisions.md #028).
 
 Status
 
-Planned
+Implemented
 
 ---
 
@@ -159,9 +161,13 @@ Planned
 
 GET /api/v1/cards/{id}/
 
+Description
+
+Returns the full Detail serializer: all Card fields plus nested `attacks`, `weaknesses`, `resistances`, and `types`. No authentication required.
+
 Status
 
-Planned
+Implemented
 
 ---
 
@@ -169,9 +175,27 @@ Planned
 
 GET /api/v1/sets/
 
+Description
+
+Returns the full list of sets, unpaginated (see docs/decisions.md #028). Supports `?ordering=` (`name`, `release_date`). No authentication required.
+
 Status
 
-Planned
+Implemented
+
+---
+
+## Types
+
+GET /api/v1/types/
+
+Description
+
+Returns the full list of elemental types (Fire, Water, etc.), unpaginated. Used by the frontend to populate the `type` filter on the Cards endpoint. No authentication required. See docs/decisions.md #028.
+
+Status
+
+Implemented
 
 ---
 
