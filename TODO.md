@@ -70,6 +70,7 @@
 - [x] Frontend: `react-router-dom` adopted (see docs/decisions.md #027) — `CardListPage` (search, filters, pagination) and `CardDetailPage` (full detail incl. attacks/weaknesses/resistances)
 - [x] Frontend tests — 14 passing (list rendering, filter/search query params, pagination controls, detail rendering); fixed a latent test-cleanup bug in shared test infra along the way (see docs/decisions.md #028)
 - [x] Manual end-to-end verification: both servers running live, browsed/searched/filtered/paginated real cards and navigated into a detail page in an actual browser
+- [x] `SeriesSidebar` — replaced the "Set" filter dropdown with a collapsible sidebar grouping sets by series, newest-first (see docs/decisions.md #031); 6 new tests, existing set-filter test updated to match; verified live in a browser against the real 174-set catalog
 
 ---
 

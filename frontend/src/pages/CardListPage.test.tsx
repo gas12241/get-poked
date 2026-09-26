@@ -41,7 +41,7 @@ describe('CardListPage', () => {
     await waitFor(() => expect(capturedSearch).toBe('Char'), { timeout: 1000 });
   });
 
-  it('sends the selected set id as a query param', async () => {
+  it('sends the selected set id as a query param when a set is picked from the sidebar', async () => {
     let capturedSet: string | null = null;
     server.use(
       http.get(`${BASE_URL}/api/v1/cards/`, ({ request }) => {
@@ -56,9 +56,10 @@ describe('CardListPage', () => {
     );
 
     renderWithProviders(<CardListPage />);
-    await screen.findByRole('option', { name: 'Base' });
-    const setSelect = screen.getByRole('combobox', { name: 'Set' });
-    await userEvent.selectOptions(setSelect, '1');
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Expand Base' }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Base' }));
 
     await waitFor(() => expect(capturedSet).toBe('1'));
   });
