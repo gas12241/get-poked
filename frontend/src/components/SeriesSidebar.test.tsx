@@ -95,8 +95,24 @@ describe('SeriesSidebar', () => {
     );
 
     expect(
-      screen.getByRole('button', { name: 'Chaos Rising' }),
+      screen.getByRole('button', { name: 'Collapse Mega Evolution' }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Chaos Rising' }),
+    ).not.toHaveAttribute('tabindex', '-1');
+  });
+
+  it('keeps a collapsed series in the DOM (for the slide animation) but out of the tab order and accessibility tree', () => {
+    renderWithProviders(
+      <SeriesSidebar sets={SETS} selectedSetId="" onSelect={() => {}} />,
+    );
+
+    expect(
+      screen.queryByRole('button', { name: 'Chaos Rising' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Chaos Rising', hidden: true }),
+    ).toHaveAttribute('tabindex', '-1');
   });
 
   it('marks the selected set as active', () => {

@@ -42,7 +42,10 @@
 }
 
 .series-header {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   width: 100%;
   text-align: left;
   font: inherit;
@@ -58,10 +61,31 @@
   }
 }
 
+.series-chevron {
+  flex: 0 0 auto;
+  transition: transform 200ms ease;
+}
+
+.series-header[aria-expanded='true'] .series-chevron {
+  transform: rotate(180deg);
+}
+
+.series-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 200ms ease;
+
+  &.expanded {
+    grid-template-rows: 1fr;
+  }
+}
+
 .series-sets {
   list-style: none;
   margin: 0 0 4px;
   padding: 0;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .series-set {
