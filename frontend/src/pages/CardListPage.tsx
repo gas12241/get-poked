@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { getCards, getSets, getTypes } from '../api/cards';
+import {
+  getCards,
+  getRarities,
+  getSets,
+  getSupertypes,
+  getTypes,
+} from '../api/cards';
 import type { CardListParams } from '../api/cards';
 import SeriesSidebar from '../components/SeriesSidebar';
 import './pages.css';
-
-const SUPERTYPES = ['Pokémon', 'Trainer', 'Energy'];
 
 type SortField = 'name' | 'number';
 type SortDirection = 'asc' | 'desc';
@@ -131,7 +135,77 @@ function CardListPage() {
   });
 
   const setsQuery = useQuery({ queryKey: ['sets'], queryFn: getSets });
-  const typesQuery = useQuery({ queryKey: ['types'], queryFn: getTypes });
+
+  // Scoped to the current set (undefined = every value in the catalog) so
+  // these dropdowns never offer a choice that can't match anything within
+  // the set you're actually looking at — see docs/decisions.md #034.
+  const setNumber = setId ? Number(setId) : undefined;
+  const typesQuery = useQuery({
+    queryKey: ['types', setNumber],
+    queryFn: () => getTypes({ set: setNumber }),
+  });
+  const raritiesQuery = useQuery({
+    queryKey: ['rarities', setNumber],
+    queryFn: () => getRarities({ set: setNumber }),
+  });
+  const supertypesQuery = useQuery({
+    queryKey: ['supertypes', setNumber],
+    queryFn: () => getSupertypes({ set: setNumber }),
+  });
+
+  // If switching sets makes the current rarity/supertype/type selection
+  // impossible (that set has no cards matching it), fall back to "All
+  // ___" rather than silently filtering to a combination that can never
+  // return a result.
+  useEffect(() => {
+    if (rarity && raritiesQuery.data && !raritiesQuery.data.includes(rarity)) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('rarity');
+          next.set('page', '1');
+          return next;
+        },
+        { replace: true },
+      );
+    }
+  }, [rarity, raritiesQuery.data, setSearchParams]);
+
+  useEffect(() => {
+    if (
+      supertype &&
+      supertypesQuery.data &&
+      !supertypesQuery.data.includes(supertype)
+    ) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('supertype');
+          next.set('page', '1');
+          return next;
+        },
+        { replace: true },
+      );
+    }
+  }, [supertype, supertypesQuery.data, setSearchParams]);
+
+  useEffect(() => {
+    if (
+      type &&
+      typesQuery.data &&
+      !typesQuery.data.some((t) => t.name === type)
+    ) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('type');
+          next.set('page', '1');
+          return next;
+        },
+        { replace: true },
+      );
+    }
+  }, [type, typesQuery.data, setSearchParams]);
 
   return (
     <div className="cards-layout">
@@ -149,19 +223,25 @@ function CardListPage() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
           />
-          <input
-            type="text"
-            placeholder="Rarity..."
+          <select
+            aria-label="Rarity"
             value={rarity}
             onChange={(e) => handleFilterChange('rarity', e.target.value)}
-          />
+          >
+            <option value="">All rarities</option>
+            {raritiesQuery.data?.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
           <select
             aria-label="Supertype"
             value={supertype}
             onChange={(e) => handleFilterChange('supertype', e.target.value)}
           >
             <option value="">All supertypes</option>
-            {SUPERTYPES.map((s) => (
+            {supertypesQuery.data?.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>

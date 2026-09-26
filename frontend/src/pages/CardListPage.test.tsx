@@ -173,6 +173,99 @@ describe('CardListPage', () => {
     await waitFor(() => expect(capturedOrdering).toBe('-number'));
   });
 
+  it('offers rarities fetched from the API as dropdown options and sends the chosen one', async () => {
+    let capturedRarity: string | null = null;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, ({ request }) => {
+        capturedRarity = new URL(request.url).searchParams.get('rarity');
+        return HttpResponse.json({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+    await screen.findByRole('option', { name: 'Rare Holo' });
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Rarity' }),
+      'Rare Holo',
+    );
+
+    await waitFor(() => expect(capturedRarity).toBe('Rare Holo'));
+  });
+
+  it('scopes the rarity/type/supertype dropdown requests to the selected set', async () => {
+    let capturedRaritiesSet: string | null = null;
+    let capturedTypesSet: string | null = null;
+    let capturedSupertypesSet: string | null = null;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/rarities/`, ({ request }) => {
+        capturedRaritiesSet = new URL(request.url).searchParams.get('set');
+        return HttpResponse.json(['Common']);
+      }),
+      http.get(`${BASE_URL}/api/v1/types/`, ({ request }) => {
+        capturedTypesSet = new URL(request.url).searchParams.get('set');
+        return HttpResponse.json([{ id: 1, name: 'Fire' }]);
+      }),
+      http.get(`${BASE_URL}/api/v1/supertypes/`, ({ request }) => {
+        capturedSupertypesSet = new URL(request.url).searchParams.get('set');
+        return HttpResponse.json(['Pokémon']);
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Expand Base' }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Base' }));
+
+    await waitFor(() => {
+      expect(capturedRaritiesSet).toBe('1');
+      expect(capturedTypesSet).toBe('1');
+      expect(capturedSupertypesSet).toBe('1');
+    });
+  });
+
+  it('resets the rarity filter to "All rarities" if it becomes invalid after switching sets', async () => {
+    server.use(
+      http.get(`${BASE_URL}/api/v1/rarities/`, ({ request }) => {
+        const set = new URL(request.url).searchParams.get('set');
+        return HttpResponse.json(set ? ['Common'] : ['Common', 'Rare Holo EX']);
+      }),
+    );
+    let capturedRarity: string | null = null;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, ({ request }) => {
+        capturedRarity = new URL(request.url).searchParams.get('rarity');
+        return HttpResponse.json({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+    await screen.findByRole('option', { name: 'Rare Holo EX' });
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Rarity' }),
+      'Rare Holo EX',
+    );
+    await waitFor(() => expect(capturedRarity).toBe('Rare Holo EX'));
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Expand Base' }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Base' }));
+
+    await waitFor(() => expect(capturedRarity).toBeNull());
+    expect(screen.getByRole('combobox', { name: 'Rarity' })).toHaveValue('');
+  });
+
   it('disables the Previous button on the first page and enables Next when more pages exist', async () => {
     server.use(
       http.get(`${BASE_URL}/api/v1/cards/`, () => {
