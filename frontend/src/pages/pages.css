@@ -120,3 +120,35 @@
   display: inline-block;
   margin: 20px;
 }
+
+.quiz-mode-selection,
+.quiz-question,
+.quiz-summary {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 20px;
+  text-align: center;
+}
+
+.quiz-mode-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quiz-question img {
+  max-width: 100%;
+  border-radius: 12px;
+}
+
+.quiz-question dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 16px 0;
+  text-align: left;
+}
+
+.quiz-abandon {
+  float: right;
+}

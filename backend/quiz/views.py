@@ -45,7 +45,7 @@ class QuizQuestionsView(APIView):
             .select_related("set")
             .prefetch_related("types")
         }
-        questions = [build_question(cards_by_id[card_id], mode) for card_id in sample_ids]
+        questions = [build_question(cards_by_id[card_id], mode, request) for card_id in sample_ids]
 
         return Response({"questions": questions})
 

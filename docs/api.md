@@ -239,13 +239,18 @@ Planned
 
 ## Quiz
 
+Maps to `QuizAttempt`/`QuizAttemptAnswer` (docs/database.md).
+
+### Get Quiz Questions
+
 GET /api/v1/quiz/
 
 Returns a randomly generated quiz.
 
 Params
 
-- `mode` — `guess_card`, `guess_set`, `guess_hp`, etc.
+- `mode` — `guess_card`, `guess_set`, `guess_hp` (required)
+- `count` — number of questions, default 10, capped at 20
 - `rarities` — comma-separated list (e.g. `Ultra Rare,Secret Rare,Special Illustration Rare`) further narrowing the card pool within whatever's already eligible for the mode. Applies to all modes. Omitted or empty means no additional restriction.
 
 Description
@@ -258,6 +263,46 @@ Baseline card pool eligibility depends on `mode` and supertype (see ARCHITECTURE
 
 The `rarities` param narrows further within that baseline — it cannot make an otherwise-ineligible card (a common Trainer, or any Energy card) eligible. See docs/decisions.md #017.
 
+Response is `{"questions": [...]}`, one object per question: `card` (id), `image` (absolute URL to the masked card image), `rarity`, `supertype`, `types`, plus whichever of `name`/`hp`/`set` are *not* the field being guessed for that mode. The guessed field itself is never present in the payload (see docs/decisions.md #029).
+
+No authentication required (see docs/decisions.md #011).
+
 Status
 
-Planned
+Implemented
+
+---
+
+### Check Quiz Answer
+
+POST /api/v1/quiz/check/
+
+Body: `{"card": <id>, "mode": "guess_card" | "guess_set" | "guess_hp", "guess": "<string>"}`
+
+Description
+
+Compares `guess` (trimmed, case-insensitive) against the actual value of the guessed field for `card` and `mode`. Returns `{"correct": <bool>, "answer": "<string>"}` — `answer` is always returned so the frontend can reveal the correct value, right or wrong.
+
+No authentication required (see docs/decisions.md #011).
+
+Status
+
+Implemented
+
+---
+
+### Quiz Attempts
+
+GET /api/v1/quiz-attempts/
+
+POST /api/v1/quiz-attempts/
+
+Description
+
+Records a completed quiz session. `POST` body: `{"quiz_mode": "...", "answers": [{"card": <id>, "is_correct": <bool>, "time_taken_seconds": <float>, "order": <int>}, ...]}` — `score`/`total_questions` are computed server-side from `answers`, not trusted from the client. `GET` returns only the requesting user's own attempts (paginated, per the project-wide default).
+
+Requires authentication (see docs/decisions.md #011).
+
+Status
+
+Implemented

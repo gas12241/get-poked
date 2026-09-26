@@ -79,4 +79,34 @@ export const handlers = [
       { id: 2, name: 'Water' },
     ]);
   }),
+
+  http.get(`${BASE_URL}/api/v1/quiz/`, () => {
+    return HttpResponse.json({
+      questions: [
+        {
+          card: 1,
+          image: 'https://example.com/masked.png',
+          rarity: 'Rare Holo',
+          supertype: 'Pokémon',
+          types: ['Fire'],
+          hp: '120',
+          set: { id: 1, name: 'Base' },
+        },
+      ],
+    });
+  }),
+
+  http.post(`${BASE_URL}/api/v1/quiz/check/`, () => {
+    return HttpResponse.json({ correct: true, answer: 'Charizard' });
+  }),
+
+  http.post(`${BASE_URL}/api/v1/quiz-attempts/`, () => {
+    return HttpResponse.json({
+      id: 1,
+      quiz_mode: 'guess_card',
+      score: 1,
+      total_questions: 1,
+      completed_at: '2026-01-01T00:00:00Z',
+    });
+  }),
 ];

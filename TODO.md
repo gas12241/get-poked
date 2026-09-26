@@ -80,10 +80,17 @@
 - [x] Server-side image masking with Pillow (`quiz/imaging.py`) — lazy generate-and-cache, fractional regions, era-aware set-symbol placement (see docs/decisions.md #029)
 - [x] `GET /api/v1/quiz/` (question generation, `AllowAny`), `POST /api/v1/quiz/check/` (answer check, `AllowAny`), `GET`/`POST /api/v1/quiz-attempts/` (score recording, `IsAuthenticated`) — see docs/decisions.md #011
 - [x] Backend tests — 33 passing (models, eligibility, imaging/masking, question generation, answer checking, attempt recording + auth)
-- [ ] Manual end-to-end verification against real synced data (deferred until the frontend quiz UI exists to drive it)
+- [x] Manual end-to-end verification against real synced data — see Phase 6 (Frontend) below, now that the quiz UI exists to drive it
 
 ---
 
 ## Phase 6 — Quiz System (Frontend)
 
-- [ ] Not started
+- [x] `quizStore.ts` (Zustand, persisted to localStorage) — session survives in-app navigation and a full reload; explicit "Abandon quiz" required to start a new one instead of restarting mid-session (see docs/decisions.md #030)
+- [x] `api/quiz.ts` — typed client for question generation, answer checking, attempt recording
+- [x] `QuizPage.tsx` at `/quiz` — mode selection, one question at a time (masked image + hints for the non-guessed fields), immediate correct/incorrect feedback, end-of-quiz score summary
+- [x] Manual score-save (button on the summary screen) only offered when authenticated; "Log in to save your score" shown otherwise — there's no frontend login flow yet (Phase 4 frontend not started), so this keeps the quiz fully playable without blocking on it
+- [x] Nav added to `Layout.tsx` (Cards / Quiz) — first cross-page navigation the app has needed
+- [x] Frontend tests — 6 passing (start/answer/complete flow, authenticated vs. unauthenticated summary, abandon, resume-after-remount); 22 passing frontend-wide
+- [x] Fixed a real bug found via manual browser verification: quiz images weren't rendering because the backend returned a storage-relative media URL, which the browser resolved against the frontend's own origin. Fixed with `request.build_absolute_uri(...)` in `quiz/questions.py` (see docs/decisions.md #030)
+- [x] Manual end-to-end verification: both servers running live in a real browser (Playwright), walked a full 10-question quiz to completion, confirmed the masked image actually renders, and confirmed an in-progress quiz survives a real full page reload

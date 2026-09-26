@@ -81,7 +81,7 @@ Statistics
 
 Depends on Phase 2 (Card data to quiz from). Playing a quiz does not require Phase 4; saving a score does (see docs/decisions.md #011).
 
-Status: Backend complete — see TODO.md and docs/decisions.md #029. Frontend not started.
+Status: Complete — see TODO.md and docs/decisions.md #029/#030.
 
 Quiz System
 

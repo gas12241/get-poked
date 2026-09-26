@@ -103,6 +103,19 @@ p {
   color: var(--text);
 }
 
+.main-nav {
+  display: flex;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.main-nav a {
+  color: var(--text-h);
+  text-decoration: none;
+  font-weight: 500;
+}
+
 code,
 .counter {
   font-family: var(--mono);
