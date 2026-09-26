@@ -404,6 +404,19 @@ Why
 
 ---
 
+## Decision 031
+
+Cards page: series/set browsing sidebar replaces the "Set" dropdown
+
+Why
+
+- **Sets grouped by `Set.series` and sorted newest-first** (both the series themselves and the sets within each), reusing the existing unpaginated `GET /api/v1/sets/` response client-side — no backend/schema change, since `series` and `release_date` were already on the model and already returned by the API (added for Phase 3, decisions.md #028, but not previously surfaced in the UI)
+- **Collapsible per series, not a flat list** — ~17 series and 174+ sets is too much to show expanded all at once; the series containing the currently-selected set starts expanded so navigating to a filtered card list doesn't hide where you are
+- **Kept the existing top nav (Cards/Quiz) as-is** — this only replaces the "Set" dropdown in the Cards page filter bar with a persistent left sidebar scoped to that page; it does not become a site-wide layout, so `Layout.tsx`/`QuizPage.tsx` are unaffected
+- **Series header and its own like-named set need distinct accessible names** — real data has series and sets that share a name (e.g. the "Mega Evolution" series contains a set also named "Mega Evolution"), which would otherwise give two buttons in the same view an identical accessible name. The series header's `aria-label` is "Expand/Collapse {series}" (visible text stays just the series name) so the two are unambiguous both for screen readers and in tests
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

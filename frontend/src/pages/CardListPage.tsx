@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { getCards, getSets, getTypes } from '../api/cards';
 import type { CardListParams } from '../api/cards';
+import SeriesSidebar from '../components/SeriesSidebar';
 import './pages.css';
 
 const SUPERTYPES = ['Pokémon', 'Trainer', 'Energy'];
@@ -51,101 +52,97 @@ function CardListPage() {
   const typesQuery = useQuery({ queryKey: ['types'], queryFn: getTypes });
 
   return (
-    <>
-      <h1>Get Poked</h1>
+    <div className="cards-layout">
+      <SeriesSidebar
+        sets={setsQuery.data ?? []}
+        selectedSetId={setId}
+        onSelect={(value) => handleFilterChange(setSetId, value)}
+      />
 
-      <div className="filters">
-        <input
-          type="text"
-          placeholder="Search by name..."
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-        />
-        <input
-          type="text"
-          placeholder="Rarity..."
-          value={rarity}
-          onChange={(e) => handleFilterChange(setRarity, e.target.value)}
-        />
-        <select
-          aria-label="Supertype"
-          value={supertype}
-          onChange={(e) => handleFilterChange(setSupertype, e.target.value)}
-        >
-          <option value="">All supertypes</option>
-          {SUPERTYPES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Type"
-          value={type}
-          onChange={(e) => handleFilterChange(setType, e.target.value)}
-        >
-          <option value="">All types</option>
-          {typesQuery.data?.map((t) => (
-            <option key={t.id} value={t.name}>
-              {t.name}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Set"
-          value={setId}
-          onChange={(e) => handleFilterChange(setSetId, e.target.value)}
-        >
-          <option value="">All sets</option>
-          {setsQuery.data?.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <div className="cards-main">
+        <h1>Get Poked</h1>
 
-      {cardsQuery.isLoading && <p>Loading cards...</p>}
-      {cardsQuery.isError && (
-        <p>Failed to load cards: {(cardsQuery.error as Error).message}</p>
-      )}
-
-      {cardsQuery.data && (
-        <>
-          <div className="card-grid">
-            {cardsQuery.data.results.map((card) => (
-              <Link
-                key={card.id}
-                to={`/cards/${card.id}`}
-                className="card-tile"
-              >
-                <img src={card.image_small} alt={card.name} />
-                <span className="card-name">{card.name}</span>
-                <span className="card-set">{card.set.name}</span>
-              </Link>
+        <div className="filters">
+          <input
+            type="text"
+            placeholder="Search by name..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Rarity..."
+            value={rarity}
+            onChange={(e) => handleFilterChange(setRarity, e.target.value)}
+          />
+          <select
+            aria-label="Supertype"
+            value={supertype}
+            onChange={(e) => handleFilterChange(setSupertype, e.target.value)}
+          >
+            <option value="">All supertypes</option>
+            {SUPERTYPES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
             ))}
-          </div>
+          </select>
+          <select
+            aria-label="Type"
+            value={type}
+            onChange={(e) => handleFilterChange(setType, e.target.value)}
+          >
+            <option value="">All types</option>
+            {typesQuery.data?.map((t) => (
+              <option key={t.id} value={t.name}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
-          <div className="pagination">
-            <button
-              onClick={() => setPage((p) => p - 1)}
-              disabled={!cardsQuery.data.previous}
-            >
-              Previous
-            </button>
-            <span>
-              Page {page} &middot; {cardsQuery.data.count} cards
-            </span>
-            <button
-              onClick={() => setPage((p) => p + 1)}
-              disabled={!cardsQuery.data.next}
-            >
-              Next
-            </button>
-          </div>
-        </>
-      )}
-    </>
+        {cardsQuery.isLoading && <p>Loading cards...</p>}
+        {cardsQuery.isError && (
+          <p>Failed to load cards: {(cardsQuery.error as Error).message}</p>
+        )}
+
+        {cardsQuery.data && (
+          <>
+            <div className="card-grid">
+              {cardsQuery.data.results.map((card) => (
+                <Link
+                  key={card.id}
+                  to={`/cards/${card.id}`}
+                  className="card-tile"
+                >
+                  <img src={card.image_small} alt={card.name} />
+                  <span className="card-name">{card.name}</span>
+                  <span className="card-set">{card.set.name}</span>
+                </Link>
+              ))}
+            </div>
+
+            <div className="pagination">
+              <button
+                onClick={() => setPage((p) => p - 1)}
+                disabled={!cardsQuery.data.previous}
+              >
+                Previous
+              </button>
+              <span>
+                Page {page} &middot; {cardsQuery.data.count} cards
+              </span>
+              <button
+                onClick={() => setPage((p) => p + 1)}
+                disabled={!cardsQuery.data.next}
+              >
+                Next
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 

@@ -1,0 +1,120 @@
+import { useState } from 'react';
+import type { Set as CardSet } from '../api/cards';
+
+interface SeriesGroup {
+  series: string;
+  sets: CardSet[];
+}
+
+function compareReleaseDateDesc(a: string | null, b: string | null) {
+  if (a === b) return 0;
+  if (a === null) return 1;
+  if (b === null) return -1;
+  return a < b ? 1 : -1;
+}
+
+function groupBySeries(sets: CardSet[]): SeriesGroup[] {
+  const bySeries = new Map<string, CardSet[]>();
+  for (const set of sets) {
+    const group = bySeries.get(set.series);
+    if (group) {
+      group.push(set);
+    } else {
+      bySeries.set(set.series, [set]);
+    }
+  }
+
+  const groups = Array.from(bySeries.entries()).map(([series, seriesSets]) => ({
+    series,
+    sets: [...seriesSets].sort((a, b) =>
+      compareReleaseDateDesc(a.release_date, b.release_date),
+    ),
+  }));
+
+  groups.sort((a, b) =>
+    compareReleaseDateDesc(
+      a.sets[0]?.release_date ?? null,
+      b.sets[0]?.release_date ?? null,
+    ),
+  );
+
+  return groups;
+}
+
+interface SeriesSidebarProps {
+  sets: CardSet[];
+  selectedSetId: string;
+  onSelect: (setId: string) => void;
+}
+
+function SeriesSidebar({ sets, selectedSetId, onSelect }: SeriesSidebarProps) {
+  const groups = groupBySeries(sets);
+  const selectedSeries = sets.find(
+    (set) => String(set.id) === selectedSetId,
+  )?.series;
+
+  const [expandedSeries, setExpandedSeries] = useState<Set<string>>(
+    () => new Set(selectedSeries ? [selectedSeries] : []),
+  );
+
+  function toggleSeries(series: string) {
+    setExpandedSeries((prev) => {
+      const next = new Set(prev);
+      if (next.has(series)) {
+        next.delete(series);
+      } else {
+        next.add(series);
+      }
+      return next;
+    });
+  }
+
+  return (
+    <nav className="series-sidebar" aria-label="Browse sets by series">
+      <button
+        className={
+          selectedSetId === '' ? 'series-all-sets active' : 'series-all-sets'
+        }
+        onClick={() => onSelect('')}
+      >
+        All Sets
+      </button>
+
+      {groups.map(({ series, sets: seriesSets }) => {
+        const isExpanded = expandedSeries.has(series);
+        return (
+          <div key={series} className="series-group">
+            <button
+              className="series-header"
+              aria-expanded={isExpanded}
+              aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${series}`}
+              onClick={() => toggleSeries(series)}
+            >
+              {series}
+            </button>
+            {isExpanded && (
+              <ul className="series-sets">
+                {seriesSets.map((set) => (
+                  <li key={set.id}>
+                    <button
+                      className={
+                        String(set.id) === selectedSetId
+                          ? 'series-set active'
+                          : 'series-set'
+                      }
+                      onClick={() => onSelect(String(set.id))}
+                    >
+                      {set.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+      })}
+    </nav>
+  );
+}
+
+export default SeriesSidebar;
