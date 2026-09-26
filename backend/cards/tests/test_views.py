@@ -173,3 +173,99 @@ class TypeViewSetTests(CardsSetsTypesTestBase):
     def test_list_does_not_require_authentication(self):
         response = self.client.get(reverse("type-list"))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_list_scoped_to_a_set_excludes_types_only_used_elsewhere(self):
+        # set_a's only card (Charizard) is Fire-type; set_b's (Squirtle) is
+        # Water-type — see CardsSetsTypesTestBase.
+        response = self.client.get(reverse("type-list"), {"set": self.set_a.id})
+        names = [t["name"] for t in response.data]
+        self.assertEqual(names, ["Fire"])
+
+
+class RarityListViewTests(APITestCase):
+    def setUp(self):
+        self.set_a = Set.objects.create(tcg_id="base1", name="Base", series="Base")
+        self.set_b = Set.objects.create(tcg_id="base2", name="Jungle", series="Base")
+        # set_a: includes a duplicate ("Common" twice) and a blank rarity, to
+        # prove the response is distinct and excludes blanks.
+        for i, rarity in enumerate(["Rare Holo", "Common", "Common", ""]):
+            Card.objects.create(
+                tcg_id=f"base1-{i}",
+                set=self.set_a,
+                name=f"Card {i}",
+                number=str(i),
+                rarity=rarity,
+                supertype="Pokémon",
+                image_small="https://example.com/small.png",
+                image_large="https://example.com/large.png",
+            )
+        # set_b: a rarity that doesn't appear anywhere in set_a.
+        Card.objects.create(
+            tcg_id="base2-0",
+            set=self.set_b,
+            name="Other Card",
+            number="0",
+            rarity="Rare Ultra",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+
+    def test_returns_distinct_sorted_rarities_excluding_blank(self):
+        response = self.client.get(reverse("rarity-list"))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, ["Common", "Rare Holo", "Rare Ultra"])
+
+    def test_list_scoped_to_a_set_excludes_rarities_only_present_elsewhere(self):
+        response = self.client.get(reverse("rarity-list"), {"set": self.set_a.id})
+        self.assertEqual(response.data, ["Common", "Rare Holo"])
+
+    def test_does_not_require_authentication(self):
+        response = self.client.get(reverse("rarity-list"))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+class SupertypeListViewTests(APITestCase):
+    def setUp(self):
+        self.set_a = Set.objects.create(tcg_id="base1", name="Base", series="Base")
+        self.set_b = Set.objects.create(tcg_id="base2", name="Jungle", series="Base")
+        Card.objects.create(
+            tcg_id="base1-1",
+            set=self.set_a,
+            name="Charizard",
+            number="1",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        Card.objects.create(
+            tcg_id="base1-2",
+            set=self.set_a,
+            name="Potion",
+            number="2",
+            supertype="Trainer",
+            image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        Card.objects.create(
+            tcg_id="base2-1",
+            set=self.set_b,
+            name="Fire Energy",
+            number="1",
+            supertype="Energy",
+            image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+
+    def test_returns_all_present_supertypes_in_canonical_order(self):
+        response = self.client.get(reverse("supertype-list"))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, ["Pokémon", "Trainer", "Energy"])
+
+    def test_list_scoped_to_a_set_excludes_supertypes_only_present_elsewhere(self):
+        response = self.client.get(reverse("supertype-list"), {"set": self.set_a.id})
+        self.assertEqual(response.data, ["Pokémon", "Trainer"])
+
+    def test_does_not_require_authentication(self):
+        response = self.client.get(reverse("supertype-list"))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)

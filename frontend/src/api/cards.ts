@@ -108,4 +108,22 @@ export const getCard = (id: string | number) =>
 
 export const getSets = () => apiClient<Set[]>('/api/v1/sets/');
 
-export const getTypes = () => apiClient<PokemonType[]>('/api/v1/types/');
+// Types/Rarities/Supertypes all take an optional `set` to narrow the
+// returned choices to what's actually present in that set, rather than
+// every value in the whole catalog — see docs/decisions.md #034.
+export interface FilterOptionsParams {
+  set?: number;
+}
+
+function filterOptionsQueryString({ set }: FilterOptionsParams) {
+  return set ? `?set=${set}` : '';
+}
+
+export const getTypes = (params: FilterOptionsParams = {}) =>
+  apiClient<PokemonType[]>(`/api/v1/types/${filterOptionsQueryString(params)}`);
+
+export const getRarities = (params: FilterOptionsParams = {}) =>
+  apiClient<string[]>(`/api/v1/rarities/${filterOptionsQueryString(params)}`);
+
+export const getSupertypes = (params: FilterOptionsParams = {}) =>
+  apiClient<string[]>(`/api/v1/supertypes/${filterOptionsQueryString(params)}`);

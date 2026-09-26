@@ -446,6 +446,19 @@ Why
 
 ---
 
+## Decision 034
+
+Rarity/Type/Supertype filter options are scoped to the selected set, and reset to "All ___" if they become invalid
+
+Why
+
+- **`GET /api/v1/rarities/`, `/types/`, and the new `/supertypes/` all accept an optional `?set=<id>`**, narrowing to values actually present in that set rather than every value in the whole catalog. Motivated directly by the user: browsing one set with a free-standing "Rarity"/"Type"/"Supertype" dropdown offering choices that can't possibly match anything in that set (e.g. "Rare Secret" in a set with no secret rares) is a dead end that just returns an empty grid — narrowing the options themselves prevents that combination from being reachable at all, rather than reachable-but-broken
+- **New `GET /api/v1/supertypes/` endpoint**, replacing the frontend's hardcoded `['Pokémon', 'Trainer', 'Energy']` array — that hardcoded list had no way to know which of the three are present in a *specific* set, so making Supertype consistent with Rarity/Type's set-scoping required it to become a real, queryable endpoint rather than a static constant. Ordered by a fixed canonical list (Pokémon, Trainer, Energy), not alphabetically like Rarity — supertype has a small, well-known set of values with a conventional display order that alphabetical sorting wouldn't preserve, unlike rarity, where no such convention exists in the data
+- **Selections that become invalid after switching sets auto-reset to "All ___"** (e.g. rarity was "Rare Holo EX" while browsing all sets, then a set with no such rarity is selected — rarity clears back to "All rarities") rather than silently keeping an impossible filter combination applied. This is implemented as three small `useEffect`s that compare the current filter value against the freshly-fetched, set-scoped options list once it loads, clearing the URL param (via the same `replace`-based `setSearchParams` pattern as the rest of this page, decisions.md #033) if the value isn't in it. Switching back to "All Sets" never needs this reset in the other direction: the global list is always a superset of any single set's list, so a value valid for some set is always valid globally too
+- Alternative considered and rejected: keep the filter dropdowns global/unscoped and instead show "no results" messaging when a combination returns nothing. Rejected because it's strictly worse UX for the exact case the user raised — the dropdown would keep advertising choices that are guaranteed to produce an empty grid for the set you're currently looking at, rather than only ever offering choices that could work
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

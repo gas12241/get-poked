@@ -80,6 +80,14 @@ export const handlers = [
     ]);
   }),
 
+  http.get(`${BASE_URL}/api/v1/rarities/`, () => {
+    return HttpResponse.json(['Common', 'Rare Holo']);
+  }),
+
+  http.get(`${BASE_URL}/api/v1/supertypes/`, () => {
+    return HttpResponse.json(['Pokémon', 'Trainer', 'Energy']);
+  }),
+
   http.get(`${BASE_URL}/api/v1/quiz/`, () => {
     return HttpResponse.json({
       questions: [

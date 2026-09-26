@@ -189,9 +189,49 @@ Implemented
 
 GET /api/v1/types/
 
+Params
+
+- `set` — Set id (optional). Narrows to types actually used by at least one card in that set. Omitted (or an invalid/nonexistent id): every type in the database.
+
 Description
 
-Returns the full list of elemental types (Fire, Water, etc.), unpaginated. Used by the frontend to populate the `type` filter on the Cards endpoint. No authentication required. See docs/decisions.md #028.
+Returns the list of elemental types (Fire, Water, etc.), unpaginated. Used by the frontend to populate the `type` filter on the Cards endpoint — scoped to the current set selection when one is active, so the dropdown never offers a choice that can't match anything. See docs/decisions.md #028, #034. No authentication required.
+
+Status
+
+Implemented
+
+---
+
+## Rarities
+
+GET /api/v1/rarities/
+
+Params
+
+- `set` — Set id (optional), same semantics as on Types above.
+
+Description
+
+Returns the distinct, non-blank `rarity` values actually present on `Card` (optionally scoped to `set`), sorted alphabetically — a plain list of strings, not `{id, name}` objects, since `rarity` is a plain field on `Card`, not its own model. Used by the frontend to populate the `rarity` filter on the Cards endpoint as a dropdown instead of free text, since rarity names aren't something most users can type out reliably. See docs/decisions.md #034. No authentication required.
+
+Status
+
+Implemented
+
+---
+
+## Supertypes
+
+GET /api/v1/supertypes/
+
+Params
+
+- `set` — Set id (optional), same semantics as on Types/Rarities above.
+
+Description
+
+Returns the `supertype` values actually present on `Card` (optionally scoped to `set`) — a plain list of strings. Unlike Rarities, order is the fixed conventional one (`Pokémon`, `Trainer`, `Energy`), not alphabetical, since supertype has a small, well-known set of values with an expected display order. See docs/decisions.md #034. No authentication required.
 
 Status
 
