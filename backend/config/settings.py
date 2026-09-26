@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "core",
     "cards",
+    "quiz",
 ]
 
 MIDDLEWARE = [
@@ -107,6 +108,12 @@ USE_TZ = True
 STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+# Media files — generated quiz images (see docs/decisions.md #029)
+
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 
 # Django REST Framework — JWT auth (see docs/decisions.md #010)

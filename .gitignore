@@ -8,6 +8,7 @@ venv/
 # Django
 *.log
 db.sqlite3
+backend/media/
 
 # Coverage reports
 .coverage

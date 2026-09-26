@@ -373,6 +373,22 @@ Why
 
 ---
 
+## Decision 029
+
+Quiz image masking: server-side Pillow, lazy generate-and-cache, fractional regions with era-aware set-symbol placement
+
+Why
+
+- **Server-side generation only** — masking happens in Django before the image ever reaches the frontend, per the Backend Rules in CLAUDE.md (image generation is backend responsibility) and so the guessed field can never leak by inspecting network traffic; `questions.py` omits the guessed field from the payload entirely for the same reason
+- **Lazy generate-and-cache**, keyed by `(mode, card)`, served from `MEDIA_ROOT`/`django-storages`-backed storage — matches the strategy already described in ARCHITECTURE.md's "Quiz generation" section: avoids recomputing on every request and avoids precomputing masks for the ~20k cards that may never be quizzed
+- **Fractional (not pixel) regions** — `NAME_REGIONS`/`HP_REGION`/etc. are expressed as `(left, top, right, bottom)` fractions of the source image's own size, so the same region definitions work across the small/large image variants the API serves without per-size tuning
+- **Deliberately generous regions, not pixel-exact** — the goal is reliably obscuring the answer, not surgical redaction; a slightly oversized black rectangle is a much smaller failure mode (a bit more of the card hidden) than an undersized one (the answer partially visible)
+- **Era-aware set-symbol placement for `guess_set`** — the TCG set symbol has moved on the physical card layout over the game's history (WOTC-era flavor-line placement → post-e-Card bottom-right → Sun & Moon-onward bottom-left), derived from `Set.release_date`. `bp` (Best of Game) is special-cased to mask both possible regions since it reprints cards from multiple eras under one set
+- **Rarity-tier eligibility for Trainer cards** (`SPECIAL_TIER_RARITIES` in `eligibility.py`) — ordinary Trainer cards aren't recognizable by name/set/HP alone the way a Pokémon card's art is, so only chase-tier Trainer rarities (Secret/Rainbow/Illustration Rare etc., covering both older and newer API naming for the same tiers) are quiz-eligible; Energy cards are excluded entirely. See ARCHITECTURE.md's "Quiz Eligibility & Rarity Filtering" and docs/decisions.md #017
+- Alternative considered and rejected: generating masks at import time (`sync_cards`) for every card/mode combination. Rejected because most of the 20k-card catalog will never be selected for a quiz question, making eager generation mostly wasted work; the lazy approach leaves an explicit, additive path to warm the cache ahead of time for a subset later if a future timed mode needs it, per ARCHITECTURE.md
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).
