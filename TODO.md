@@ -70,3 +70,20 @@
 - [x] Frontend: `react-router-dom` adopted (see docs/decisions.md #027) — `CardListPage` (search, filters, pagination) and `CardDetailPage` (full detail incl. attacks/weaknesses/resistances)
 - [x] Frontend tests — 14 passing (list rendering, filter/search query params, pagination controls, detail rendering); fixed a latent test-cleanup bug in shared test infra along the way (see docs/decisions.md #028)
 - [x] Manual end-to-end verification: both servers running live, browsed/searched/filtered/paginated real cards and navigated into a detail page in an actual browser
+
+---
+
+## Phase 6 — Quiz System (Backend)
+
+- [x] `QuizAttempt`/`QuizAttemptAnswer` models — per-question detail, not just session score (see docs/database.md, docs/decisions.md #012)
+- [x] Eligibility rules (`quiz/eligibility.py`) — baseline per mode plus rarity narrowing, chase-tier-only Trainer cards, Energy excluded (see docs/decisions.md #017/#029)
+- [x] Server-side image masking with Pillow (`quiz/imaging.py`) — lazy generate-and-cache, fractional regions, era-aware set-symbol placement (see docs/decisions.md #029)
+- [x] `GET /api/v1/quiz/` (question generation, `AllowAny`), `POST /api/v1/quiz/check/` (answer check, `AllowAny`), `GET`/`POST /api/v1/quiz-attempts/` (score recording, `IsAuthenticated`) — see docs/decisions.md #011
+- [x] Backend tests — 33 passing (models, eligibility, imaging/masking, question generation, answer checking, attempt recording + auth)
+- [ ] Manual end-to-end verification against real synced data (deferred until the frontend quiz UI exists to drive it)
+
+---
+
+## Phase 6 — Quiz System (Frontend)
+
+- [ ] Not started
