@@ -26,4 +26,19 @@ describe('Layout', () => {
     expect(screen.getByText('Page content')).toBeInTheDocument();
     expect(screen.getByText(/unofficial fan project/i)).toBeInTheDocument();
   });
+
+  it('renders a "Get Poked" brand link pointing back to the Cards page', () => {
+    renderWithProviders(
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/" element={<p>Page content</p>} />
+        </Route>
+      </Routes>,
+    );
+
+    expect(screen.getByRole('link', { name: 'Get Poked' })).toHaveAttribute(
+      'href',
+      '/',
+    );
+  });
 });

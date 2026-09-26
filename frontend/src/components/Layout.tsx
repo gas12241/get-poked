@@ -6,9 +6,16 @@ function Layout() {
   return (
     <>
       <nav className="main-nav">
-        <Link to="/">Cards</Link>
-        <Link to="/quiz">Quiz</Link>
-        <ThemeToggle />
+        <div className="main-nav-links">
+          <Link to="/">Cards</Link>
+          <Link to="/quiz">Quiz</Link>
+        </div>
+        <Link to="/" className="main-nav-brand">
+          Get Poked
+        </Link>
+        <div className="main-nav-right">
+          <ThemeToggle />
+        </div>
       </nav>
       <Outlet />
       <Footer />
