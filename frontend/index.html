@@ -5,6 +5,17 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>frontend</title>
+    <script>
+      // Applied before React mounts to avoid a flash of the wrong theme —
+      // an explicit choice (ThemeToggle.tsx) takes priority over the
+      // system's prefers-color-scheme, which the CSS handles on its own.
+      (function () {
+        var stored = localStorage.getItem('theme');
+        if (stored === 'light' || stored === 'dark') {
+          document.documentElement.dataset.theme = stored;
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
