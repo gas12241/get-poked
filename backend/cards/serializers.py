@@ -58,7 +58,17 @@ class CardListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Card
-        fields = ["id", "name", "number", "rarity", "supertype", "image_small", "set", "types"]
+        fields = [
+            "id",
+            "name",
+            "number",
+            "rarity",
+            "supertype",
+            "image_small",
+            "artist",
+            "set",
+            "types",
+        ]
 
 
 class CardDetailSerializer(serializers.ModelSerializer):
