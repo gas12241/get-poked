@@ -107,4 +107,30 @@ describe('Cards list -> detail -> back', () => {
       expect(requestedParams[requestedParams.length - 1].get('set')).toBeNull(),
     );
   });
+
+  it('resets filters when clicking the "Get Poked" brand link, same as the Cards nav link', async () => {
+    const requestedParams: URLSearchParams[] = [];
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, ({ request }) => {
+        requestedParams.push(new URL(request.url).searchParams);
+        return HttpResponse.json({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+
+    renderApp('/?set=1');
+    await waitFor(() =>
+      expect(requestedParams[requestedParams.length - 1].get('set')).toBe('1'),
+    );
+
+    await userEvent.click(screen.getByRole('link', { name: 'Get Poked' }));
+
+    await waitFor(() =>
+      expect(requestedParams[requestedParams.length - 1].get('set')).toBeNull(),
+    );
+  });
 });

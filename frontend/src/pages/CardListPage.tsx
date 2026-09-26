@@ -142,8 +142,6 @@ function CardListPage() {
       />
 
       <div className="cards-main">
-        <h1>Get Poked</h1>
-
         <div className="filters">
           <input
             type="text"
