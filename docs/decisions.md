@@ -389,6 +389,21 @@ Why
 
 ---
 
+## Decision 030
+
+Quiz frontend: persisted Zustand session (survives reload), explicit abandon-to-restart, manual score-save
+
+Why
+
+- **`quizStore.ts` (Zustand) holds session progress** (mode, questions, current index, answers, score), not local component state — unlike most UI state in this app, it must outlive `QuizPage` unmounting: navigating to browse cards and back, or a full reload, should not lose an in-progress quiz. This is a genuine cross-render-tree/cross-reload requirement, not a speculative one, so it doesn't fall under the "don't add stores for hypothetical future readers" caution that was raised (and rejected) while scoping this — see ARCHITECTURE.md's State Management section, which already assigned quiz-session progress to Zustand
+- **`persist` middleware backed by `localStorage`**, unlike `authStore` (in-memory only). `authStore`'s in-memory-only choice is a security constraint specific to the access token (decisions.md #015) and doesn't generalize — quiz progress has no such sensitivity, and losing an unfinished quiz to an accidental refresh or a backgrounded mobile tab reclaiming the page is a worse outcome than the modest cost of `persist`'s localStorage schema
+- **Starting a new quiz requires explicitly abandoning the in-progress one** (an "Abandon quiz" control on the question view) rather than mode selection always being reachable — visiting `/quiz` while a session exists resumes it directly instead of re-prompting for a mode
+- **Score-saving is a manual "Save score" button on the summary screen, not an automatic POST on quiz completion** — avoids a hidden side effect tied to answering the last question, and naturally covers retry-after-failure and the edge case of a reload landing on an already-finished-but-unsaved session, without needing a mount-time effect to re-detect and resubmit
+- **No frontend login flow exists yet** (Phase 4 frontend not started) — the quiz is fully playable unauthenticated (`AllowAny` per decisions.md #011); the summary screen shows "Log in to save your score" instead of the save button when `authStore` has no access token, rather than attempting a request that would 401
+- Bug found via manual browser verification, not caught by the (MSW-mocked) test suite: `get_or_create_masked_image`'s storage-relative URL (`/media/quiz_masks/...`) was returned to the frontend as-is. Since the frontend and Django are different origins, the browser resolved it against the frontend's own origin and 404'd — the image never rendered. Fixed in `questions.py` by wrapping it in `request.build_absolute_uri(...)` before it reaches the response; this also passes an already-absolute URL through unchanged, so it keeps working if `MEDIA_URL`/storage backend changes later (e.g. a cloud storage backend for deployment, Phase 7)
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).
