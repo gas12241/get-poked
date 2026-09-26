@@ -97,6 +97,38 @@ class CardListTests(CardsSetsTypesTestBase):
         self.assertEqual(names, ["Charizard", "Squirtle"])
 
 
+class CardNumberOrderingTests(APITestCase):
+    """`number` is a CharField (not every printed number is purely numeric,
+    e.g. "TG01"), so ordering by it needs a numeric sort, not a lexicographic
+    one — see docs/decisions.md #032.
+    """
+
+    def setUp(self):
+        self.set_a = Set.objects.create(tcg_id="base1", name="Base", series="Base")
+        # "TG1" has a digit (extracts to numeric 1, ties with "1"); "A" has no
+        # digits at all (extracts to NULL, must sort last regardless of direction).
+        for number in ["1", "2", "10", "TG1", "A"]:
+            Card.objects.create(
+                tcg_id=f"base1-{number}",
+                set=self.set_a,
+                name=f"Card {number}",
+                number=number,
+                supertype="Pokémon",
+                image_small="https://example.com/small.png",
+                image_large="https://example.com/large.png",
+            )
+
+    def test_ordering_by_number_is_numeric_not_lexicographic(self):
+        response = self.client.get(reverse("card-list"), {"ordering": "number"})
+        numbers = [c["number"] for c in response.data["results"]]
+        self.assertEqual(numbers, ["1", "TG1", "2", "10", "A"])
+
+    def test_ordering_by_number_descending(self):
+        response = self.client.get(reverse("card-list"), {"ordering": "-number"})
+        numbers = [c["number"] for c in response.data["results"]]
+        self.assertEqual(numbers, ["10", "2", "TG1", "1", "A"])
+
+
 class CardDetailTests(CardsSetsTypesTestBase):
     def test_retrieve_includes_nested_related_data(self):
         response = self.client.get(reverse("card-detail", args=[self.charizard.id]))

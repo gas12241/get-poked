@@ -71,6 +71,8 @@
 - [x] Frontend tests — 14 passing (list rendering, filter/search query params, pagination controls, detail rendering); fixed a latent test-cleanup bug in shared test infra along the way (see docs/decisions.md #028)
 - [x] Manual end-to-end verification: both servers running live, browsed/searched/filtered/paginated real cards and navigated into a detail page in an actual browser
 - [x] `SeriesSidebar` — replaced the "Set" filter dropdown with a collapsible sidebar grouping sets by series, newest-first (see docs/decisions.md #031); 6 new tests, existing set-filter test updated to match; verified live in a browser against the real 174-set catalog
+- [x] Slide animation + direction chevron on series expand/collapse
+- [x] Sort by Name/Number (asc/desc); fixed a real backend bug where Number sort was a plain string sort (`1, 10, 100...`) instead of numeric — `CardOrderingFilter` in `cards/ordering.py` (see docs/decisions.md #032). Sort defaults to Number when a set is selected, Name for "All Sets", resetting on each set-filter change. 5 new backend tests, 3 new frontend tests; verified live against real Base Set data (correct 001-102 order)
 
 ---
 

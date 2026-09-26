@@ -5,6 +5,7 @@ from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from .filters import CardFilter
 from .models import Card, Set, Type
+from .ordering import CardOrderingFilter
 from .serializers import CardDetailSerializer, CardListSerializer, SetSerializer, TypeSerializer
 
 
@@ -15,7 +16,7 @@ class CardViewSet(ReadOnlyModelViewSet):
         .order_by("name", "number")
     )
     permission_classes = [AllowAny]
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter, CardOrderingFilter]
     filterset_class = CardFilter
     search_fields = ["name"]
     ordering_fields = ["name", "number", "rarity"]
