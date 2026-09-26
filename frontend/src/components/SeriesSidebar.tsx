@@ -90,13 +90,35 @@ function SeriesSidebar({ sets, selectedSetId, onSelect }: SeriesSidebarProps) {
               aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${series}`}
               onClick={() => toggleSeries(series)}
             >
-              {series}
+              <span>{series}</span>
+              <svg
+                className="series-chevron"
+                width="10"
+                height="10"
+                viewBox="0 0 10 10"
+                aria-hidden="true"
+              >
+                <path
+                  d="M2 3.5L5 6.5L8 3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </button>
-            {isExpanded && (
+            <div
+              className={
+                isExpanded ? 'series-collapse expanded' : 'series-collapse'
+              }
+              aria-hidden={!isExpanded}
+            >
               <ul className="series-sets">
                 {seriesSets.map((set) => (
                   <li key={set.id}>
                     <button
+                      tabIndex={isExpanded ? undefined : -1}
                       className={
                         String(set.id) === selectedSetId
                           ? 'series-set active'
@@ -109,7 +131,7 @@ function SeriesSidebar({ sets, selectedSetId, onSelect }: SeriesSidebarProps) {
                   </li>
                 ))}
               </ul>
-            )}
+            </div>
           </div>
         );
       })}
