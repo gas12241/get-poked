@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { getCards, getSets, getTypes } from '../api/cards';
 import type { CardListParams } from '../api/cards';
@@ -11,31 +11,74 @@ const SUPERTYPES = ['Pokémon', 'Trainer', 'Energy'];
 type SortField = 'name' | 'number';
 type SortDirection = 'asc' | 'desc';
 
+// Filters/sort/page live in the URL (not component state) so that
+// navigating to a card's detail page and back restores the exact view you
+// were looking at, rather than resetting to the unfiltered default — see
+// docs/decisions.md #033. Every change uses `replace` (not the default
+// `push`) so adjusting a filter updates the current history entry instead
+// of stacking a new one for every keystroke/click.
 function CardListPage() {
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
-  const [rarity, setRarity] = useState('');
-  const [supertype, setSupertype] = useState('');
-  const [type, setType] = useState('');
-  const [setId, setSetId] = useState('');
-  const [sortField, setSortField] = useState<SortField>('name');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-  const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const search = searchParams.get('search') ?? '';
+  const rarity = searchParams.get('rarity') ?? '';
+  const supertype = searchParams.get('supertype') ?? '';
+  const type = searchParams.get('type') ?? '';
+  const setId = searchParams.get('set') ?? '';
+  const ordering = searchParams.get('ordering') || 'name';
+  const sortField: SortField = ordering.replace('-', '') as SortField;
+  const sortDirection: SortDirection = ordering.startsWith('-')
+    ? 'desc'
+    : 'asc';
+  const page = Number(searchParams.get('page') ?? '1');
+
+  const [searchInput, setSearchInput] = useState(search);
+
+  // Always mirrors the latest searchParams, for the debounce timeout below
+  // to read — a standard pattern for giving an async callback access to the
+  // latest value without going stale. `window.location.search` was tried
+  // first and rejected: it only reflects a real BrowserRouter, not
+  // MemoryRouter (used in tests), so it silently broke in the test
+  // environment.
+  const searchParamsRef = useRef(searchParams);
+  useEffect(() => {
+    searchParamsRef.current = searchParams;
+  }, [searchParams]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      setSearch(searchInput);
-      setPage(1);
+      // Reads the ref rather than closing over `searchParams` directly —
+      // this effect's dependency array only includes `searchInput`, so a
+      // direct closure over `searchParams` would go stale between when the
+      // timer is scheduled and when it fires, clobbering any filter changes
+      // made in between (e.g. picking a set) back to whatever the URL was
+      // at the moment typing started.
+      const next = new URLSearchParams(searchParamsRef.current);
+      if (searchInput) {
+        next.set('search', searchInput);
+      } else {
+        next.delete('search');
+      }
+      next.set('page', '1');
+      setSearchParams(next, { replace: true });
     }, 400);
     return () => clearTimeout(timeout);
-  }, [searchInput]);
+  }, [searchInput, setSearchParams]);
 
-  function handleFilterChange(
-    setFilter: (value: string) => void,
-    value: string,
-  ) {
-    setFilter(value);
-    setPage(1);
+  function handleFilterChange(key: string, value: string) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) {
+          next.set(key, value);
+        } else {
+          next.delete(key);
+        }
+        next.set('page', '1');
+        return next;
+      },
+      { replace: true },
+    );
   }
 
   // Number-sort only means "checklist order within a set" — across the
@@ -44,10 +87,31 @@ function CardListPage() {
   // whenever the set filter changes, rather than carrying over a choice
   // that stops making sense outside where it was picked.
   function handleSetSelect(value: string) {
-    setSetId(value);
-    setSortField(value === '' ? 'name' : 'number');
-    setSortDirection('asc');
-    setPage(1);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) {
+          next.set('set', value);
+        } else {
+          next.delete('set');
+        }
+        next.set('ordering', value === '' ? 'name' : 'number');
+        next.set('page', '1');
+        return next;
+      },
+      { replace: true },
+    );
+  }
+
+  function handlePageChange(newPage: number) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('page', String(newPage));
+        return next;
+      },
+      { replace: true },
+    );
   }
 
   const params: CardListParams = {
@@ -56,7 +120,7 @@ function CardListPage() {
     supertype: supertype || undefined,
     type: type || undefined,
     set: setId ? Number(setId) : undefined,
-    ordering: `${sortDirection === 'desc' ? '-' : ''}${sortField}`,
+    ordering,
     page,
   };
 
@@ -91,12 +155,12 @@ function CardListPage() {
             type="text"
             placeholder="Rarity..."
             value={rarity}
-            onChange={(e) => handleFilterChange(setRarity, e.target.value)}
+            onChange={(e) => handleFilterChange('rarity', e.target.value)}
           />
           <select
             aria-label="Supertype"
             value={supertype}
-            onChange={(e) => handleFilterChange(setSupertype, e.target.value)}
+            onChange={(e) => handleFilterChange('supertype', e.target.value)}
           >
             <option value="">All supertypes</option>
             {SUPERTYPES.map((s) => (
@@ -108,7 +172,7 @@ function CardListPage() {
           <select
             aria-label="Type"
             value={type}
-            onChange={(e) => handleFilterChange(setType, e.target.value)}
+            onChange={(e) => handleFilterChange('type', e.target.value)}
           >
             <option value="">All types</option>
             {typesQuery.data?.map((t) => (
@@ -120,10 +184,12 @@ function CardListPage() {
           <select
             aria-label="Sort by"
             value={sortField}
-            onChange={(e) => {
-              setSortField(e.target.value as SortField);
-              setPage(1);
-            }}
+            onChange={(e) =>
+              handleFilterChange(
+                'ordering',
+                `${sortDirection === 'desc' ? '-' : ''}${e.target.value}`,
+              )
+            }
           >
             <option value="name">Sort: Name</option>
             <option value="number">Sort: Number</option>
@@ -131,10 +197,12 @@ function CardListPage() {
           <select
             aria-label="Sort direction"
             value={sortDirection}
-            onChange={(e) => {
-              setSortDirection(e.target.value as SortDirection);
-              setPage(1);
-            }}
+            onChange={(e) =>
+              handleFilterChange(
+                'ordering',
+                `${e.target.value === 'desc' ? '-' : ''}${sortField}`,
+              )
+            }
           >
             <option value="asc">Ascending</option>
             <option value="desc">Descending</option>
@@ -170,7 +238,7 @@ function CardListPage() {
 
             <div className="pagination">
               <button
-                onClick={() => setPage((p) => p - 1)}
+                onClick={() => handlePageChange(page - 1)}
                 disabled={!cardsQuery.data.previous}
               >
                 Previous
@@ -179,7 +247,7 @@ function CardListPage() {
                 Page {page} &middot; {cardsQuery.data.count} cards
               </span>
               <button
-                onClick={() => setPage((p) => p + 1)}
+                onClick={() => handlePageChange(page + 1)}
                 disabled={!cardsQuery.data.next}
               >
                 Next

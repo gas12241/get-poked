@@ -1,10 +1,11 @@
-import { Link, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getCard } from '../api/cards';
 import './pages.css';
 
 function CardDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
   const cardQuery = useQuery({
     queryKey: ['card', id],
@@ -22,9 +23,13 @@ function CardDetailPage() {
 
   return (
     <>
-      <Link to="/" className="back-link">
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="back-link back-button"
+      >
         &larr; Back to cards
-      </Link>
+      </button>
 
       <div className="card-detail">
         <img src={card.image_large} alt={card.name} />

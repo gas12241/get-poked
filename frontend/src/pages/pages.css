@@ -248,6 +248,15 @@
   margin: 20px;
 }
 
+.back-button {
+  font: inherit;
+  color: var(--text-h);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
 .quiz-mode-selection,
 .quiz-question,
 .quiz-summary {
