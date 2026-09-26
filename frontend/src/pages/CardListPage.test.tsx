@@ -42,6 +42,41 @@ describe('CardListPage', () => {
     await waitFor(() => expect(capturedSearch).toBe('Char'), { timeout: 1000 });
   });
 
+  it('does not let a delayed search-debounce commit clobber a filter picked in the meantime', async () => {
+    let capturedParams: URLSearchParams | null = null;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, ({ request }) => {
+        capturedParams = new URL(request.url).searchParams;
+        return HttpResponse.json({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+    await userEvent.type(
+      screen.getByPlaceholderText('Search by name...'),
+      'Char',
+    );
+    // Pick a set immediately after typing, before the 400ms search debounce
+    // has had a chance to fire.
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Expand Base' }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Base' }));
+
+    await waitFor(
+      () => {
+        expect(capturedParams?.get('search')).toBe('Char');
+        expect(capturedParams?.get('set')).toBe('1');
+      },
+      { timeout: 1000 },
+    );
+  });
+
   it('sends the selected set id as a query param when a set is picked from the sidebar', async () => {
     let capturedSet: string | null = null;
     server.use(

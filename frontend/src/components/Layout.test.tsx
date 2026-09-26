@@ -1,8 +1,17 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import { Route, Routes } from 'react-router-dom';
 import { renderWithProviders } from '../test/renderWithProviders';
 import Layout from './Layout';
+
+// ScrollRestoration requires a data router (useMatches), which this test's
+// plain MemoryRouter/<Routes> setup doesn't provide — and jsdom has no real
+// scrolling to verify anyway. The actual data-router case is covered by
+// routing.test.tsx.
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>();
+  return { ...actual, ScrollRestoration: () => null };
+});
 
 describe('Layout', () => {
   it('renders the matched child route alongside the disclaimer footer', () => {
