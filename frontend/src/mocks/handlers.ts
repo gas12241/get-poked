@@ -11,6 +11,7 @@ const mockCardListItem = {
   rarity: 'Rare Holo',
   supertype: 'Pokémon',
   image_small: 'https://example.com/small.png',
+  artist: 'Ken Sugimori',
   set: mockSet,
   types: [{ id: 1, name: 'Fire' }],
 };
@@ -20,7 +21,6 @@ const mockCardDetail = {
   hp: '120',
   language: 'en',
   image_large: 'https://example.com/large.png',
-  artist: 'Ken Sugimori',
   national_pokedex_numbers: [6],
   subtypes: ['Stage 2'],
   evolves_from: 'Charmeleon',

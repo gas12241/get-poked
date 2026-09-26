@@ -16,6 +16,7 @@ describe('CardListPage', () => {
     expect(
       screen.getByText('Base', { selector: '.card-set' }),
     ).toBeInTheDocument();
+    expect(screen.getByText('#4 · Ken Sugimori')).toBeInTheDocument();
   });
 
   it('sends the search term as a query param after typing', async () => {

@@ -48,6 +48,7 @@ export interface CardListItem {
   rarity: string;
   supertype: string;
   image_small: string;
+  artist: string;
   set: SetNested;
   types: PokemonType[];
 }
@@ -56,7 +57,6 @@ export interface CardDetail extends CardListItem {
   hp: string;
   language: string;
   image_large: string;
-  artist: string;
   national_pokedex_numbers: number[];
   subtypes: string[];
   evolves_from: string;

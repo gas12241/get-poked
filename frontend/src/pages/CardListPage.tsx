@@ -156,8 +156,14 @@ function CardListPage() {
                   className="card-tile"
                 >
                   <img src={card.image_small} alt={card.name} />
-                  <span className="card-name">{card.name}</span>
-                  <span className="card-set">{card.set.name}</span>
+                  <div className="card-tile-text">
+                    <span className="card-name">{card.name}</span>
+                    <span className="card-set">{card.set.name}</span>
+                    <span className="card-meta">
+                      #{card.number}
+                      {card.artist && ` · ${card.artist}`}
+                    </span>
+                  </div>
                 </Link>
               ))}
             </div>

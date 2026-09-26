@@ -57,6 +57,8 @@ class CardListTests(CardsSetsTypesTestBase):
         self.assertNotIn("attacks", result)
         self.assertIn("set", result)
         self.assertIn("types", result)
+        self.assertIn("number", result)
+        self.assertIn("artist", result)
 
     def test_list_does_not_require_authentication(self):
         response = self.client.get(reverse("card-list"))
