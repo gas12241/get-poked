@@ -417,6 +417,19 @@ Why
 
 ---
 
+## Decision 032
+
+Card list: sort by Name or Number, natural (not lexicographic) sort for Number, default sort resets per set-filter context
+
+Why
+
+- **Sort field/direction (Name/Number, Ascending/Descending) resets to a context default whenever the set filter changes** — Number for a specific set (checklist order — what most people expect when browsing one set), Name for "All Sets" (Number has no coherent global meaning: every one of the 174+ sets has its own #1, so a global number-sort would just interleave unrelated cards from many sets). Confirmed with the user rather than assumed, since the alternative (remembering the user's last manual choice across context switches) was an equally reasonable option
+- **`number` needed a real backend fix, not just a frontend `ordering` param** — `Card.number` is a `CharField` (not every printed number is purely numeric, e.g. "TG01", "SWSH001"), so the existing plain string `.order_by("number")` was already wrong: `1, 10, 100, 101, 102, 11, 12, ...` instead of `1, 2, 3, ... 10, 11, ...` — confirmed against real Base Set data before deciding this needed fixing rather than just wiring the UI up to already-broken behavior
+- **`cards/ordering.py`'s `CardOrderingFilter`** (replacing plain `OrderingFilter` on `CardViewSet` only — `SetViewSet`/`TypeViewSet` keep the default) annotates a `number_numeric` field via Postgres `REGEXP_REPLACE(number, '\D', '', 'g')` (strip non-digits) wrapped in `NullIf`+`Cast`, and orders by that with the raw `number` string as a secondary tiebreaker. `NullIf` matters because ~32 real cards (puzzle-piece promos like "A", "B", "C") have *no* digits at all — stripping them yields an empty string, which errors casting straight to integer; `NullIf` turns that into a real `NULL` first, sorting last via `nulls_last=True` regardless of direction, rather than erroring or having them jump to the front on descending sort
+- Alternative considered and rejected: a natural-sort library or Python-side sort. Rejected because the sort has to happen at the database level to work correctly with pagination (a Python-side sort would require pulling every matching row into memory first, defeating pagination) — a DB-level annotation was the only option that composes with the existing filter/paginate/search pipeline
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

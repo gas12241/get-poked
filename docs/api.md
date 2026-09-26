@@ -147,7 +147,7 @@ Supports
 - search — `?search=` (partial, case-insensitive match on `name`)
 - filtering — `?rarity=`, `?supertype=`, `?set=` (Set id), `?type=` (elemental type name, case-insensitive, e.g. `Fire`); any combination applies as AND
 - pagination — `?page=`, `?page_size=` (default 24, max 100)
-- sorting — `?ordering=` (`name`, `number`, `rarity`; prefix `-` to reverse)
+- sorting — `?ordering=` (`name`, `number`, `rarity`; prefix `-` to reverse). `number` sorts numerically (1, 2, ... 10, 11), not lexicographically as a plain string sort would (1, 10, 11, ... 2) — see docs/decisions.md #032
 
 No authentication required (see docs/decisions.md #028).
 

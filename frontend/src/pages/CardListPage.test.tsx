@@ -64,6 +64,79 @@ describe('CardListPage', () => {
     await waitFor(() => expect(capturedSet).toBe('1'));
   });
 
+  it('defaults to sorting by name when no set is selected', async () => {
+    let capturedOrdering: string | null = null;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, ({ request }) => {
+        capturedOrdering = new URL(request.url).searchParams.get('ordering');
+        return HttpResponse.json({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+
+    await waitFor(() => expect(capturedOrdering).toBe('name'));
+  });
+
+  it('defaults to sorting by number once a set is selected, and resets to name when back to All Sets', async () => {
+    let capturedOrdering: string | null = null;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, ({ request }) => {
+        capturedOrdering = new URL(request.url).searchParams.get('ordering');
+        return HttpResponse.json({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Expand Base' }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Base' }));
+
+    await waitFor(() => expect(capturedOrdering).toBe('number'));
+
+    await userEvent.click(screen.getByRole('button', { name: 'All Sets' }));
+
+    await waitFor(() => expect(capturedOrdering).toBe('name'));
+  });
+
+  it('sends the chosen sort field and direction as the ordering param', async () => {
+    let capturedOrdering: string | null = null;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, ({ request }) => {
+        capturedOrdering = new URL(request.url).searchParams.get('ordering');
+        return HttpResponse.json({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Sort by' }),
+      'number',
+    );
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Sort direction' }),
+      'desc',
+    );
+
+    await waitFor(() => expect(capturedOrdering).toBe('-number'));
+  });
+
   it('disables the Previous button on the first page and enables Next when more pages exist', async () => {
     server.use(
       http.get(`${BASE_URL}/api/v1/cards/`, () => {

@@ -8,6 +8,9 @@ import './pages.css';
 
 const SUPERTYPES = ['Pokémon', 'Trainer', 'Energy'];
 
+type SortField = 'name' | 'number';
+type SortDirection = 'asc' | 'desc';
+
 function CardListPage() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -15,6 +18,8 @@ function CardListPage() {
   const [supertype, setSupertype] = useState('');
   const [type, setType] = useState('');
   const [setId, setSetId] = useState('');
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -33,12 +38,25 @@ function CardListPage() {
     setPage(1);
   }
 
+  // Number-sort only means "checklist order within a set" — across the
+  // whole catalog every set has its own #1, so the field/direction reset to
+  // this context's sensible default (Number for a set, Name for All Sets)
+  // whenever the set filter changes, rather than carrying over a choice
+  // that stops making sense outside where it was picked.
+  function handleSetSelect(value: string) {
+    setSetId(value);
+    setSortField(value === '' ? 'name' : 'number');
+    setSortDirection('asc');
+    setPage(1);
+  }
+
   const params: CardListParams = {
     search: search || undefined,
     rarity: rarity || undefined,
     supertype: supertype || undefined,
     type: type || undefined,
     set: setId ? Number(setId) : undefined,
+    ordering: `${sortDirection === 'desc' ? '-' : ''}${sortField}`,
     page,
   };
 
@@ -56,7 +74,7 @@ function CardListPage() {
       <SeriesSidebar
         sets={setsQuery.data ?? []}
         selectedSetId={setId}
-        onSelect={(value) => handleFilterChange(setSetId, value)}
+        onSelect={handleSetSelect}
       />
 
       <div className="cards-main">
@@ -98,6 +116,28 @@ function CardListPage() {
                 {t.name}
               </option>
             ))}
+          </select>
+          <select
+            aria-label="Sort by"
+            value={sortField}
+            onChange={(e) => {
+              setSortField(e.target.value as SortField);
+              setPage(1);
+            }}
+          >
+            <option value="name">Sort: Name</option>
+            <option value="number">Sort: Number</option>
+          </select>
+          <select
+            aria-label="Sort direction"
+            value={sortDirection}
+            onChange={(e) => {
+              setSortDirection(e.target.value as SortDirection);
+              setPage(1);
+            }}
+          >
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
           </select>
         </div>
 
