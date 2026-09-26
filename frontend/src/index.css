@@ -30,8 +30,11 @@
   }
 }
 
+/* Dark by system preference, unless the toggle (ThemeToggle.tsx) has set an
+   explicit choice via `data-theme` — an explicit `light` wins over a
+   dark system preference, and is handled below regardless of `data-theme`. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --text: #9ca3af;
     --text-h: #f3f4f6;
     --bg: #16171d;
@@ -43,11 +46,37 @@
     --social-bg: rgba(47, 48, 58, 0.5);
     --shadow:
       rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+    color-scheme: dark;
   }
 
-  #social .button-icon {
+  :root:not([data-theme='light']) #social .button-icon {
     filter: invert(1) brightness(2);
   }
+}
+
+/* Explicit dark choice — forces dark even when the system prefers light. */
+:root[data-theme='dark'] {
+  --text: #9ca3af;
+  --text-h: #f3f4f6;
+  --bg: #16171d;
+  --border: #2e303a;
+  --code-bg: #1f2028;
+  --accent: #c084fc;
+  --accent-bg: rgba(192, 132, 252, 0.15);
+  --accent-border: rgba(192, 132, 252, 0.5);
+  --social-bg: rgba(47, 48, 58, 0.5);
+  --shadow:
+    rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+  color-scheme: dark;
+}
+
+:root[data-theme='dark'] #social .button-icon {
+  filter: invert(1) brightness(2);
+}
+
+/* Explicit light choice — pins light even when the system prefers dark. */
+:root[data-theme='light'] {
+  color-scheme: light;
 }
 
 #root {
@@ -114,6 +143,26 @@ p {
   color: var(--text-h);
   text-decoration: none;
   font-weight: 500;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  color: var(--text-h);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--accent-bg);
+    color: var(--accent);
+  }
 }
 
 code,
