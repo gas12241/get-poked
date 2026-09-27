@@ -309,6 +309,54 @@ describe('CardListPage', () => {
     expect(screen.getByRole('combobox', { name: 'Rarity' })).toHaveValue('');
   });
 
+  it('disables "Reset filters" until a filter is applied, then clears filters without touching the selected set', async () => {
+    let capturedParams: URLSearchParams | null = null;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, ({ request }) => {
+        capturedParams = new URL(request.url).searchParams;
+        return HttpResponse.json({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+    expect(
+      screen.getByRole('button', { name: 'Reset filters' }),
+    ).toBeDisabled();
+
+    // Pick a set, then apply a rarity filter and a search term within it.
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Expand Base' }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Base' }));
+    await screen.findByRole('option', { name: 'Rare Holo' });
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Rarity' }),
+      'Rare Holo',
+    );
+    const searchInput = screen.getByPlaceholderText('Search by name...');
+    await userEvent.type(searchInput, 'Char');
+    await waitFor(() =>
+      expect(capturedParams?.get('rarity')).toBe('Rare Holo'),
+    );
+
+    const resetButton = screen.getByRole('button', { name: 'Reset filters' });
+    expect(resetButton).toBeEnabled();
+    await userEvent.click(resetButton);
+
+    await waitFor(() => {
+      expect(capturedParams?.get('rarity')).toBeNull();
+      expect(capturedParams?.get('search')).toBeNull();
+      expect(capturedParams?.get('set')).toBe('1');
+    });
+    expect(searchInput).toHaveValue('');
+    expect(resetButton).toBeDisabled();
+  });
+
   it('disables the Previous button on the first page and enables Next when more pages exist', async () => {
     server.use(
       http.get(`${BASE_URL}/api/v1/cards/`, () => {

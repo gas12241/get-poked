@@ -80,6 +80,7 @@
 - [x] "All {series}" browsing — an item under each series in the sidebar (e.g. "All Mega Evolution") shows every card across every set in that series in one view, via a new `?series=` filter on Cards/Rarities/Types/Supertypes; defaults to Name sort like "All Sets" (a series has no single checklist order); mutually exclusive with picking a specific set — see docs/decisions.md #035. 9 new backend tests, 5 new frontend tests; verified live (979 cards across Mega Evolution's 6 sets in one view)
 - [x] Top nav highlights the active section (Cards — including a card's detail page, not just the list — and Quiz), matching the sidebar's active-set styling, plus a hover tint. 5 new frontend tests
 - [x] Search-box name autocomplete (`GET /api/v1/card-names/`, scoped to the current set/series), ranked shortest-name-first rather than alphabetically — fixed a real bug found before shipping where an alphabetical cap of 8 never surfaced "Pikachu" or "Piplup" for the prefix "pi", crowded out entirely by one species' variant reprints. `NameAutocomplete.tsx` is a reusable ARIA combobox. See docs/decisions.md #036. 8 new backend tests, 8 new frontend tests; verified live against real data
+- [x] "Reset filters" button next to the sort controls — clears search/rarity/supertype/type only, deliberately leaving the current set/series selection and sort untouched (the sidebar's own "All Sets" already covers resetting that). Disabled when nothing is applied. 1 new frontend test
 
 ---
 
