@@ -138,6 +138,28 @@ function CardListPage() {
     );
   }
 
+  // Clears search/rarity/supertype/type only — deliberately leaves the
+  // current set/series selection alone. That's a separate, deliberate
+  // navigational choice (the sidebar's own "All Sets" already resets it),
+  // not something someone narrowing down within a set they picked on
+  // purpose would expect a "reset filters" button to also undo. Sort is
+  // left alone for the same reason — it's a view preference, not a filter.
+  function handleResetFilters() {
+    setSearchInput('');
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('search');
+        next.delete('rarity');
+        next.delete('supertype');
+        next.delete('type');
+        next.set('page', '1');
+        return next;
+      },
+      { replace: true },
+    );
+  }
+
   const params: CardListParams = {
     search: search || undefined,
     rarity: rarity || undefined,
@@ -313,6 +335,13 @@ function CardListPage() {
             <option value="asc">Ascending</option>
             <option value="desc">Descending</option>
           </select>
+          <button
+            type="button"
+            onClick={handleResetFilters}
+            disabled={!searchInput && !rarity && !supertype && !type}
+          >
+            Reset filters
+          </button>
         </div>
 
         {cardsQuery.isLoading && <p>Loading cards...</p>}
