@@ -111,6 +111,30 @@
   }
 }
 
+.series-all-in-series {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 4px 8px 4px 20px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-h);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--accent);
+  }
+
+  &.active {
+    background: var(--accent-bg);
+    color: var(--accent);
+  }
+}
+
 .filters {
   display: flex;
   flex-wrap: wrap;

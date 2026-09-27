@@ -459,6 +459,20 @@ Why
 
 ---
 
+## Decision 035
+
+Browse an entire series at once ("All Mega Evolution"), not just one set at a time
+
+Why
+
+- **New `?series=` filter on `GET /api/v1/cards/`** (`CardFilter.series`, matching `Set.series` case-insensitively), alongside the existing `?set=` — a series (e.g. Mega Evolution) spans several sets, and there was no existing way to ask for "every card in this series" short of the frontend issuing one request per set and merging results, which would also break pagination/sorting/count across the merge. A single server-side filter keeps the existing paginate/sort/search pipeline working unchanged
+- **`set` and `series` are mutually exclusive in the UI** — `SeriesSidebar` gained an "All {series}" item inside each expanded series group (alongside its individual sets), and selecting it clears any active `set`, while selecting a specific set clears any active `series`. Picking one always means "not the other," so there's no combined `set`+`series` case to reason about in the frontend, even though the backend filter would technically accept both independently
+- **A series-view defaults to Name sort, like "All Sets," not Number** — same reasoning as decisions.md #032/#033: Number sort means "checklist order within one set," and a series spanning several sets has no single checklist order (each set still has its own #1). `handleSeriesSelect` always sets `ordering=name`, mirroring `handleSetSelect`'s behavior when clearing to "All Sets"
+- **Rarity/Type/Supertype scoping (decisions.md #034) extended to `series` the same way it works for `set`** — a shared `scope_cards_by_set_or_series()` helper in `cards/views.py` picks whichever of the two the request provides (set taking priority, though the frontend never sends both). Without this, switching to a series view would still show every rarity/type/supertype in the whole catalog rather than just what's in that series, defeating the point of the same problem #034 solved for individual sets
+- **Label is "All {series}"** (e.g. "All Mega Evolution"), matching the existing "All Sets" top-level item's naming convention, per explicit user preference over alternatives like "All Mega Evolution sets"
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

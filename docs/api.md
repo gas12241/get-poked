@@ -145,7 +145,7 @@ Returns a paginated list of cards. Uses the List serializer (see Conventions).
 Supports
 
 - search — `?search=` (partial, case-insensitive match on `name`)
-- filtering — `?rarity=`, `?supertype=`, `?set=` (Set id), `?type=` (elemental type name, case-insensitive, e.g. `Fire`); any combination applies as AND
+- filtering — `?rarity=`, `?supertype=`, `?set=` (Set id), `?type=` (elemental type name, case-insensitive, e.g. `Fire`), `?series=` (Set.series, case-insensitive, e.g. `Mega Evolution` — matches every card across every set in that series, see docs/decisions.md #035); any combination applies as AND
 - pagination — `?page=`, `?page_size=` (default 24, max 100)
 - sorting — `?ordering=` (`name`, `number`, `rarity`; prefix `-` to reverse). `number` sorts numerically (1, 2, ... 10, 11), not lexicographically as a plain string sort would (1, 10, 11, ... 2) — see docs/decisions.md #032
 
@@ -191,11 +191,12 @@ GET /api/v1/types/
 
 Params
 
-- `set` — Set id (optional). Narrows to types actually used by at least one card in that set. Omitted (or an invalid/nonexistent id): every type in the database.
+- `set` — Set id (optional). Narrows to types actually used by at least one card in that set.
+- `series` — Set.series (optional, case-insensitive). Narrows to types used anywhere across every set in that series. Ignored if `set` is also given. Neither given: every type in the database.
 
 Description
 
-Returns the list of elemental types (Fire, Water, etc.), unpaginated. Used by the frontend to populate the `type` filter on the Cards endpoint — scoped to the current set selection when one is active, so the dropdown never offers a choice that can't match anything. See docs/decisions.md #028, #034. No authentication required.
+Returns the list of elemental types (Fire, Water, etc.), unpaginated. Used by the frontend to populate the `type` filter on the Cards endpoint — scoped to the current set or series selection when one is active, so the dropdown never offers a choice that can't match anything. See docs/decisions.md #028, #034, #035. No authentication required.
 
 Status
 
@@ -209,11 +210,11 @@ GET /api/v1/rarities/
 
 Params
 
-- `set` — Set id (optional), same semantics as on Types above.
+- `set` / `series` — same semantics as on Types above.
 
 Description
 
-Returns the distinct, non-blank `rarity` values actually present on `Card` (optionally scoped to `set`), sorted alphabetically — a plain list of strings, not `{id, name}` objects, since `rarity` is a plain field on `Card`, not its own model. Used by the frontend to populate the `rarity` filter on the Cards endpoint as a dropdown instead of free text, since rarity names aren't something most users can type out reliably. See docs/decisions.md #034. No authentication required.
+Returns the distinct, non-blank `rarity` values actually present on `Card` (optionally scoped to `set` or `series`), sorted alphabetically — a plain list of strings, not `{id, name}` objects, since `rarity` is a plain field on `Card`, not its own model. Used by the frontend to populate the `rarity` filter on the Cards endpoint as a dropdown instead of free text, since rarity names aren't something most users can type out reliably. See docs/decisions.md #034, #035. No authentication required.
 
 Status
 
@@ -227,11 +228,11 @@ GET /api/v1/supertypes/
 
 Params
 
-- `set` — Set id (optional), same semantics as on Types/Rarities above.
+- `set` / `series` — same semantics as on Types/Rarities above.
 
 Description
 
-Returns the `supertype` values actually present on `Card` (optionally scoped to `set`) — a plain list of strings. Unlike Rarities, order is the fixed conventional one (`Pokémon`, `Trainer`, `Energy`), not alphabetical, since supertype has a small, well-known set of values with an expected display order. See docs/decisions.md #034. No authentication required.
+Returns the `supertype` values actually present on `Card` (optionally scoped to `set` or `series`) — a plain list of strings. Unlike Rarities, order is the fixed conventional one (`Pokémon`, `Trainer`, `Energy`), not alphabetical, since supertype has a small, well-known set of values with an expected display order. See docs/decisions.md #034, #035. No authentication required.
 
 Status
 
