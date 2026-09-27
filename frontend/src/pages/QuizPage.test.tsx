@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { http, HttpResponse } from 'msw';
+import { server } from '../mocks/server';
 import { renderWithProviders } from '../test/renderWithProviders';
 import { useQuizStore } from '../store/quizStore';
 import { useAuthStore } from '../store/authStore';
 import QuizPage from './QuizPage';
+
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 beforeEach(() => {
   useQuizStore.setState({ session: null });
@@ -30,6 +34,26 @@ describe('QuizPage', () => {
   it('shows mode selection and starts a quiz for the selected mode', async () => {
     await startQuiz();
     expect(screen.getByText('Question 1 of 1')).toBeInTheDocument();
+  });
+
+  it('offers name suggestions for "Guess the Card" without scoping them to a set or series', async () => {
+    const requestedParams: URLSearchParams[] = [];
+    server.use(
+      http.get(`${BASE_URL}/api/v1/card-names/`, ({ request }) => {
+        requestedParams.push(new URL(request.url).searchParams);
+        return HttpResponse.json(['Piplup']);
+      }),
+    );
+
+    await startQuiz();
+    await userEvent.type(screen.getByLabelText('Your guess'), 'pi');
+
+    expect(
+      await screen.findByRole('option', { name: 'Piplup' }),
+    ).toBeInTheDocument();
+    const lastRequest = requestedParams[requestedParams.length - 1];
+    expect(lastRequest.get('set')).toBeNull();
+    expect(lastRequest.get('series')).toBeNull();
   });
 
   it('shows feedback for a guess and advances to the summary', async () => {

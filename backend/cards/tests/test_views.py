@@ -331,3 +331,99 @@ class SupertypeListViewTests(APITestCase):
     def test_does_not_require_authentication(self):
         response = self.client.get(reverse("supertype-list"))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+class CardNameListViewTests(APITestCase):
+    def setUp(self):
+        self.set_a = Set.objects.create(tcg_id="base1", name="Base", series="Base")
+        self.set_b = Set.objects.create(tcg_id="base2", name="Jungle", series="Base")
+        self.set_c = Set.objects.create(tcg_id="xy1", name="XY", series="XY")
+        for i, (name, card_set) in enumerate(
+            [
+                ("Piplup", self.set_a),
+                ("Pidgey", self.set_a),
+                ("Pikachu", self.set_b),
+                ("Charizard", self.set_c),
+            ]
+        ):
+            Card.objects.create(
+                tcg_id=f"card-{i}",
+                set=card_set,
+                name=name,
+                number=str(i),
+                supertype="Pokémon",
+                image_small="https://example.com/small.png",
+                image_large="https://example.com/large.png",
+            )
+
+    def test_returns_names_starting_with_the_search_term(self):
+        response = self.client.get(reverse("card-name-list"), {"search": "pi"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(sorted(response.data), ["Pidgey", "Pikachu", "Piplup"])
+
+    def test_case_insensitive(self):
+        response = self.client.get(reverse("card-name-list"), {"search": "PI"})
+        self.assertEqual(sorted(response.data), ["Pidgey", "Pikachu", "Piplup"])
+
+    def test_excludes_names_not_starting_with_the_search_term(self):
+        # "charizard" contains no "pi" substring anyway, but this also
+        # proves it's a startswith match, not a substring one — e.g.
+        # searching "zard" should not match "Charizard".
+        response = self.client.get(reverse("card-name-list"), {"search": "zard"})
+        self.assertEqual(response.data, [])
+
+    def test_empty_search_returns_no_suggestions(self):
+        response = self.client.get(reverse("card-name-list"))
+        self.assertEqual(response.data, [])
+
+    def test_scoped_to_a_set_excludes_names_only_present_elsewhere(self):
+        response = self.client.get(
+            reverse("card-name-list"), {"search": "pi", "set": self.set_b.id}
+        )
+        self.assertEqual(response.data, ["Pikachu"])
+
+    def test_scoped_to_a_series_includes_every_set_in_it_but_excludes_others(self):
+        response = self.client.get(reverse("card-name-list"), {"search": "pi", "series": "Base"})
+        self.assertEqual(sorted(response.data), ["Pidgey", "Pikachu", "Piplup"])
+
+    def test_capped_at_eight_results(self):
+        for i in range(10):
+            Card.objects.create(
+                tcg_id=f"cap-{i}",
+                set=self.set_a,
+                name=f"Piloswine {i}",
+                number=str(100 + i),
+                supertype="Pokémon",
+                image_small="https://example.com/small.png",
+                image_large="https://example.com/large.png",
+            )
+
+        response = self.client.get(reverse("card-name-list"), {"search": "pi"})
+
+        self.assertEqual(len(response.data), 8)
+
+    def test_prefers_shorter_plainer_names_over_longer_variant_suffixed_ones(self):
+        # A naive alphabetical cap gets dominated by one popular species'
+        # reprints before ever reaching a different, shorter species name —
+        # confirmed against real data ("Pikachu" and "Piplup" both fell
+        # outside an alphabetical top 8 for "pi", crowded out by "Pidgeot"
+        # variants alone).
+        for name in ["Pikachu ex", "Pikachu VMAX", "Pikachu V", "Pikachu-EX"]:
+            Card.objects.create(
+                tcg_id=f"variant-{name}",
+                set=self.set_a,
+                name=name,
+                number="200",
+                supertype="Pokémon",
+                image_small="https://example.com/small.png",
+                image_large="https://example.com/large.png",
+            )
+
+        response = self.client.get(reverse("card-name-list"), {"search": "pi"})
+
+        self.assertIn("Pikachu", response.data)
+        self.assertIn("Piplup", response.data)
+
+    def test_does_not_require_authentication(self):
+        response = self.client.get(reverse("card-name-list"), {"search": "pi"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)

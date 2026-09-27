@@ -473,6 +473,20 @@ Why
 
 ---
 
+## Decision 036
+
+Name autocomplete (Cards search, Quiz guess-the-card), and a fairer answer check for prefixed card names
+
+Why
+
+- **New `GET /api/v1/card-names/`** (`?search=`, optional `?set=`/`?series=`) returns distinct card names starting with the given prefix, capped at 8 — a lightweight suggestion list, not the full paginated Cards endpoint. `NameAutocomplete.tsx` is a reusable combobox (ARIA `role="combobox"`/`listbox`/`option`, arrow-key navigation, Enter-to-select only when a suggestion is actually highlighted so it doesn't hijack form submission) layered on top of a plain controlled input — it doesn't own `value`, so each caller's own logic (the Cards page's debounced URL commit; the Quiz page's plain guess state) is untouched
+- **Cards page suggestions are scoped to the current set/series** (same mechanism as decisions.md #034/#035); **Quiz page's guess-the-card input is deliberately left unscoped (global, whole catalog)**. This was explicitly discussed rather than assumed: scoping suggestions to a specific quiz question's small eligible pool could sometimes narrow to (or even reveal) the answer by elimination — a global list is the same regardless of which card the current question is actually about, so it carries no information about the answer. This only holds because it's fully global; scoping it to "this question's pool" would reopen exactly the leak decisions.md #029 was written to prevent
+- **Ranked shortest-name-first, not alphabetically** — confirmed against real data before shipping: an alphabetical cap at 8 for the prefix "pi" never reached "Pikachu" or "Piplup" at all, crowded out entirely by "Pidgeot"/"Pichu" variant reprints (`Pidgeot ex`, `Pidgeot V`, `Pidgeot δ`, `Pidgeot-EX`, ...). Real card names cluster heavily around suffix-variant reprints of the same species, so alphabetical-with-a-cap systematically favors whichever species has the most reprints. The shortest matching name for a prefix is usually the unadorned species name, with no suffix-parsing required — verified this heuristic actually surfaces "Piplup" before shipping it, not just assumed it would
+- **`guess_card` answer-checking now also accepts a card's name with a trainer-ownership or Dark/Light-variant prefix stripped** (e.g. "Typhlosion" for "Ethan's Typhlosion"; "Charizard" for "Dark Charizard") — found while discussing autocomplete for the Quiz page, then confirmed as a real, sizeable pattern against actual data (335 possessive-prefix cards, 85 Dark/Light cards) before deciding it was worth fixing, not just a rare edge case. Requiring the full name for these cards tests card-naming trivia, not "can you recognize this Pokémon," which is what the mode is for
+- **The prefix-stripping is narrow and pattern-based** (a regex for `"X's "`, a two-item literal list for `"Dark "`/`"Light "`) rather than a general "accept the last word" heuristic. Checked against real multi-word species names first (Mr. Mime, Tapu Koko, Type: Null, Great Tusk) — a "last word" rule would have also accepted "Koko" for "Tapu Koko" or "Mime" for "Mr. Mime", which are genuine single indivisible species names, not a prefix + Pokémon. Neither pattern matches those, so they're correctly unaffected
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

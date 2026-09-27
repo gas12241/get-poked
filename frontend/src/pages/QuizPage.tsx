@@ -7,9 +7,11 @@ import {
   submitQuizAttempt,
 } from '../api/quiz';
 import type { QuizAnswerInput, QuizMode } from '../api/quiz';
+import { getCardNames } from '../api/cards';
 import type { QuizSession } from '../store/quizStore';
 import { useQuizStore } from '../store/quizStore';
 import { useAuthStore } from '../store/authStore';
+import NameAutocomplete from '../components/NameAutocomplete';
 import './pages.css';
 
 const MODES: { value: QuizMode; label: string }[] = [
@@ -121,11 +123,25 @@ function QuizQuestionView({
 
       {!feedback ? (
         <form onSubmit={handleSubmitGuess}>
-          <input
-            aria-label="Your guess"
-            value={guess}
-            onChange={(e) => setGuess(e.target.value)}
-          />
+          {session.mode === 'guess_card' ? (
+            // Deliberately unscoped (no set/series) — suggestions drawn
+            // from the whole catalog are the same regardless of which
+            // card this question is actually about, so they can't leak
+            // the answer the way scoping to this question's small
+            // eligible pool sometimes could. See docs/decisions.md #036.
+            <NameAutocomplete
+              value={guess}
+              onChange={setGuess}
+              fetchSuggestions={(text) => getCardNames({ search: text })}
+              ariaLabel="Your guess"
+            />
+          ) : (
+            <input
+              aria-label="Your guess"
+              value={guess}
+              onChange={(e) => setGuess(e.target.value)}
+            />
+          )}
           <button type="submit" disabled={checkMutation.isPending || !guess}>
             Submit guess
           </button>

@@ -138,3 +138,25 @@ export const getRarities = (params: FilterOptionsParams = {}) =>
 
 export const getSupertypes = (params: FilterOptionsParams = {}) =>
   apiClient<string[]>(`/api/v1/supertypes/${filterOptionsQueryString(params)}`);
+
+export interface CardNameSuggestionsParams extends FilterOptionsParams {
+  search: string;
+}
+
+// Powers search-box typeahead. Scoped to `set`/`series` on the Cards page;
+// the Quiz page's guess-the-card input deliberately calls this with
+// neither (see docs/decisions.md #036) — a global, answer-independent
+// suggestion list can't leak which card a given question is about.
+export const getCardNames = ({
+  search,
+  set,
+  series,
+}: CardNameSuggestionsParams) => {
+  const params = new URLSearchParams({ search });
+  if (set) {
+    params.set('set', String(set));
+  } else if (series) {
+    params.set('series', series);
+  }
+  return apiClient<string[]>(`/api/v1/card-names/?${params.toString()}`);
+};

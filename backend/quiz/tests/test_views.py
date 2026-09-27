@@ -135,6 +135,80 @@ class QuizCheckViewTests(QuizTestBase):
         self.assertTrue(response.data["correct"])
         self.assertEqual(response.data["answer"], "Charizard")
 
+    def test_accepts_the_plain_pokemon_name_for_a_trainers_pokemon_card(self):
+        card = Card.objects.create(
+            tcg_id="base1-99",
+            set=self.set_obj,
+            name="Ethan's Typhlosion",
+            number="99",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        response = self.client.post(
+            reverse("quiz-check"),
+            {"card": card.id, "mode": "guess_card", "guess": "Typhlosion"},
+        )
+        self.assertTrue(response.data["correct"])
+        self.assertEqual(response.data["answer"], "Ethan's Typhlosion")
+
+    def test_accepts_the_plain_pokemon_name_for_a_dark_or_light_variant_card(self):
+        card = Card.objects.create(
+            tcg_id="base1-98",
+            set=self.set_obj,
+            name="Dark Charizard",
+            number="98",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        response = self.client.post(
+            reverse("quiz-check"),
+            {"card": card.id, "mode": "guess_card", "guess": "charizard"},
+        )
+        self.assertTrue(response.data["correct"])
+
+    def test_still_accepts_the_full_name_for_a_trainers_pokemon_card(self):
+        card = Card.objects.create(
+            tcg_id="base1-97",
+            set=self.set_obj,
+            name="Ethan's Typhlosion",
+            number="97",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        response = self.client.post(
+            reverse("quiz-check"),
+            {"card": card.id, "mode": "guess_card", "guess": "Ethan's Typhlosion"},
+        )
+        self.assertTrue(response.data["correct"])
+
+    def test_does_not_loosen_a_genuine_two_word_species_name(self):
+        # "Tapu Koko" is a single, indivisible species name — not a
+        # prefix + Pokémon — so only the full name should be accepted.
+        card = Card.objects.create(
+            tcg_id="base1-96",
+            set=self.set_obj,
+            name="Tapu Koko",
+            number="96",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        response = self.client.post(
+            reverse("quiz-check"),
+            {"card": card.id, "mode": "guess_card", "guess": "Koko"},
+        )
+        self.assertFalse(response.data["correct"])
+
+    def test_rejects_a_genuinely_wrong_guess(self):
+        response = self.client.post(
+            reverse("quiz-check"),
+            {"card": self.pokemon_card.id, "mode": "guess_card", "guess": "Blastoise"},
+        )
+        self.assertFalse(response.data["correct"])
+
     def test_incorrect_guess_for_guess_hp(self):
         response = self.client.post(
             reverse("quiz-check"),

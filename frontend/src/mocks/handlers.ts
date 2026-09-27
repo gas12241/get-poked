@@ -88,6 +88,10 @@ export const handlers = [
     return HttpResponse.json(['Pokémon', 'Trainer', 'Energy']);
   }),
 
+  http.get(`${BASE_URL}/api/v1/card-names/`, () => {
+    return HttpResponse.json(['Charizard']);
+  }),
+
   http.get(`${BASE_URL}/api/v1/quiz/`, () => {
     return HttpResponse.json({
       questions: [

@@ -143,6 +143,44 @@
   margin: 24px 0;
 }
 
+.name-autocomplete {
+  position: relative;
+}
+
+.name-autocomplete-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  text-align: left;
+}
+
+.name-autocomplete-option {
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text);
+
+  &:hover {
+    background: var(--accent-bg);
+  }
+
+  &.active {
+    background: var(--accent-bg);
+    color: var(--accent);
+  }
+}
+
 .filters input,
 .filters select {
   font: inherit;
