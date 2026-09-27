@@ -5,15 +5,12 @@ import { renderWithProviders } from '../test/renderWithProviders';
 import ThemeToggle from './ThemeToggle';
 
 function mockSystemPrefersDark(matches: boolean) {
-  vi.spyOn(window, 'matchMedia').mockImplementation(
-    (query: string) =>
-      ({
-        matches,
-        media: query,
-        addEventListener: () => {},
-        removeEventListener: () => {},
-      }) as MediaQueryList,
-  );
+  vi.spyOn(window, 'matchMedia').mockImplementation(((query: string) => ({
+    matches,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  })) as unknown as typeof window.matchMedia);
 }
 
 describe('ThemeToggle', () => {
