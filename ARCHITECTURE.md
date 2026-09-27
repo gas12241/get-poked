@@ -36,6 +36,7 @@ API conventions (versioning, pagination, serializer structure) are documented in
 
 - React Query — server state: cards, sets, collections, favorites, quiz data. Handles caching, pagination, and refetch-after-mutation.
 - Zustand — client state: the in-memory JWT access token and quiz-session UI progress. Chosen over Context because its store is readable outside the component tree (e.g. by the API client's request interceptor, which attaches the access token and is not itself a component). See docs/decisions.md #015.
+- The two Zustand stores take opposite persistence stances, each for a specific reason rather than a blanket rule: the access token is kept in memory only and never written to `localStorage` (losing it on reload is expected — a security constraint, since persisting it would widen the XSS attack surface), while quiz-session progress *is* persisted to `localStorage`, so an in-progress quiz survives navigating away or a full reload. See docs/decisions.md #030.
 - Redux was considered and set aside for now — not needed at the current scope, but not ruled out. If a future feature (e.g. Deck builder) needs Redux-shaped state (undo/redo, multi-panel validation, one action fanning out to many reactions), it can be added scoped to that feature alongside React Query and Zustand, without migrating what already works.
 
 ### Django
@@ -46,6 +47,29 @@ API conventions (versioning, pagination, serializer structure) are documented in
 - Quiz generation
 - Image modification
 - Database
+
+---
+
+## Frontend Routing & URL State
+
+The Cards page's filters (set, series, search, rarity, supertype, type, sort,
+page) live in the URL's query string (`useSearchParams`), not component
+state — the exact view is encoded in the URL itself, so navigating to a
+card's detail page and back (the in-app link or the browser's own back
+button) restores it exactly, rather than resetting to the unfiltered
+default. Filter changes use a `replace` navigation, not the default push, so
+adjusting a filter updates the current history entry instead of stacking a
+new one on every keystroke or dropdown change — navigating to a card's
+detail page (and returning from it) are the only real history entries. See
+docs/decisions.md #033.
+
+Scroll position is restored on the way back via React Router's
+`<ScrollRestoration>`, keyed by pathname rather than the library's default
+per-navigation key. The default key changes on every URL-driven filter
+update (each one is a distinct navigation, even with `replace`), which would
+otherwise make "the Cards page" look like a different scroll-restoration
+bucket every time a filter changed; keying by pathname alone treats it as
+one continuous page regardless of which filters are active.
 
 ---
 
@@ -70,6 +94,44 @@ Rate limiting: the sync command authenticates with an API key (1,000 requests/da
 Resolved: the Set object does expose an `updatedAt` field, verified live against the real API — stored in `Set.details` for a possible future "detect changed sets automatically" enhancement, not built as part of Phase 2. See docs/decisions.md #025.
 
 Card/Set/Type models, plus `Attack`/`Weakness`/`Resistance` (attacks, weaknesses, and resistances are normalized as their own tables, not JSON), live in a dedicated `cards` app — see docs/database.md and docs/decisions.md #025.
+
+A `(set, number, language)` uniqueness constraint was dropped from `Card` after a full production sync disproved the assumption behind it — some reprint sets genuinely repeat a printed number within the same set. `tcg_id` (the source API's own id) is the actual identity guarantee. See docs/decisions.md #026.
+
+---
+
+## Cards Browsing & Filtering
+
+`GET /api/v1/cards/` is paginated (24/page, capped at 100), filtered
+(`django-filter`), searched on `name` (partial, case-insensitive), and
+orderable. Filters: `rarity`, `supertype`, `set` (a specific Set id),
+`series` (every set in a series at once — e.g. every Mega Evolution set —
+matching `Set.series` case-insensitively), `type` (case-insensitive
+elemental type name). See docs/api.md and docs/decisions.md #028, #035.
+
+Sorting by `number` needs special handling: `Card.number` is a `CharField`,
+since not every printed number is purely numeric (e.g. "TG01"). A plain
+string sort produces `1, 10, 100, 101, 102, 11, 12, ...` instead of numeric
+order — confirmed as a real, visible bug against production data before
+fixing it. The fix extracts the numeric portion via a Postgres
+`REGEXP_REPLACE`/`NullIf`/`Cast` annotation and orders by that, with the raw
+string as a secondary tiebreak, so the handful of cards with no digits at
+all in their printed number sort last instead of erroring. See
+docs/decisions.md #032.
+
+Populating filter dropdowns (Rarity, Type, Supertype) and the search box's
+name suggestions all go through dedicated small endpoints rather than a
+hand-maintained list on the frontend, so they can never drift from what's
+actually in the database. Each accepts an optional `set` or `series` param
+(a shared `scope_cards_by_set_or_series()` helper) that narrows the offered
+choices to whatever's actually reachable in the current view — picking a
+set never leaves a filter dropdown offering a choice guaranteed to return
+nothing. See docs/decisions.md #028, #034, #035, #036.
+
+Name suggestions are ranked shortest-match-first, not alphabetically —
+reprints of a popular species otherwise crowd out every other species under
+an alphabetical cap (confirmed against real data: searching "pi"
+alphabetically never reached "Pikachu" or "Piplup", both buried behind
+"Pidgeot" variant reprints). See docs/decisions.md #036.
 
 ---
 
@@ -103,6 +165,27 @@ The "special tier" rarity list is a small fixed constant in code (not a DB table
 
 On top of this baseline eligibility, users can further narrow the pool by rarity via checkboxes on the frontend (e.g. limiting to just Secret Rare), passed as a `rarities` param on the quiz-generation endpoint. This filter applies uniformly across all modes and narrows *within* whatever's already baseline-eligible — it can't make an otherwise-ineligible card (e.g. a common Trainer, or any Energy card) eligible. Omitted or empty means no additional restriction. See docs/decisions.md #017 and docs/api.md.
 
+### Question Generation & Answer Checking
+
+The field being guessed is never included in a question's payload — masking
+the image but also sending the answer as plain text alongside it would make
+the quiz trivially solvable by reading the network response. The masked
+image URL is returned as an absolute URL, not the storage-relative path a
+local storage backend returns by default: the frontend and Django are
+different origins, so a relative path resolves against the wrong one. See
+docs/decisions.md #030.
+
+Guess-the-card answer checking accepts more than an exact string match: a
+card's full printed name always works, but for cards whose name carries a
+prefix that identifies context rather than the Pokémon itself — an owning
+trainer ("Ethan's Typhlosion") or a classic Team Rocket variant ("Dark
+Charizard") — the plain name with that prefix stripped is also accepted.
+This is intentionally narrow and pattern-based (a possessive-prefix pattern,
+plus the two known historical variant prefixes) rather than a general "last
+word" heuristic, which would incorrectly loosen genuine multi-word species
+names (e.g. "Tapu Koko", "Mr. Mime") that aren't a prefix plus a Pokémon at
+all. See docs/decisions.md #036.
+
 ### Licensing
 
 Card artwork and data come from the Pokémon TCG API, an unofficial fan project — not an explicit license grant. The app is strictly non-commercial (no ads, no paid tiers) as a result. A non-affiliation disclaimer ("unofficial fan project, not affiliated with or endorsed by The Pokémon Company, Nintendo, Creatures, or GAME FREAK; card images and trademarks are property of their respective owners") is a required element of the React app's base layout, rendered on every page (e.g. in a shared footer component), not something added per-page. See docs/decisions.md #018.
@@ -122,6 +205,10 @@ A card can be owned, favorited, both, or neither — the two tables are queried 
 ---
 
 ## Authentication
+
+Status: the JWT/cookie mechanics described below are implemented and tested
+(`core` app). Google OAuth integration and the frontend sign-up/sign-in UI
+are designed but not yet built — see docs/decisions.md #005, #014.
 
 Preferred
 
@@ -149,6 +236,7 @@ To avoid the usual XSS risk of storing JWTs in `localStorage`:
 - The access token (short-lived) is kept in memory only, never persisted to storage.
 - The refresh token (longer-lived) is stored in an httpOnly cookie, sent only to the refresh endpoint.
 - Logout revokes the refresh token server-side via blacklisting; the short-lived access token limits exposure even without a full denylist.
+- The frontend's fetch wrapper (`apiClient`) reads the current access token directly from the Zustand store (`getState()`, not a hook) and attaches it as a Bearer token — the wrapper itself isn't a React component, so it has no way to receive the token via props or context.
 
 ### CORS
 

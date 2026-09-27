@@ -28,3 +28,8 @@ build/
 
 # macOS
 .DS_Store
+
+# Personal reference material — not meant for the public repo (its
+# substance is folded into ARCHITECTURE.md instead). See CLAUDE.md's
+# Documentation Maintenance section.
+docs/learning-guide.md
