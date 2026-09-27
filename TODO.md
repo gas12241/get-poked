@@ -78,6 +78,7 @@
 - [x] Rarity filter is now a dropdown (`GET /api/v1/rarities/`, distinct non-blank values, alphabetical) instead of free text — mirrors the existing Types dropdown pattern (decisions.md #028), since `rarity` has no dedicated model of its own. 4 new backend tests, 1 new frontend test; verified live against all 38 real rarity values
 - [x] Rarity/Type/Supertype dropdowns are now scoped to the selected set (`?set=` on all three endpoints, new `GET /api/v1/supertypes/` replacing a hardcoded list); switching to a set where the current selection no longer applies resets it to "All ___" automatically — see docs/decisions.md #034. 6 new backend tests, 2 new frontend tests; verified live (39 rarities on All Sets narrows to 9 on a specific set, with an incompatible prior selection correctly reverting)
 - [x] "All {series}" browsing — an item under each series in the sidebar (e.g. "All Mega Evolution") shows every card across every set in that series in one view, via a new `?series=` filter on Cards/Rarities/Types/Supertypes; defaults to Name sort like "All Sets" (a series has no single checklist order); mutually exclusive with picking a specific set — see docs/decisions.md #035. 9 new backend tests, 5 new frontend tests; verified live (979 cards across Mega Evolution's 6 sets in one view)
+- [x] Top nav highlights the active section (Cards — including a card's detail page, not just the list — and Quiz), matching the sidebar's active-set styling, plus a hover tint. 5 new frontend tests
 
 ---
 
