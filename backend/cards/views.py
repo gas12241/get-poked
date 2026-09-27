@@ -110,3 +110,43 @@ class SupertypeListView(APIView):
         queryset = scope_cards_by_set_or_series(Card.objects.all(), request)
         present = set(queryset.values_list("supertype", flat=True).distinct())
         return Response([s for s in CANONICAL_SUPERTYPES if s in present])
+
+
+class CardNameListView(APIView):
+    # Powers the search box's typeahead suggestions — distinct card names
+    # starting with `?search=`, capped and unpaginated (a suggestion list
+    # needs to be short, not paginated). `?set=`/`?series=` scope it the
+    # same way as Rarities/Types/Supertypes; the Cards page uses that
+    # scoping, but the Quiz page's guess-the-card input deliberately never
+    # sends either — a global, answer-independent suggestion list can't
+    # leak which card a given question is about, whereas one scoped to a
+    # question's small eligible pool sometimes could. See
+    # docs/decisions.md #036.
+    permission_classes = [AllowAny]
+    MAX_RESULTS = 8
+    # Cap on the raw distinct-name fetch, before ranking — bounds cost for
+    # a pathologically broad 1-2 character search; real prefixes match far
+    # fewer than this.
+    MAX_CANDIDATES = 500
+
+    def get(self, request):
+        search = request.query_params.get("search", "")
+        if not search:
+            return Response([])
+        queryset = scope_cards_by_set_or_series(Card.objects.all(), request)
+        candidates = (
+            queryset.filter(name__istartswith=search)
+            .values_list("name", flat=True)
+            .distinct()[: self.MAX_CANDIDATES]
+        )
+        # Shortest match first, alphabetical as a tiebreak — not purely
+        # alphabetical. Real names cluster heavily around variant-suffixed
+        # reprints of the same species (Pikachu, Pikachu ex, Pikachu V,
+        # Pikachu VMAX, ...), so an alphabetical cap gets dominated by one
+        # popular species' variants before ever reaching a different
+        # species' plain name (confirmed against real data: alphabetical
+        # capped at 8 for "pi" never reached "Pikachu" or "Piplup" at all).
+        # The shortest match for a given prefix is usually the unadorned
+        # species name, with no suffix-parsing required.
+        names = sorted(set(candidates), key=lambda name: (len(name), name.lower()))
+        return Response(names[: self.MAX_RESULTS])

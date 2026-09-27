@@ -240,6 +240,25 @@ Implemented
 
 ---
 
+## Card Names
+
+GET /api/v1/card-names/
+
+Params
+
+- `search` — required; a name prefix (case-insensitive). Empty or omitted: `[]`.
+- `set` / `series` — optional, same semantics as on Types/Rarities/Supertypes above. The frontend omits both when calling this for the Quiz page's guess-the-card input — see Description.
+
+Description
+
+Powers search-box typeahead suggestions: distinct card names starting with `search`, capped at 8. Ranked shortest-name-first (alphabetical as a tiebreak), not purely alphabetically — real names cluster around variant-suffixed reprints of the same species (`Pikachu`, `Pikachu ex`, `Pikachu V`, `Pikachu VMAX`, ...), so a plain alphabetical cap gets dominated by one popular species before ever reaching a different one; the shortest match for a prefix is usually the unadorned species name. Cards page suggestions are scoped to the current set/series like the other filter-option endpoints; Quiz page suggestions are deliberately left unscoped — scoping to a specific question's small eligible pool could sometimes narrow to (or even reveal) the answer, whereas a global, answer-independent list can't. See docs/decisions.md #036. No authentication required.
+
+Status
+
+Implemented
+
+---
+
 ## Collections
 
 Maps to the `CollectionEntry` model (docs/database.md) — owned cards, with quantity.

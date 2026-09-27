@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
+  getCardNames,
   getCards,
   getRarities,
   getSets,
@@ -9,6 +10,7 @@ import {
   getTypes,
 } from '../api/cards';
 import type { CardListParams } from '../api/cards';
+import NameAutocomplete from '../components/NameAutocomplete';
 import SeriesSidebar from '../components/SeriesSidebar';
 import './pages.css';
 
@@ -240,11 +242,14 @@ function CardListPage() {
 
       <div className="cards-main">
         <div className="filters">
-          <input
-            type="text"
-            placeholder="Search by name..."
+          <NameAutocomplete
             value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            onChange={setSearchInput}
+            fetchSuggestions={(text) =>
+              getCardNames({ search: text, set: setNumber, series: seriesName })
+            }
+            ariaLabel="Search by name"
+            placeholder="Search by name..."
           />
           <select
             aria-label="Rarity"

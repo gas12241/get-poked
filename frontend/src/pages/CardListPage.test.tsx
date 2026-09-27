@@ -42,6 +42,49 @@ describe('CardListPage', () => {
     await waitFor(() => expect(capturedSearch).toBe('Char'), { timeout: 1000 });
   });
 
+  it('offers name suggestions scoped to the selected set, and filling one in triggers the search', async () => {
+    let capturedNamesSet: string | null = null;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/card-names/`, ({ request }) => {
+        const url = new URL(request.url);
+        capturedNamesSet = url.searchParams.get('set');
+        return HttpResponse.json(['Piplup']);
+      }),
+    );
+    let capturedSearch: string | null = null;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, ({ request }) => {
+        capturedSearch = new URL(request.url).searchParams.get('search');
+        return HttpResponse.json({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Expand Base' }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Base' }));
+
+    await userEvent.type(
+      screen.getByPlaceholderText('Search by name...'),
+      'pi',
+    );
+    await waitFor(() => expect(capturedNamesSet).toBe('1'));
+
+    await userEvent.click(
+      await screen.findByRole('option', { name: 'Piplup' }),
+    );
+
+    await waitFor(() => expect(capturedSearch).toBe('Piplup'), {
+      timeout: 1000,
+    });
+  });
+
   it('does not let a delayed search-debounce commit clobber a filter picked in the meantime', async () => {
     let capturedParams: URLSearchParams | null = null;
     server.use(
