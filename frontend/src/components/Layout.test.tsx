@@ -13,32 +13,60 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, ScrollRestoration: () => null };
 });
 
+function renderLayoutAt(route: string) {
+  return renderWithProviders(
+    <Routes>
+      <Route element={<Layout />}>
+        <Route path="/" element={<p>Cards page content</p>} />
+        <Route path="/cards/:id" element={<p>Card detail content</p>} />
+        <Route path="/quiz" element={<p>Quiz page content</p>} />
+      </Route>
+    </Routes>,
+    { route },
+  );
+}
+
 describe('Layout', () => {
   it('renders the matched child route alongside the disclaimer footer', () => {
-    renderWithProviders(
-      <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<p>Page content</p>} />
-        </Route>
-      </Routes>,
-    );
+    renderLayoutAt('/');
 
-    expect(screen.getByText('Page content')).toBeInTheDocument();
+    expect(screen.getByText('Cards page content')).toBeInTheDocument();
     expect(screen.getByText(/unofficial fan project/i)).toBeInTheDocument();
   });
 
   it('renders a "Get Poked" brand link pointing back to the Cards page', () => {
-    renderWithProviders(
-      <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<p>Page content</p>} />
-        </Route>
-      </Routes>,
-    );
+    renderLayoutAt('/');
 
     expect(screen.getByRole('link', { name: 'Get Poked' })).toHaveAttribute(
       'href',
       '/',
+    );
+  });
+
+  it('highlights Cards while on the card list', () => {
+    renderLayoutAt('/');
+
+    expect(screen.getByRole('link', { name: 'Cards' })).toHaveClass('active');
+    expect(screen.getByRole('link', { name: 'Quiz' })).not.toHaveClass(
+      'active',
+    );
+  });
+
+  it('highlights Cards while on a card detail page', () => {
+    renderLayoutAt('/cards/5');
+
+    expect(screen.getByRole('link', { name: 'Cards' })).toHaveClass('active');
+    expect(screen.getByRole('link', { name: 'Quiz' })).not.toHaveClass(
+      'active',
+    );
+  });
+
+  it('highlights Quiz while on the quiz page', () => {
+    renderLayoutAt('/quiz');
+
+    expect(screen.getByRole('link', { name: 'Quiz' })).toHaveClass('active');
+    expect(screen.getByRole('link', { name: 'Cards' })).not.toHaveClass(
+      'active',
     );
   });
 });

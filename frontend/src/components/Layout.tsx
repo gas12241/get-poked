@@ -1,14 +1,27 @@
-import { Link, Outlet, ScrollRestoration } from 'react-router-dom';
+import { Link, Outlet, ScrollRestoration, useLocation } from 'react-router-dom';
 import Footer from './Footer';
 import ThemeToggle from './ThemeToggle';
 
 function Layout() {
+  // Not <NavLink> — its default (non-`end`) matching would mark "Cards"
+  // active on every route, since `to="/"` is a prefix of every pathname.
+  // "Cards" covers both the list ("/") and a card's detail page
+  // ("/cards/:id"), which NavLink's own matching can't express without
+  // also matching "/quiz".
+  const { pathname } = useLocation();
+  const isCardsActive = pathname === '/' || pathname.startsWith('/cards/');
+  const isQuizActive = pathname.startsWith('/quiz');
+
   return (
     <>
       <nav className="main-nav">
         <div className="main-nav-links">
-          <Link to="/">Cards</Link>
-          <Link to="/quiz">Quiz</Link>
+          <Link to="/" className={isCardsActive ? 'active' : undefined}>
+            Cards
+          </Link>
+          <Link to="/quiz" className={isQuizActive ? 'active' : undefined}>
+            Quiz
+          </Link>
         </div>
         <Link to="/" className="main-nav-brand">
           Get Poked
