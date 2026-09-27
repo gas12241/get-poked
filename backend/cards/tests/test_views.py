@@ -98,6 +98,34 @@ class CardListTests(CardsSetsTypesTestBase):
         names = [c["name"] for c in response.data["results"]]
         self.assertEqual(names, ["Charizard", "Squirtle"])
 
+    def test_filter_by_series_includes_cards_from_every_set_in_it(self):
+        # set_a and set_b are both series "Base" (see
+        # CardsSetsTypesTestBase) — a series filter should span both.
+        response = self.client.get(reverse("card-list"), {"series": "Base"})
+        names = {c["name"] for c in response.data["results"]}
+        self.assertEqual(names, {"Charizard", "Squirtle"})
+
+    def test_filter_by_series_excludes_cards_from_other_series(self):
+        other_series_set = Set.objects.create(tcg_id="xy1", name="XY", series="XY")
+        Card.objects.create(
+            tcg_id="xy1-1",
+            set=other_series_set,
+            name="Mewtwo",
+            number="1",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+
+        response = self.client.get(reverse("card-list"), {"series": "Base"})
+
+        names = {c["name"] for c in response.data["results"]}
+        self.assertNotIn("Mewtwo", names)
+
+    def test_filter_by_series_case_insensitive(self):
+        response = self.client.get(reverse("card-list"), {"series": "base"})
+        self.assertEqual(response.data["count"], 2)
+
 
 class CardNumberOrderingTests(APITestCase):
     """`number` is a CharField (not every printed number is purely numeric,
@@ -181,6 +209,12 @@ class TypeViewSetTests(CardsSetsTypesTestBase):
         names = [t["name"] for t in response.data]
         self.assertEqual(names, ["Fire"])
 
+    def test_list_scoped_to_a_series_includes_types_from_every_set_in_it(self):
+        # set_a and set_b are both series "Base".
+        response = self.client.get(reverse("type-list"), {"series": "Base"})
+        names = sorted(t["name"] for t in response.data)
+        self.assertEqual(names, ["Fire", "Water"])
+
 
 class RarityListViewTests(APITestCase):
     def setUp(self):
@@ -199,7 +233,8 @@ class RarityListViewTests(APITestCase):
                 image_small="https://example.com/small.png",
                 image_large="https://example.com/large.png",
             )
-        # set_b: a rarity that doesn't appear anywhere in set_a.
+        # set_b: a rarity that doesn't appear anywhere in set_a. Same series
+        # as set_a ("Base"), so a series filter should include it.
         Card.objects.create(
             tcg_id="base2-0",
             set=self.set_b,
@@ -210,15 +245,37 @@ class RarityListViewTests(APITestCase):
             image_small="https://example.com/small.png",
             image_large="https://example.com/large.png",
         )
+        # set_c: a different series entirely, with a rarity that shouldn't
+        # appear when scoped to "Base".
+        self.set_c = Set.objects.create(tcg_id="xy1", name="XY", series="XY")
+        Card.objects.create(
+            tcg_id="xy1-0",
+            set=self.set_c,
+            name="Other Series Card",
+            number="0",
+            rarity="Ultra Rare",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
 
     def test_returns_distinct_sorted_rarities_excluding_blank(self):
         response = self.client.get(reverse("rarity-list"))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data, ["Common", "Rare Holo", "Rare Ultra"])
+        self.assertEqual(response.data, ["Common", "Rare Holo", "Rare Ultra", "Ultra Rare"])
 
     def test_list_scoped_to_a_set_excludes_rarities_only_present_elsewhere(self):
         response = self.client.get(reverse("rarity-list"), {"set": self.set_a.id})
         self.assertEqual(response.data, ["Common", "Rare Holo"])
+
+    def test_list_scoped_to_a_series_includes_every_set_in_it_but_excludes_others(
+        self,
+    ):
+        response = self.client.get(reverse("rarity-list"), {"series": "Base"})
+        self.assertEqual(response.data, ["Common", "Rare Holo", "Rare Ultra"])
+
+        response = self.client.get(reverse("rarity-list"), {"series": "XY"})
+        self.assertEqual(response.data, ["Ultra Rare"])
 
     def test_does_not_require_authentication(self):
         response = self.client.get(reverse("rarity-list"))
@@ -265,6 +322,11 @@ class SupertypeListViewTests(APITestCase):
     def test_list_scoped_to_a_set_excludes_supertypes_only_present_elsewhere(self):
         response = self.client.get(reverse("supertype-list"), {"set": self.set_a.id})
         self.assertEqual(response.data, ["Pokémon", "Trainer"])
+
+    def test_list_scoped_to_a_series_includes_supertypes_from_every_set_in_it(self):
+        # set_a and set_b are both series "Base".
+        response = self.client.get(reverse("supertype-list"), {"series": "Base"})
+        self.assertEqual(response.data, ["Pokémon", "Trainer", "Energy"])
 
     def test_does_not_require_authentication(self):
         response = self.client.get(reverse("supertype-list"))

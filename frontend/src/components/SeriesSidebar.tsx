@@ -44,17 +44,31 @@ function groupBySeries(sets: CardSet[]): SeriesGroup[] {
 interface SeriesSidebarProps {
   sets: CardSet[];
   selectedSetId: string;
+  selectedSeries: string;
   onSelect: (setId: string) => void;
+  onSelectSeries: (series: string) => void;
 }
 
-function SeriesSidebar({ sets, selectedSetId, onSelect }: SeriesSidebarProps) {
+function SeriesSidebar({
+  sets,
+  selectedSetId,
+  selectedSeries,
+  onSelect,
+  onSelectSeries,
+}: SeriesSidebarProps) {
   const groups = groupBySeries(sets);
-  const selectedSeries = sets.find(
+  const seriesOfSelectedSet = sets.find(
     (set) => String(set.id) === selectedSetId,
   )?.series;
+  // Only matters for the initial expand-on-load (e.g. a direct link to a
+  // filtered view) — selecting a set or "All {series}" always happens from
+  // an already-expanded group, so no further auto-expand is needed after
+  // mount.
+  const initiallyExpanded =
+    seriesOfSelectedSet ?? (selectedSeries || undefined);
 
   const [expandedSeries, setExpandedSeries] = useState<Set<string>>(
-    () => new Set(selectedSeries ? [selectedSeries] : []),
+    () => new Set(initiallyExpanded ? [initiallyExpanded] : []),
   );
 
   function toggleSeries(series: string) {
@@ -73,7 +87,9 @@ function SeriesSidebar({ sets, selectedSetId, onSelect }: SeriesSidebarProps) {
     <nav className="series-sidebar" aria-label="Browse sets by series">
       <button
         className={
-          selectedSetId === '' ? 'series-all-sets active' : 'series-all-sets'
+          selectedSetId === '' && !selectedSeries
+            ? 'series-all-sets active'
+            : 'series-all-sets'
         }
         onClick={() => onSelect('')}
       >
@@ -115,6 +131,19 @@ function SeriesSidebar({ sets, selectedSetId, onSelect }: SeriesSidebarProps) {
               aria-hidden={!isExpanded}
             >
               <ul className="series-sets">
+                <li>
+                  <button
+                    tabIndex={isExpanded ? undefined : -1}
+                    className={
+                      selectedSeries === series
+                        ? 'series-all-in-series active'
+                        : 'series-all-in-series'
+                    }
+                    onClick={() => onSelectSeries(series)}
+                  >
+                    All {series}
+                  </button>
+                </li>
                 {seriesSets.map((set) => (
                   <li key={set.id}>
                     <button

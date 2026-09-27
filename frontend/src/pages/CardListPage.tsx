@@ -29,6 +29,7 @@ function CardListPage() {
   const supertype = searchParams.get('supertype') ?? '';
   const type = searchParams.get('type') ?? '';
   const setId = searchParams.get('set') ?? '';
+  const series = searchParams.get('series') ?? '';
   const ordering = searchParams.get('ordering') || 'name';
   const sortField: SortField = ordering.replace('-', '') as SortField;
   const sortDirection: SortDirection = ordering.startsWith('-')
@@ -89,7 +90,9 @@ function CardListPage() {
   // whole catalog every set has its own #1, so the field/direction reset to
   // this context's sensible default (Number for a set, Name for All Sets)
   // whenever the set filter changes, rather than carrying over a choice
-  // that stops making sense outside where it was picked.
+  // that stops making sense outside where it was picked. A series spans
+  // multiple sets too (see docs/decisions.md #035), so it gets the same
+  // "All Sets" treatment as far as sort defaults go, not "a set."
   function handleSetSelect(value: string) {
     setSearchParams(
       (prev) => {
@@ -99,7 +102,22 @@ function CardListPage() {
         } else {
           next.delete('set');
         }
+        next.delete('series');
         next.set('ordering', value === '' ? 'name' : 'number');
+        next.set('page', '1');
+        return next;
+      },
+      { replace: true },
+    );
+  }
+
+  function handleSeriesSelect(seriesName: string) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('set');
+        next.set('series', seriesName);
+        next.set('ordering', 'name');
         next.set('page', '1');
         return next;
       },
@@ -124,6 +142,7 @@ function CardListPage() {
     supertype: supertype || undefined,
     type: type || undefined,
     set: setId ? Number(setId) : undefined,
+    series: series || undefined,
     ordering,
     page,
   };
@@ -136,21 +155,23 @@ function CardListPage() {
 
   const setsQuery = useQuery({ queryKey: ['sets'], queryFn: getSets });
 
-  // Scoped to the current set (undefined = every value in the catalog) so
-  // these dropdowns never offer a choice that can't match anything within
-  // the set you're actually looking at — see docs/decisions.md #034.
+  // Scoped to the current set or series (neither = every value in the
+  // catalog) so these dropdowns never offer a choice that can't match
+  // anything within what you're actually looking at — see
+  // docs/decisions.md #034, #035.
   const setNumber = setId ? Number(setId) : undefined;
+  const seriesName = series || undefined;
   const typesQuery = useQuery({
-    queryKey: ['types', setNumber],
-    queryFn: () => getTypes({ set: setNumber }),
+    queryKey: ['types', setNumber, seriesName],
+    queryFn: () => getTypes({ set: setNumber, series: seriesName }),
   });
   const raritiesQuery = useQuery({
-    queryKey: ['rarities', setNumber],
-    queryFn: () => getRarities({ set: setNumber }),
+    queryKey: ['rarities', setNumber, seriesName],
+    queryFn: () => getRarities({ set: setNumber, series: seriesName }),
   });
   const supertypesQuery = useQuery({
-    queryKey: ['supertypes', setNumber],
-    queryFn: () => getSupertypes({ set: setNumber }),
+    queryKey: ['supertypes', setNumber, seriesName],
+    queryFn: () => getSupertypes({ set: setNumber, series: seriesName }),
   });
 
   // If switching sets makes the current rarity/supertype/type selection
@@ -212,7 +233,9 @@ function CardListPage() {
       <SeriesSidebar
         sets={setsQuery.data ?? []}
         selectedSetId={setId}
+        selectedSeries={series}
         onSelect={handleSetSelect}
+        onSelectSeries={handleSeriesSelect}
       />
 
       <div className="cards-main">

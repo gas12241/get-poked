@@ -81,6 +81,7 @@ export interface CardListParams {
   rarity?: string;
   supertype?: string;
   set?: number;
+  series?: string;
   type?: string;
   ordering?: string;
   page?: number;
@@ -108,15 +109,25 @@ export const getCard = (id: string | number) =>
 
 export const getSets = () => apiClient<Set[]>('/api/v1/sets/');
 
-// Types/Rarities/Supertypes all take an optional `set` to narrow the
-// returned choices to what's actually present in that set, rather than
-// every value in the whole catalog — see docs/decisions.md #034.
+// Types/Rarities/Supertypes all take an optional `set` or `series` to
+// narrow the returned choices to what's actually present there, rather
+// than every value in the whole catalog — see docs/decisions.md #034,
+// #035. At most one is ever sent; `set` wins if somehow both are given.
 export interface FilterOptionsParams {
   set?: number;
+  series?: string;
 }
 
-function filterOptionsQueryString({ set }: FilterOptionsParams) {
-  return set ? `?set=${set}` : '';
+function filterOptionsQueryString({ set, series }: FilterOptionsParams) {
+  if (set) {
+    return `?set=${set}`;
+  }
+  if (series) {
+    // URLSearchParams (not a template string) so a series name containing
+    // "&" (e.g. "Black & White") is encoded correctly.
+    return `?${new URLSearchParams({ series }).toString()}`;
+  }
+  return '';
 }
 
 export const getTypes = (params: FilterOptionsParams = {}) =>

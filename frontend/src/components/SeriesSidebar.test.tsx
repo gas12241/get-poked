@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -33,11 +34,24 @@ const SETS: CardSet[] = [
   baseSet({ id: 3, name: 'Base', series: 'Base', release_date: '1999-01-09' }),
 ];
 
+function renderSidebar(
+  overrides: Partial<ComponentProps<typeof SeriesSidebar>> = {},
+) {
+  return renderWithProviders(
+    <SeriesSidebar
+      sets={SETS}
+      selectedSetId=""
+      selectedSeries=""
+      onSelect={() => {}}
+      onSelectSeries={() => {}}
+      {...overrides}
+    />,
+  );
+}
+
 describe('SeriesSidebar', () => {
   it('groups sets under their series, newest series and newest set first', () => {
-    renderWithProviders(
-      <SeriesSidebar sets={SETS} selectedSetId="" onSelect={() => {}} />,
-    );
+    renderSidebar();
 
     const seriesHeaders = screen
       .getAllByRole('button')
@@ -48,9 +62,7 @@ describe('SeriesSidebar', () => {
   });
 
   it('lists sets within a series newest release first once expanded', async () => {
-    renderWithProviders(
-      <SeriesSidebar sets={SETS} selectedSetId="" onSelect={() => {}} />,
-    );
+    renderSidebar();
 
     await userEvent.click(
       screen.getByRole('button', { name: 'Expand Mega Evolution' }),
@@ -66,9 +78,7 @@ describe('SeriesSidebar', () => {
 
   it('calls onSelect with the set id when a set is clicked', async () => {
     const onSelect = vi.fn();
-    renderWithProviders(
-      <SeriesSidebar sets={SETS} selectedSetId="" onSelect={onSelect} />,
-    );
+    renderSidebar({ onSelect });
 
     await userEvent.click(
       screen.getByRole('button', { name: 'Expand Mega Evolution' }),
@@ -80,9 +90,7 @@ describe('SeriesSidebar', () => {
 
   it('calls onSelect with an empty string when "All Sets" is clicked', async () => {
     const onSelect = vi.fn();
-    renderWithProviders(
-      <SeriesSidebar sets={SETS} selectedSetId="3" onSelect={onSelect} />,
-    );
+    renderSidebar({ selectedSetId: '3', onSelect });
 
     await userEvent.click(screen.getByRole('button', { name: 'All Sets' }));
 
@@ -90,9 +98,7 @@ describe('SeriesSidebar', () => {
   });
 
   it('starts with the series containing the selected set already expanded', () => {
-    renderWithProviders(
-      <SeriesSidebar sets={SETS} selectedSetId="2" onSelect={() => {}} />,
-    );
+    renderSidebar({ selectedSetId: '2' });
 
     expect(
       screen.getByRole('button', { name: 'Collapse Mega Evolution' }),
@@ -103,9 +109,7 @@ describe('SeriesSidebar', () => {
   });
 
   it('keeps a collapsed series in the DOM (for the slide animation) but out of the tab order and accessibility tree', () => {
-    renderWithProviders(
-      <SeriesSidebar sets={SETS} selectedSetId="" onSelect={() => {}} />,
-    );
+    renderSidebar();
 
     expect(
       screen.queryByRole('button', { name: 'Chaos Rising' }),
@@ -116,13 +120,56 @@ describe('SeriesSidebar', () => {
   });
 
   it('marks the selected set as active', () => {
-    renderWithProviders(
-      <SeriesSidebar sets={SETS} selectedSetId="2" onSelect={() => {}} />,
-    );
+    renderSidebar({ selectedSetId: '2' });
 
     const activeSet = within(
       screen.getByRole('button', { name: 'Chaos Rising' }).closest('ul')!,
     ).getByRole('button', { name: 'Chaos Rising' });
     expect(activeSet).toHaveClass('active');
+  });
+
+  it('offers an "All {series}" option under each series once expanded', async () => {
+    renderSidebar();
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Expand Mega Evolution' }),
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'All Mega Evolution' }),
+    ).toBeInTheDocument();
+  });
+
+  it('calls onSelectSeries with the series name when "All {series}" is clicked', async () => {
+    const onSelectSeries = vi.fn();
+    renderSidebar({ onSelectSeries });
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Expand Mega Evolution' }),
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'All Mega Evolution' }),
+    );
+
+    expect(onSelectSeries).toHaveBeenCalledWith('Mega Evolution');
+  });
+
+  it('marks "All {series}" as active when that series is selected, and "All Sets" as inactive', () => {
+    renderSidebar({ selectedSeries: 'Mega Evolution' });
+
+    expect(
+      screen.getByRole('button', { name: 'All Mega Evolution' }),
+    ).toHaveClass('active');
+    expect(screen.getByRole('button', { name: 'All Sets' })).not.toHaveClass(
+      'active',
+    );
+  });
+
+  it('starts with the selected series already expanded', () => {
+    renderSidebar({ selectedSeries: 'Mega Evolution' });
+
+    expect(
+      screen.getByRole('button', { name: 'Collapse Mega Evolution' }),
+    ).toBeInTheDocument();
   });
 });
