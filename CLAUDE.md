@@ -141,6 +141,7 @@ Maintain the following project documents:
 - docs/decisions.md
 - docs/ui-ideas.md
 - docs/prompts.md
+- docs/learning-guide.md
 
 Update documentation whenever:
 
@@ -149,6 +150,14 @@ Update documentation whenever:
 - Authentication changes
 - Testing strategy changes
 - Database schema changes
+
+`docs/learning-guide.md` is the user's personal reference for understanding
+and discussing the project (e.g. for interviews) — it is gitignored and must
+never be committed. ARCHITECTURE.md is the public, canonical home for the
+underlying technical substance (how each part of the system works and why);
+when something meaningful is added there, check whether learning-guide.md
+should be extended too, but the reverse never applies — nothing written for
+learning-guide.md should be written assuming it will reach GitHub.
 
 ---
 
