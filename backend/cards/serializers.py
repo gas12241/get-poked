@@ -65,6 +65,7 @@ class CardListSerializer(serializers.ModelSerializer):
             "rarity",
             "supertype",
             "image_small",
+            "image_large",
             "artist",
             "set",
             "types",

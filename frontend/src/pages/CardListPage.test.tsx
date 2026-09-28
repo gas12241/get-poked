@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
@@ -14,9 +14,51 @@ describe('CardListPage', () => {
 
     expect(await screen.findByText('Charizard')).toBeInTheDocument();
     expect(
-      screen.getByText('Base', { selector: '.card-set' }),
+      screen.getByText('Base · Rare Holo', { selector: '.card-set' }),
     ).toBeInTheDocument();
     expect(screen.getByText('#4 · Ken Sugimori')).toBeInTheDocument();
+  });
+
+  it('falls back to the large image if the small thumbnail fails to load', async () => {
+    renderWithProviders(<CardListPage />);
+
+    const img = (await screen.findByAltText('Charizard')) as HTMLImageElement;
+    expect(img.src).toBe('https://example.com/small.png');
+
+    fireEvent.error(img);
+
+    expect(img.src).toBe('https://example.com/large.png');
+  });
+
+  it('shows a "No image available" placeholder instead of a broken image when image_small is blank', async () => {
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, () => {
+        return HttpResponse.json({
+          count: 1,
+          next: null,
+          previous: null,
+          results: [
+            {
+              id: 1,
+              name: 'Charizard',
+              number: '4',
+              rarity: 'Rare Holo',
+              supertype: 'Pokémon',
+              image_small: '',
+              image_large: '',
+              artist: 'Ken Sugimori',
+              set: { id: 1, name: 'Base', series: 'Base', release_date: null },
+              types: [],
+            },
+          ],
+        });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+
+    expect(await screen.findByText('No image available')).toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 
   it('sends the search term as a query param after typing', async () => {

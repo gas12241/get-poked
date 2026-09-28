@@ -518,6 +518,23 @@ Why
 
 ---
 
+## Decision 039
+
+A card's image URLs occasionally 404 on the upstream Pokémon TCG image host — a new `check_card_images` management command detects and fixes this server-side, the frontend shows an honest placeholder for what can't be fixed, and card tiles now also show rarity
+
+Why
+
+- **Found by the user browsing real data, not synthetic**: one card (Aquapolis Aipom, `ecard2/67.png`) rendered as a generic card-back graphic in the grid instead of its actual art, though its detail page (which uses `image_large`) showed correctly
+- **Root cause confirmed with a real network trace, not assumed**: `image_small`'s URL genuinely 404s, but the response body is itself a valid, decodable PNG (a placeholder), so the browser decodes and displays it successfully and never fires the `<img>` element's `error` event. A first attempt using an `onError`-triggered fallback was built, then proven (via `page.on('response')` + an injected error listener in a real browser) to never actually run for this failure mode — no error event fires when a "broken" response still decodes as a valid image. This meant the fix had to move server-side, where an HTTP client actually looks at the status code
+- **`cards/images.py` + `check_card_images` management command**: HEAD-requests every card's `image_small` (and `image_large` if that fails) against the real image host and corrects the database — mirrors `sync_cards`' existing thin-command-over-plain-function structure. Not folded into `sync_cards` itself: it makes ~20,000 external requests to a *different* host (the image CDN, not the Pokémon TCG API), taking a few minutes — bundling that into every regular data sync would slow it down and add an unrelated failure mode. Meant to be re-run occasionally as maintenance, not automatically
+- **Scanned the full real catalog (20,479 cards) rather than guessing scope, twice** — once to size the problem, once for real via the command: 52 cards affected (0.25%). Not systemic — the wider E-Card era sample (529 cards) had only the one originally-reported card. Of the 52, only 2 (this Aipom, and a Hidden Legends Groudon) had a working `image_large` to fall back to; the other 50 — concentrated in "McDonald's Collection" promo sets (2014/2015/2017/2018) — have *no* working image anywhere on the CDN, small or large
+- **Explicitly asked the user how to handle those 50** rather than assuming: leaving them showing the CDN's misleading card-back placeholder (looks like a real successfully-loaded image) vs. an honest "No image available" placeholder of our own. Chose the honest one
+- **`image_small`/`image_large` blanked to `""` in the DB for those 50, not left as the dead URL** — an empty string is the existing "field not present" convention in this codebase (same as blank `artist`/`rarity`), needing no schema/migration change (the columns are `blank=False` but not `null=False`-enforcing beyond form validation — a raw `""` write is a perfectly valid non-null value), and it's what the frontend now checks (`card.image_small ? <img> : <placeholder>`) instead of trying to render an image and hoping for the best
+- **`image_large` added to `CardListSerializer`** (previously Detail-only) so the frontend has something to fall back to from the grid, not just the detail page
+- **Card tiles now also show rarity** next to the set name (e.g. "Holon Phantoms · Uncommon"), a small unrelated UI request from the same conversation — same conditional-suffix pattern already used for artist on the line below (omitted when blank, e.g. Energy cards with no rarity)
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

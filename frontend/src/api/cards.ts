@@ -49,6 +49,10 @@ export interface CardListItem {
   rarity: string;
   supertype: string;
   image_small: string;
+  // Included even on the otherwise-light list serializer, as a fallback
+  // for cards whose `image_small` 404s on the upstream image host — see
+  // docs/decisions.md #039.
+  image_large: string;
   artist: string;
   set: SetNested;
   types: PokemonType[];
@@ -57,7 +61,6 @@ export interface CardListItem {
 export interface CardDetail extends CardListItem {
   hp: string;
   language: string;
-  image_large: string;
   national_pokedex_numbers: number[];
   subtypes: string[];
   evolves_from: string;

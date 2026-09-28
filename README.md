@@ -145,6 +145,12 @@ Populate the card database (optional, one-time — pulls from the live Pokémon 
 python manage.py sync_cards
 ```
 
+Check and fix broken card image URLs (optional maintenance — a handful of cards' images 404 on the upstream image host; see docs/decisions.md #039):
+
+```bash
+python manage.py check_card_images
+```
+
 ---
 
 ## Running Tests
