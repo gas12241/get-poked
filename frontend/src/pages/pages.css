@@ -386,6 +386,16 @@
   text-align: center;
 }
 
+.quiz-question {
+  /* Single point of control for the quiz card's displayed size — both the
+     revealed card image and the case-opening reel (viewport, item size,
+     and the landing math in CaseOpeningReel.tsx) read this one variable,
+     so resizing the card later means changing it here only. Ratio matches
+     a real card's proportions (~0.714). See docs/decisions.md #040. */
+  --quiz-card-width: 480px;
+  --quiz-card-ratio: 63 / 88;
+}
+
 .quiz-mode-buttons {
   display: flex;
   flex-direction: column;
@@ -393,6 +403,7 @@
 }
 
 .quiz-question img {
+  width: var(--quiz-card-width);
   max-width: 100%;
   border-radius: 12px;
 }
@@ -403,6 +414,170 @@
   gap: 4px 12px;
   margin: 16px 0;
   text-align: left;
+}
+
+/* Case-opening reel (docs/decisions.md #040) — a viewport onto a
+   horizontally-sliding track of small card-back rectangles ("items", CS:GO
+   case-opening style — a few neighbors visible on each side of the
+   pointer), with the winning slot un-docking from the track once landed to
+   grow into a full-size card as it flips. Sized from `--quiz-card-width`
+   (set on `.quiz-question`) rather than fixed pixels, so it always matches
+   the real revealed card and stays in sync if that size changes later —
+   CaseOpeningReel.tsx's landing-position math reads the same variables.
+   `--reel-item-width` (a fraction of the full card width) is what actually
+   slides; the viewport itself stays exactly one full card wide/tall, which
+   is also exactly the size the winner grows to fill. */
+.case-opening {
+  --reel-item-width: calc(var(--quiz-card-width) * 0.4);
+  --reel-gap: 10px;
+  position: relative;
+  width: var(--quiz-card-width);
+  max-width: 100%;
+  aspect-ratio: var(--quiz-card-ratio);
+  margin: 0 auto 16px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--code-bg);
+}
+
+.case-opening-pointer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-1px);
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  z-index: 1;
+}
+
+.case-opening-track {
+  display: flex;
+  gap: var(--reel-gap);
+  height: 100%;
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.12, 0.85, 0.2, 1);
+}
+
+.case-opening-item {
+  /* Without this, a decoy's own border (below) adds to its rendered width
+     on top of `width: var(--reel-item-width)` instead of being drawn
+     inside it — since the landing math in CaseOpeningReel.tsx assumes
+     every item is exactly --reel-item-width wide, that drift would
+     accumulate across DECOY_COUNT items and land off-center under the
+     pointer. */
+  box-sizing: border-box;
+  position: relative;
+  flex: 0 0 var(--reel-item-width);
+  width: var(--reel-item-width);
+  aspect-ratio: var(--quiz-card-ratio);
+}
+
+/* A stylized, original card-back look (docs/decisions.md #040 addendum) —
+   a rarity-tinted panel with an inset frame and a centered ring emblem.
+   Not a reproduction of the real card back or the Poké Ball mark, same
+   reasoning as the header icon (decisions.md #018). Always a child that
+   fills its positioned parent (a decoy's `.case-opening-item`, or the
+   winner's `.case-opening-face`), so its own border never adds to a
+   flex-sized ancestor's rendered width. */
+.case-opening-back {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  border: 2px solid var(--border);
+  overflow: hidden;
+}
+
+.case-opening-back-common {
+  background: linear-gradient(135deg, #9ca3af, #d1d5db);
+}
+
+.case-opening-back-mid {
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+}
+
+.case-opening-back-chase {
+  background: linear-gradient(135deg, #f59e0b, #a855f7);
+}
+
+.case-opening-back-corner {
+  position: absolute;
+  inset: 8%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 5px;
+}
+
+.case-opening-back-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 48%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.85);
+  background: radial-gradient(
+    circle at 35% 30%,
+    rgba(255, 255, 255, 0.25),
+    rgba(255, 255, 255, 0) 60%
+  );
+}
+
+.case-opening-back-ring::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 22%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+/* Only mounted once the reel has landed (see CaseOpeningReel.tsx) — until
+   then, the winning slot is just the last item sliding in the track like
+   any decoy. Un-docked from the track's flex layout into an absolutely
+   positioned, self-centered element so it can grow independently without
+   the track's other (about-to-disappear) items reflowing around it. Its
+   start position/size (centered, --reel-item-width) exactly matches where
+   the track's own landing math already placed the in-track version a
+   moment earlier, so the swap between the two is visually seamless. */
+.case-opening-winner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--reel-item-width);
+  aspect-ratio: var(--quiz-card-ratio);
+  transform: translate(-50%, -50%);
+  transform-style: preserve-3d;
+  /* Durations set inline in CaseOpeningReel.tsx, matching FLIP_DURATION_MS
+     exactly rather than a second hardcoded number here. */
+  transition-property: width, transform;
+  z-index: 2;
+}
+
+.case-opening-winner.grown {
+  width: var(--quiz-card-width);
+}
+
+.case-opening-winner.flipped {
+  transform: translate(-50%, -50%) rotateY(180deg);
+}
+
+.case-opening-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  backface-visibility: hidden;
+}
+
+.case-opening-face-reveal {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: rotateY(180deg);
 }
 
 .quiz-abandon {

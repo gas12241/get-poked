@@ -6,6 +6,10 @@ import { server } from '../mocks/server';
 import { renderWithProviders } from '../test/renderWithProviders';
 import { useQuizStore } from '../store/quizStore';
 import { useAuthStore } from '../store/authStore';
+import {
+  FLIP_DURATION_MS,
+  SPIN_DURATION_MS,
+} from '../components/CaseOpeningReel';
 import QuizPage from './QuizPage';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -15,10 +19,21 @@ beforeEach(() => {
   useAuthStore.setState({ accessToken: null });
 });
 
+// Every question opens with a case-opening reel (see CaseOpeningReel.tsx,
+// docs/decisions.md #040) before the guess form appears, so callers need a
+// longer-than-default wait for it. Waiting on the "Card to guess" alt text
+// specifically would resolve too early: the reel's own winning slot
+// carries that same alt text on its (visually flipped-away) reveal image
+// from the moment it mounts, not just once spinning finishes — only the
+// guess form is actually gated on that. Derived from the component's own
+// exported durations, not a hardcoded number, so this can't silently fall
+// out of sync if those change.
+const REEL_TIMEOUT_MS = SPIN_DURATION_MS + FLIP_DURATION_MS + 1000;
+
 async function startQuiz() {
   renderWithProviders(<QuizPage />);
   await userEvent.click(screen.getByRole('button', { name: 'Guess the Card' }));
-  await screen.findByAltText('Card to guess');
+  await screen.findByLabelText('Your guess', {}, { timeout: REEL_TIMEOUT_MS });
 }
 
 async function completeOneQuestionQuiz() {
@@ -78,6 +93,15 @@ describe('QuizPage', () => {
     expect(await screen.findByText('Score saved.')).toBeInTheDocument();
   });
 
+  it('does not show the guess form (or let a guess be typed) until the case-opening reel finishes', async () => {
+    renderWithProviders(<QuizPage />);
+    await userEvent.click(screen.getByRole('button', { name: 'Guess the Card' }));
+
+    expect(screen.queryByLabelText('Your guess')).not.toBeInTheDocument();
+
+    await screen.findByLabelText('Your guess', {}, { timeout: REEL_TIMEOUT_MS });
+  });
+
   it('returns to mode selection when a quiz is abandoned', async () => {
     await startQuiz();
     await userEvent.click(screen.getByRole('button', { name: 'Abandon quiz' }));
@@ -92,12 +116,17 @@ describe('QuizPage', () => {
     await userEvent.click(
       screen.getByRole('button', { name: 'Guess the Card' }),
     );
-    await screen.findByAltText('Card to guess');
+    await screen.findByAltText('Card to guess', {}, { timeout: REEL_TIMEOUT_MS });
     unmount();
 
     renderWithProviders(<QuizPage />);
 
-    expect(await screen.findByAltText('Card to guess')).toBeInTheDocument();
+    // Remounting replays the case-opening reel too (it's keyed to the
+    // question view's own mount, with no separate "already seen" tracking
+    // across reloads — a deliberate simplification, not a bug).
+    expect(
+      await screen.findByAltText('Card to guess', {}, { timeout: REEL_TIMEOUT_MS }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Question 1 of 1')).toBeInTheDocument();
   });
 });
