@@ -81,6 +81,7 @@
 - [x] Top nav highlights the active section (Cards — including a card's detail page, not just the list — and Quiz), matching the sidebar's active-set styling, plus a hover tint. 5 new frontend tests
 - [x] Search-box name autocomplete (`GET /api/v1/card-names/`, scoped to the current set/series), ranked shortest-name-first rather than alphabetically — fixed a real bug found before shipping where an alphabetical cap of 8 never surfaced "Pikachu" or "Piplup" for the prefix "pi", crowded out entirely by one species' variant reprints. `NameAutocomplete.tsx` is a reusable ARIA combobox. See docs/decisions.md #036. 8 new backend tests, 8 new frontend tests; verified live against real data
 - [x] "Reset filters" button next to the sort controls — clears search/rarity/supertype/type only, deliberately leaving the current set/series selection and sort untouched (the sidebar's own "All Sets" already covers resetting that). Disabled when nothing is applied. 1 new frontend test
+- [x] Fixed a real bug: clicking Next/Previous restored the previous page's scroll position instead of landing at the top of the new page, because scroll restoration was keyed only by pathname (docs/decisions.md #033) and pagination is a same-pathname `replace` navigation just like every other filter change. Now keyed by pathname + page number for the Cards route, so an unvisited page number has no saved position (scrolls to top) while going back from a card detail page still restores exactly — see docs/decisions.md #033 addendum. 2 new frontend tests; verified live in a browser
 
 ---
 
