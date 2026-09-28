@@ -374,4 +374,32 @@ describe('CardListPage', () => {
     expect(await screen.findByText('Previous')).toBeDisabled();
     expect(screen.getByText('Next')).toBeEnabled();
   });
+
+  it('does not revert to page 1 after clicking Next, even once the search debounce timer fires', async () => {
+    let capturedPage: string | null = null;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, ({ request }) => {
+        const url = new URL(request.url);
+        capturedPage = url.searchParams.get('page');
+        return HttpResponse.json({
+          count: 50,
+          next: 'http://localhost/api/v1/cards/?page=3',
+          previous: 'http://localhost/api/v1/cards/?page=1',
+          results: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+    await userEvent.click(await screen.findByText('Next'));
+
+    await waitFor(() => expect(capturedPage).toBe('2'));
+
+    // The search debounce timer re-arms on every URL change (its effect
+    // depends on `setSearchParams`, whose identity changes on navigation),
+    // so give it time to fire and confirm it doesn't silently reset paging
+    // back to page 1.
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(capturedPage).toBe('2');
+  });
 });

@@ -60,7 +60,18 @@ function CardListPage() {
       // timer is scheduled and when it fires, clobbering any filter changes
       // made in between (e.g. picking a set) back to whatever the URL was
       // at the moment typing started.
-      const next = new URLSearchParams(searchParamsRef.current);
+      const current = searchParamsRef.current;
+      // `setSearchParams`'s identity changes on every URL update (react-
+      // router ties it to `location.search`), and it's a dependency here,
+      // so this effect re-arms on unrelated changes too — e.g. clicking
+      // "Next". Bail out when the committed search already matches
+      // `searchInput`: that means this fire wasn't triggered by a new
+      // keystroke, so there's nothing to commit and paging must be left
+      // alone instead of being reset back to page 1.
+      if ((current.get('search') ?? '') === searchInput) {
+        return;
+      }
+      const next = new URLSearchParams(current);
       if (searchInput) {
         next.set('search', searchInput);
       } else {
