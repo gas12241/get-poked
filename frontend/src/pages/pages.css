@@ -325,6 +325,11 @@
   max-width: 320px;
   width: 100%;
   border-radius: 12px;
+  /* `.card-detail` is a flex row; without this, flexbox's default
+     align-items:stretch pulls this image's height up to match `.info`'s
+     (whichever is taller), distorting the card's aspect ratio on any card
+     with enough attack/weakness/evolution text to out-grow the image. */
+  align-self: flex-start;
 }
 
 .card-detail .info {
