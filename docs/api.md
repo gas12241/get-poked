@@ -22,7 +22,7 @@ All endpoints are prefixed with `/api/v1/`. Adding the prefix now costs nothing;
 
 - Explicit `fields` lists on every `ModelSerializer` — never `__all__`.
 - `Card` has separate List and Detail serializers: the list view (used for browsing/search, many cards on screen at once) stays light; the detail view carries the full payload.
-- `Set` is nested inside `Card` responses as a lightweight sub-serializer (id, name, series), not duplicated in full.
+- `Set` is nested inside `Card` responses as a lightweight sub-serializer (id, name, series, release_date), not duplicated in full.
 
 ---
 
@@ -147,7 +147,7 @@ Supports
 - search — `?search=` (partial, case-insensitive match on `name`)
 - filtering — `?rarity=`, `?supertype=`, `?set=` (Set id), `?type=` (elemental type name, case-insensitive, e.g. `Fire`), `?series=` (Set.series, case-insensitive, e.g. `Mega Evolution` — matches every card across every set in that series, see docs/decisions.md #035); any combination applies as AND
 - pagination — `?page=`, `?page_size=` (default 24, max 100)
-- sorting — `?ordering=` (`name`, `number`, `rarity`; prefix `-` to reverse). `number` sorts numerically (1, 2, ... 10, 11), not lexicographically as a plain string sort would (1, 10, 11, ... 2) — see docs/decisions.md #032
+- sorting — `?ordering=` (`name`, `number`, `rarity`, `release_date`; prefix `-` to reverse). `number` sorts numerically (1, 2, ... 10, 11), not lexicographically as a plain string sort would (1, 10, 11, ... 2) — see docs/decisions.md #032. `release_date` is an alias for the card's set's `release_date` (e.g. every variant of a searched name in the order it was actually printed); cards sharing a release date (i.e. the same set) get a numeric `number` tiebreak, same as above — see docs/decisions.md #037. Conversely, `name`/`number` sorts tiebreak by `release_date` (e.g. every "Abra" print, or every "#1" across sets) — oldest print first by default, or newest first with `?newest_first=true` — see docs/decisions.md #038
 
 No authentication required (see docs/decisions.md #028).
 

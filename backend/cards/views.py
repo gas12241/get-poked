@@ -1,3 +1,4 @@
+from django.db.models import F
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import AllowAny
@@ -31,13 +32,17 @@ class CardViewSet(ReadOnlyModelViewSet):
     queryset = (
         Card.objects.select_related("set")
         .prefetch_related("types", "attacks", "weaknesses__type", "resistances__type")
+        # Alias for `set__release_date`, so `?ordering=release_date` can be
+        # a plain ordering field rather than needing a `set__`-prefixed
+        # query param — see docs/decisions.md #037.
+        .annotate(release_date=F("set__release_date"))
         .order_by("name", "number")
     )
     permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend, SearchFilter, CardOrderingFilter]
     filterset_class = CardFilter
     search_fields = ["name"]
-    ordering_fields = ["name", "number", "rarity"]
+    ordering_fields = ["name", "number", "rarity", "release_date"]
 
     def get_serializer_class(self):
         if self.action == "retrieve":

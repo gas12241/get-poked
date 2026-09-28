@@ -488,6 +488,36 @@ Why
 
 ---
 
+## Decision 037
+
+Sort Cards by release date, so every variant of a searched name (or an "All Sets"/"All {series}" view) can come back in the order the cards actually came out
+
+Why
+
+- **`Set.release_date` already existed** (populated from the real Pokémon TCG API payload during import, decisions.md #031's "newest series first" sidebar grouping already relies on it) — no schema or import change needed, just exposing and sorting by data already there
+- **Exposed via an annotated `release_date = F("set__release_date")` on `CardViewSet`'s queryset** (`cards/views.py`), rather than a `set__release_date` ordering param — keeps the public API's `?ordering=` values flat/single-word, consistent with `name`/`number`/`rarity`, and avoids leaking the ORM's double-underscore join syntax into a query param
+- **`CardOrderingFilter` (`cards/ordering.py`) gained a `release_date` case alongside its existing `number` numeric-sort handling** (decisions.md #032): sorting by `release_date` alone would group every card in the same set together in arbitrary database order, since they all share that set's single release date. A numeric `number` tiebreak (always ascending, regardless of the release-date direction) is appended automatically, so same-set cards still come out in checklist order
+- **`release_date` added to `SetNestedSerializer`**, so it's visible on `card.set.release_date` in list/detail responses too (previously only `id`/`name`/`series`) — additive, backward-compatible
+- **Deliberately scoped to a third Sort-by option, not a new default** — Name/Number stay the defaults for "All Sets"/a specific set/a series respectively (decisions.md #032/#033/#035); this is an opt-in choice for "show me these in the order they were printed," which only really makes sense across multiple sets (searching a name, or browsing all of a series/the whole catalog)
+- Considered scoping this to search results only (since that's the motivating case) rather than a general sort option — rejected as an arbitrary restriction: it's exactly as meaningful for "All {series}" browsing with no search term, and a general `ordering=` option is simpler than a special case
+
+---
+
+## Decision 038
+
+Sorting by Name or Number tiebreaks by release date too (e.g. every "Abra" print, or every card labeled "#1" across sets), with an optional oldest/newest toggle
+
+Why
+
+- **The gap ran the other direction from decisions.md #037**: that decision gave `release_date` sorts a `number` tiebreak; sorting by `name` or `number` alone had no tiebreak at all, so same-named cards (every "Abra") or same-numbered cards (every "#1") came back in arbitrary database order. `CardOrderingFilter` now appends `release_date` automatically whenever `name` or `number` is the sort and `release_date` isn't already one (avoiding a redundant/conflicting append when it is)
+- **`?newest_first=true` controls the tiebreak's direction independently of the primary sort's own direction** — explicitly discussed with the user rather than assumed: the simpler option (reusing the existing Ascending/Descending control to also flip the tiebreak) was considered first, but the user specifically wanted the tiebreak direction choosable on its own, e.g. Name ascending (A→Z) with newest-print-first within each name group. Read directly off `request.query_params` in `CardOrderingFilter.filter_queryset` rather than routed through DRF's `ordering_fields`/`ordering` mechanism, since it's a modifier on the tiebreak, not a sortable field in its own right
+- **A checkbox, not a third dropdown, and only rendered once Sort: Name or Sort: Number is selected** — discussed trade-offs with the user before building: the filter bar already has six controls (search, rarity, supertype, type, sort field, sort direction), and this only has any visible effect when there's an actual tie to break (mostly "All Sets"/"All {series}"/search views, not typical single-set browsing), so a permanent extra control would mostly do nothing. Hiding it otherwise keeps it out of the way without losing the value for the case it's for
+- **Defaults to oldest-first (unchecked)** — matches what sorting by Name/Number already did the moment #037 shipped (no behavior change for anyone not using the checkbox), and reads naturally as "off = the plain, un-modified sort"
+- **`newest_first` is silently ignored by a `release_date` sort itself** — that sort already has its own direction via `-release_date`; the frontend also never sends the param outside Name/Number sorts, though the checkbox's own checked state persists in the URL either way (harmless, and it means switching back to Name/Number resurfaces your last choice instead of forgetting it)
+- Test fixtures deliberately decouple the expected result from every plausible wrong fallback (alphabetical name, numeric-ascending number, and insertion/id order) — an earlier version of the decisions.md #037 tests accidentally passed once by coincidence with real data that happened to already be alphabetized in release order, which this was written specifically to avoid repeating
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

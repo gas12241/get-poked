@@ -159,6 +159,202 @@ class CardNumberOrderingTests(APITestCase):
         self.assertEqual(numbers, ["10", "2", "TG1", "1", "A"])
 
 
+class CardReleaseDateOrderingTests(APITestCase):
+    """Lets a search or an "All Sets"/"All {series}" view come back in the
+    order the cards were actually released, e.g. every Charizard variant
+    from earliest print to most recent — see docs/decisions.md #037.
+    """
+
+    def setUp(self):
+        # Names are deliberately alphabetized *backwards* from release
+        # order (newest set's card sorts first by name, oldest set's
+        # sorts last) — otherwise a test could pass by coincidence even
+        # if `?ordering=release_date` silently fell back to the view's
+        # default alphabetical-by-name ordering instead of really sorting
+        # by release date.
+        self.newest_set = Set.objects.create(
+            tcg_id="swsh1", name="Sword & Shield", series="Sword & Shield",
+            release_date="2020-02-07",
+        )
+        self.oldest_set = Set.objects.create(
+            tcg_id="base1", name="Base", series="Base", release_date="1999-01-09",
+        )
+        self.middle_set = Set.objects.create(
+            tcg_id="neo1", name="Neo Genesis", series="Neo", release_date="2000-12-16",
+        )
+        # Two cards in the same set (same release date) — a tiebreak is
+        # needed for these to come back in checklist order. Numbered so
+        # checklist order ("Zapdos" #1 before "Ninetales" #2) also
+        # disagrees with alphabetical name order, for the same reason.
+        Card.objects.create(
+            tcg_id="base1-1", set=self.oldest_set, name="Zapdos", number="1",
+            supertype="Pokémon", image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        Card.objects.create(
+            tcg_id="base1-2", set=self.oldest_set, name="Ninetales", number="2",
+            supertype="Pokémon", image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        Card.objects.create(
+            tcg_id="neo1-1", set=self.middle_set, name="Lugia", number="1",
+            supertype="Pokémon", image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        Card.objects.create(
+            tcg_id="swsh1-1", set=self.newest_set, name="Alakazam", number="1",
+            supertype="Pokémon", image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+
+    def test_ordering_by_release_date_oldest_first(self):
+        response = self.client.get(reverse("card-list"), {"ordering": "release_date"})
+        names = [c["name"] for c in response.data["results"]]
+        self.assertEqual(names, ["Zapdos", "Ninetales", "Lugia", "Alakazam"])
+
+    def test_ordering_by_release_date_newest_first(self):
+        response = self.client.get(reverse("card-list"), {"ordering": "-release_date"})
+        names = [c["name"] for c in response.data["results"]]
+        self.assertEqual(names, ["Alakazam", "Lugia", "Zapdos", "Ninetales"])
+
+    def test_cards_in_the_same_set_still_come_back_in_checklist_order(self):
+        # Both are in oldest_set, so they share a release date — the
+        # tiebreak (by number) is what keeps this deterministic.
+        response = self.client.get(reverse("card-list"), {"ordering": "release_date"})
+        names = [c["name"] for c in response.data["results"]]
+        self.assertEqual(names.index("Zapdos"), names.index("Ninetales") - 1)
+
+    def test_release_date_included_on_nested_set(self):
+        response = self.client.get(reverse("card-list"), {"ordering": "release_date"})
+        result = response.data["results"][0]
+        self.assertEqual(result["set"]["release_date"], "1999-01-09")
+
+
+class CardNameNumberReleaseDateTiebreakTests(APITestCase):
+    """Sorting by `name` (e.g. every "Abra" print) or `number` (e.g. every
+    "#1" across different sets) needs a `release_date` tiebreak too, or
+    same-named/same-numbered cards come back in arbitrary order — see
+    docs/decisions.md #038.
+    """
+
+    def setUp(self):
+        self.new_set = Set.objects.create(
+            tcg_id="new1", name="New Set", series="New", release_date="2020-02-07",
+        )
+        self.old_set = Set.objects.create(
+            tcg_id="old1", name="Old Set", series="Old", release_date="1999-01-09",
+        )
+        # Numbers/names are deliberately picked so a *wrong* tiebreak
+        # (falling back to number-ascending, or to alphabetical name)
+        # would produce a different result than tiebreaking by
+        # release_date really does. `abra_new` is also deliberately
+        # created *before* `abra_old` (so it gets the lower id) — release
+        # date is what must decide their order, not insertion/id order,
+        # which a fresh table can otherwise coincide with.
+        self.abra_new = Card.objects.create(
+            tcg_id="new1-1", set=self.new_set, name="Abra", number="1",
+            supertype="Pokémon", image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        self.abra_old = Card.objects.create(
+            tcg_id="old1-99", set=self.old_set, name="Abra", number="99",
+            supertype="Pokémon", image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        self.kadabra = Card.objects.create(
+            tcg_id="old1-50", set=self.old_set, name="Kadabra", number="50",
+            supertype="Pokémon", image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        self.zubat = Card.objects.create(
+            tcg_id="old1-1", set=self.old_set, name="Zubat", number="1",
+            supertype="Pokémon", image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+
+    def test_name_sort_tiebreaks_same_named_cards_by_release_date(self):
+        # If this instead fell back to number-ascending, Abra/New (#1)
+        # would wrongly come before Abra/Old (#99).
+        response = self.client.get(reverse("card-list"), {"ordering": "name"})
+        results = [(c["name"], c["set"]["name"]) for c in response.data["results"]]
+        self.assertEqual(
+            results,
+            [
+                ("Abra", "Old Set"),
+                ("Abra", "New Set"),
+                ("Kadabra", "Old Set"),
+                ("Zubat", "Old Set"),
+            ],
+        )
+
+    def test_number_sort_tiebreaks_same_numbered_cards_by_release_date(self):
+        # If this instead fell back to alphabetical name, Abra/New would
+        # wrongly come before Zubat/Old within the "#1" group.
+        response = self.client.get(reverse("card-list"), {"ordering": "number"})
+        results = [
+            (c["number"], c["name"], c["set"]["name"])
+            for c in response.data["results"]
+        ]
+        self.assertEqual(
+            results,
+            [
+                ("1", "Zubat", "Old Set"),
+                ("1", "Abra", "New Set"),
+                ("50", "Kadabra", "Old Set"),
+                ("99", "Abra", "Old Set"),
+            ],
+        )
+
+    def test_name_sort_tiebreak_reverses_with_newest_first(self):
+        response = self.client.get(
+            reverse("card-list"), {"ordering": "name", "newest_first": "true"}
+        )
+        results = [(c["name"], c["set"]["name"]) for c in response.data["results"]]
+        self.assertEqual(
+            results,
+            [
+                ("Abra", "New Set"),
+                ("Abra", "Old Set"),
+                ("Kadabra", "Old Set"),
+                ("Zubat", "Old Set"),
+            ],
+        )
+
+    def test_number_sort_tiebreak_reverses_with_newest_first(self):
+        response = self.client.get(
+            reverse("card-list"), {"ordering": "number", "newest_first": "true"}
+        )
+        results = [
+            (c["number"], c["name"], c["set"]["name"])
+            for c in response.data["results"]
+        ]
+        self.assertEqual(
+            results,
+            [
+                ("1", "Abra", "New Set"),
+                ("1", "Zubat", "Old Set"),
+                ("50", "Kadabra", "Old Set"),
+                ("99", "Abra", "Old Set"),
+            ],
+        )
+
+    def test_newest_first_is_ignored_for_release_date_sort(self):
+        # `newest_first` only affects the name/number tiebreak; reversing
+        # a `release_date` sort itself is already `-release_date`.
+        response = self.client.get(
+            reverse("card-list"),
+            {"ordering": "release_date", "newest_first": "true"},
+        )
+        results = [(c["name"], c["number"]) for c in response.data["results"]]
+        # old_set's three cards (all release_date 1999) tiebreak by number
+        # ascending: Zubat #1, Kadabra #50, Abra #99 — then new_set's Abra
+        # (release_date 2020, #1) last.
+        self.assertEqual(
+            results,
+            [("Zubat", "1"), ("Kadabra", "50"), ("Abra", "99"), ("Abra", "1")],
+        )
+
+
 class CardDetailTests(CardsSetsTypesTestBase):
     def test_retrieve_includes_nested_related_data(self):
         response = self.client.get(reverse("card-detail", args=[self.charizard.id]))

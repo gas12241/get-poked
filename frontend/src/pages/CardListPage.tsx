@@ -14,7 +14,7 @@ import NameAutocomplete from '../components/NameAutocomplete';
 import SeriesSidebar from '../components/SeriesSidebar';
 import './pages.css';
 
-type SortField = 'name' | 'number';
+type SortField = 'name' | 'number' | 'release_date';
 type SortDirection = 'asc' | 'desc';
 
 // Filters/sort/page live in the URL (not component state) so that
@@ -38,6 +38,10 @@ function CardListPage() {
     ? 'desc'
     : 'asc';
   const page = Number(searchParams.get('page') ?? '1');
+  // Only meaningful for Name/Number sorts — it decides which way ties
+  // (e.g. every "Abra", or every "#1" across sets) break by release date.
+  // See docs/decisions.md #038.
+  const newestFirst = searchParams.get('newest_first') === 'true';
 
   const [searchInput, setSearchInput] = useState(search);
 
@@ -180,6 +184,10 @@ function CardListPage() {
     series: series || undefined,
     ordering,
     page,
+    newest_first:
+      (sortField === 'name' || sortField === 'number') && newestFirst
+        ? true
+        : undefined,
   };
 
   const cardsQuery = useQuery({
@@ -332,6 +340,7 @@ function CardListPage() {
           >
             <option value="name">Sort: Name</option>
             <option value="number">Sort: Number</option>
+            <option value="release_date">Sort: Release date</option>
           </select>
           <select
             aria-label="Sort direction"
@@ -346,6 +355,21 @@ function CardListPage() {
             <option value="asc">Ascending</option>
             <option value="desc">Descending</option>
           </select>
+          {(sortField === 'name' || sortField === 'number') && (
+            <label className="newest-first-toggle">
+              <input
+                type="checkbox"
+                checked={newestFirst}
+                onChange={(e) =>
+                  handleFilterChange(
+                    'newest_first',
+                    e.target.checked ? 'true' : '',
+                  )
+                }
+              />
+              Newest print first
+            </label>
+          )}
           <button
             type="button"
             onClick={handleResetFilters}
