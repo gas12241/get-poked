@@ -60,6 +60,16 @@ class CardListTests(CardsSetsTypesTestBase):
         self.assertIn("number", result)
         self.assertIn("artist", result)
 
+    def test_list_includes_image_large_as_a_fallback_for_a_broken_small_image(self):
+        # `image_small` occasionally 404s on the upstream image host for
+        # older cards (see docs/decisions.md #039) — the frontend falls
+        # back to `image_large` when that happens, so the list response
+        # needs to carry it even though the list view is otherwise a
+        # deliberately light serializer.
+        response = self.client.get(reverse("card-list"))
+        result = response.data["results"][0]
+        self.assertIn("image_large", result)
+
     def test_list_does_not_require_authentication(self):
         response = self.client.get(reverse("card-list"))
         self.assertEqual(response.status_code, status.HTTP_200_OK)

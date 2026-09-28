@@ -32,7 +32,15 @@ function CardDetailPage() {
       </button>
 
       <div className="card-detail">
-        <img src={card.image_large} alt={card.name} />
+        {card.image_large ? (
+          <img src={card.image_large} alt={card.name} />
+        ) : (
+          // Neither image_small nor image_large has a working URL for
+          // this card — see docs/decisions.md #039.
+          <div className="no-image-placeholder no-image-placeholder-detail">
+            No image available
+          </div>
+        )}
 
         <div className="info">
           <h1>{card.name}</h1>

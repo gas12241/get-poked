@@ -21,7 +21,7 @@ All endpoints are prefixed with `/api/v1/`. Adding the prefix now costs nothing;
 ### Serializers
 
 - Explicit `fields` lists on every `ModelSerializer` — never `__all__`.
-- `Card` has separate List and Detail serializers: the list view (used for browsing/search, many cards on screen at once) stays light; the detail view carries the full payload.
+- `Card` has separate List and Detail serializers: the list view (used for browsing/search, many cards on screen at once) stays light; the detail view carries the full payload. The one exception is `image_large`, included on the List serializer too despite otherwise belonging to the "full payload" — it's a frontend fallback for the rare card whose `image_small` 404s on the upstream image host, not a display field in its own right — see docs/decisions.md #039
 - `Set` is nested inside `Card` responses as a lightweight sub-serializer (id, name, series, release_date), not duplicated in full.
 
 ---

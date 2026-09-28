@@ -393,10 +393,35 @@ function CardListPage() {
                   to={`/cards/${card.id}`}
                   className="card-tile"
                 >
-                  <img src={card.image_small} alt={card.name} />
+                  {card.image_small ? (
+                    <img
+                      src={card.image_small}
+                      alt={card.name}
+                      onError={(e) => {
+                        // `image_small` occasionally 404s on the upstream
+                        // image host for older cards — falls back to
+                        // `image_large` once, guarded so a failure of the
+                        // fallback itself doesn't loop. See
+                        // docs/decisions.md #039.
+                        const img = e.currentTarget;
+                        if (img.src !== card.image_large) {
+                          img.src = card.image_large;
+                        }
+                      }}
+                    />
+                  ) : (
+                    // Neither image_small nor image_large has a working
+                    // URL for this card — see docs/decisions.md #039.
+                    <div className="no-image-placeholder">
+                      No image available
+                    </div>
+                  )}
                   <div className="card-tile-text">
                     <span className="card-name">{card.name}</span>
-                    <span className="card-set">{card.set.name}</span>
+                    <span className="card-set">
+                      {card.set.name}
+                      {card.rarity && ` · ${card.rarity}`}
+                    </span>
                     <span className="card-meta">
                       #{card.number}
                       {card.artist && ` · ${card.artist}`}
