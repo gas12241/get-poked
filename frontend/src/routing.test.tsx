@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -132,5 +132,84 @@ describe('Cards list -> detail -> back', () => {
     await waitFor(() =>
       expect(requestedParams[requestedParams.length - 1].get('set')).toBeNull(),
     );
+  });
+});
+
+describe('Cards list scroll position', () => {
+  // jsdom has no real layout, so `window.scrollY` never changes on its own —
+  // it's stubbed here purely to stand in for "the user scrolled down before
+  // clicking," letting these tests check what React Router's
+  // <ScrollRestoration> decides to do with that saved position (restore it,
+  // vs. treat the destination as a fresh page with no saved position yet).
+  // The visual result was confirmed separately in a real browser.
+  function stubScrollY(value: number) {
+    Object.defineProperty(window, 'scrollY', {
+      value,
+      configurable: true,
+      writable: true,
+    });
+  }
+
+  it('scrolls to the top on Next, rather than restoring the scroll position of the previous page', async () => {
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, () => {
+        return HttpResponse.json({
+          count: 50,
+          next: 'http://localhost/api/v1/cards/?page=2',
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    renderApp('/?page=1');
+    await screen.findByText('Next');
+    stubScrollY(800);
+
+    await userEvent.click(screen.getByText('Next'));
+
+    await waitFor(() => expect(scrollToSpy).toHaveBeenLastCalledWith(0, 0));
+    scrollToSpy.mockRestore();
+  });
+
+  it('restores the exact scroll position when going back from a card detail page', async () => {
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, () => {
+        return HttpResponse.json({
+          count: 1,
+          next: null,
+          previous: null,
+          results: [
+            {
+              id: 1,
+              name: 'Charizard',
+              number: '4',
+              rarity: 'Rare Holo',
+              supertype: 'Pokémon',
+              image_small: 'https://example.com/small.png',
+              artist: 'Ken Sugimori',
+              set: { id: 1, name: 'Base', series: 'Base' },
+              types: [{ id: 1, name: 'Fire' }],
+            },
+          ],
+        });
+      }),
+    );
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    renderApp('/?page=2');
+    await screen.findByText('Charizard');
+    stubScrollY(500);
+
+    await userEvent.click(screen.getByText('Charizard'));
+    const backButton = await screen.findByRole('button', {
+      name: /back to cards/i,
+    });
+    await userEvent.click(backButton);
+
+    await screen.findByText('Charizard');
+    await waitFor(() => expect(scrollToSpy).toHaveBeenLastCalledWith(0, 500));
+    scrollToSpy.mockRestore();
   });
 });
