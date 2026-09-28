@@ -191,6 +191,15 @@
   color: var(--text-h);
 }
 
+.newest-first-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  color: var(--text-h);
+  cursor: pointer;
+}
+
 .filters button {
   font: inherit;
   padding: 6px 10px;

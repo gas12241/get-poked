@@ -9,6 +9,7 @@ export interface SetNested {
   id: number;
   name: string;
   series: string;
+  release_date: string | null;
 }
 
 export interface Set {
@@ -86,6 +87,10 @@ export interface CardListParams {
   ordering?: string;
   page?: number;
   page_size?: number;
+  // Only meaningful for `ordering=name`/`number` — decides which way tied
+  // cards (same name, or same printed number) break by release date. See
+  // docs/decisions.md #038.
+  newest_first?: boolean;
 }
 
 function toQueryString(params: CardListParams) {

@@ -216,6 +216,74 @@ describe('CardListPage', () => {
     await waitFor(() => expect(capturedOrdering).toBe('-number'));
   });
 
+  it('sends release_date as the ordering param when that sort is chosen, e.g. to see every variant of a searched name in release order', async () => {
+    let capturedOrdering: string | null = null;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, ({ request }) => {
+        capturedOrdering = new URL(request.url).searchParams.get('ordering');
+        return HttpResponse.json({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Sort by' }),
+      'release_date',
+    );
+
+    await waitFor(() => expect(capturedOrdering).toBe('release_date'));
+
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Sort direction' }),
+      'desc',
+    );
+
+    await waitFor(() => expect(capturedOrdering).toBe('-release_date'));
+  });
+
+  it('offers "Newest print first" for Name/Number sorts, sends it as newest_first, and hides it for Release date sort', async () => {
+    let capturedParams: URLSearchParams | null = null;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, ({ request }) => {
+        capturedParams = new URL(request.url).searchParams;
+        return HttpResponse.json({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+    await waitFor(() => expect(capturedParams).not.toBeNull());
+
+    // Default sort is Name, so the toggle is visible from the start.
+    const toggle = screen.getByLabelText('Newest print first');
+    expect(toggle).not.toBeChecked();
+    expect(capturedParams?.get('newest_first')).toBeNull();
+
+    await userEvent.click(toggle);
+    await waitFor(() => expect(capturedParams?.get('newest_first')).toBe('true'));
+
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Sort by' }),
+      'release_date',
+    );
+    expect(screen.queryByLabelText('Newest print first')).not.toBeInTheDocument();
+    await waitFor(() =>
+      // Irrelevant to a release_date sort, so it isn't sent even though
+      // it's still checked underneath (the toggle reappears pre-checked
+      // if the user switches back to Name/Number).
+      expect(capturedParams?.get('newest_first')).toBeNull(),
+    );
+  });
+
   it('offers rarities fetched from the API as dropdown options and sends the chosen one', async () => {
     let capturedRarity: string | null = null;
     server.use(

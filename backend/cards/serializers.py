@@ -27,7 +27,7 @@ class SetSerializer(serializers.ModelSerializer):
 class SetNestedSerializer(serializers.ModelSerializer):
     class Meta:
         model = Set
-        fields = ["id", "name", "series"]
+        fields = ["id", "name", "series", "release_date"]
 
 
 class AttackSerializer(serializers.ModelSerializer):
