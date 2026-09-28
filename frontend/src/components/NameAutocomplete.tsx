@@ -41,7 +41,20 @@ function NameAutocomplete({
     fetchSuggestionsRef.current = fetchSuggestions;
   }, [fetchSuggestions]);
 
+  // Set right before `onChange` in `selectSuggestion` below, so the effect
+  // below can tell "value changed because a suggestion was just picked"
+  // apart from "value changed because the user kept typing" — otherwise
+  // picking a suggestion re-triggers this same effect (it depends on
+  // `value`, which just changed to the full name) and re-fetches, and that
+  // fetch often still matches (the chosen name usually still starts with
+  // itself), popping the dropdown back open right after it was chosen.
+  const justSelectedRef = useRef<string | null>(null);
+
   useEffect(() => {
+    if (value === justSelectedRef.current) {
+      justSelectedRef.current = null;
+      return;
+    }
     const trimmed = value.trim();
     if (trimmed.length < MIN_CHARS) {
       // No setState here — `showSuggestions` below already hides the
@@ -74,6 +87,7 @@ function NameAutocomplete({
     isOpen && value.trim().length >= MIN_CHARS && suggestions.length > 0;
 
   function selectSuggestion(name: string) {
+    justSelectedRef.current = name;
     onChange(name);
     setIsOpen(false);
     setSuggestions([]);
