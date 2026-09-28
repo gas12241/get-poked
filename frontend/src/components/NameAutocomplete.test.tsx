@@ -80,6 +80,28 @@ describe('NameAutocomplete', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
 
+  it('does not reopen the dropdown after a suggestion is selected, even though selecting changes the value and would otherwise re-trigger a fetch', async () => {
+    // Deliberately resolves to the same match for any search, including
+    // "Piplup" itself once selected — the real API would do the same here,
+    // since "Piplup" starts with "Piplup".
+    const fetchSuggestions = vi.fn().mockResolvedValue(['Piplup']);
+    renderWithProviders(
+      <ControlledAutocomplete fetchSuggestions={fetchSuggestions} />,
+    );
+
+    const input = screen.getByLabelText('Search by name');
+    await userEvent.type(input, 'pi');
+    await userEvent.click(
+      await screen.findByRole('option', { name: 'Piplup' }),
+    );
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+
+    // Past the debounce window the selection's own value change would have
+    // re-armed, plus a margin.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+  });
+
   it('supports keyboard navigation: ArrowDown highlights, Enter selects', async () => {
     const fetchSuggestions = vi.fn().mockResolvedValue(['Pidgey', 'Piplup']);
     renderWithProviders(
