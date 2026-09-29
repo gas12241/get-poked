@@ -12,7 +12,7 @@ import type { QuizSession } from '../store/quizStore';
 import { useQuizStore } from '../store/quizStore';
 import { useAuthStore } from '../store/authStore';
 import NameAutocomplete from '../components/NameAutocomplete';
-import CaseOpeningReel from '../components/CaseOpeningReel';
+import CaseOpeningReel, { StartingReel } from '../components/CaseOpeningReel';
 import './pages.css';
 
 const MODES: { value: QuizMode; label: string }[] = [
@@ -31,13 +31,11 @@ function ModeSelection({
   questionCount,
   onSelectCount,
   onSelect,
-  isPending,
   error,
 }: {
   questionCount: number;
   onSelectCount: (count: number) => void;
   onSelect: (mode: QuizMode) => void;
-  isPending: boolean;
   error: string | null;
 }) {
   return (
@@ -45,11 +43,7 @@ function ModeSelection({
       <h1>Quiz</h1>
       <div className="quiz-mode-buttons">
         {MODES.map((mode) => (
-          <button
-            key={mode.value}
-            onClick={() => onSelect(mode.value)}
-            disabled={isPending}
-          >
+          <button key={mode.value} onClick={() => onSelect(mode.value)}>
             {mode.label}
           </button>
         ))}
@@ -68,13 +62,45 @@ function ModeSelection({
             aria-checked={questionCount === value}
             className={questionCount === value ? 'active' : undefined}
             onClick={() => onSelectCount(value)}
-            disabled={isPending}
           >
             {label} ({value})
           </button>
         ))}
       </div>
       {error && <p>Failed to start quiz: {error}</p>}
+    </div>
+  );
+}
+
+// Shown in place of ModeSelection from the moment a mode is picked until
+// the first question's reel has fully revealed it — StartingReel (see
+// CaseOpeningReel.tsx) fills that wait with an idle spin instead of a dead
+// pause, then hands off into the same reveal QuizQuestionView would use.
+// The count is already known from the picker, so it's shown immediately
+// for continuity with QuizQuestionView's own header, even before the real
+// questions arrive. See docs/decisions.md #044.
+function StartingQuestion({
+  questionCount,
+  ready,
+  rarity,
+  imageSrc,
+  onFinish,
+}: {
+  questionCount: number;
+  ready: boolean;
+  rarity?: string;
+  imageSrc?: string;
+  onFinish: () => void;
+}) {
+  return (
+    <div className="quiz-question">
+      <p>Question 1 of {questionCount}</p>
+      <StartingReel
+        ready={ready}
+        rarity={rarity}
+        imageSrc={imageSrc}
+        onFinish={onFinish}
+      />
     </div>
   );
 }
@@ -279,20 +305,60 @@ function QuizPage() {
   const abandonSession = useQuizStore((s) => s.abandonSession);
   const isAuthenticated = useAuthStore((s) => s.accessToken !== null);
   const [questionCount, setQuestionCount] = useState(5);
+  // Set the moment a mode is picked, cleared once its first question has
+  // been fully revealed — while set (and not errored), StartingQuestion
+  // replaces ModeSelection/QuizQuestionView so there's a continuous idle
+  // reel to look at instead of a dead pause, then a hand-off into the real
+  // spin, instead of a hard cut. See docs/decisions.md #044.
+  const [pendingMode, setPendingMode] = useState<QuizMode | null>(null);
 
   const startQuiz = useMutation({
     mutationFn: (mode: QuizMode) =>
       getQuizQuestions({ mode, count: questionCount }),
+    // Session creation happens as soon as the fetch resolves — same timing
+    // as before this feature existed — so it's persisted the moment real
+    // question data exists. Navigating away or reloading mid-reveal then
+    // only ever loses the cosmetic idle/crossfade, never the fetched quiz
+    // itself; QuizQuestionView's own currentRevealed check (#043) already
+    // handles resuming an interrupted, not-yet-revealed first question.
     onSuccess: (data, mode) => startSession(mode, data.questions),
   });
+
+  // Covers both halves of starting a quiz: still fetching (session doesn't
+  // exist yet) and fetched-but-not-yet-revealed (session exists, at
+  // question 0, unrevealed) — StartingQuestion stays the same mounted
+  // component across that boundary so the idle loop can hand off into the
+  // real spin without unmounting.
+  const showingStartingQuestion =
+    pendingMode !== null &&
+    !startQuiz.isError &&
+    (!session || (session.currentIndex === 0 && !session.currentRevealed));
+
+  if (showingStartingQuestion) {
+    const firstQuestion = session?.questions[0];
+    return (
+      <StartingQuestion
+        questionCount={questionCount}
+        ready={firstQuestion !== undefined}
+        rarity={firstQuestion?.rarity}
+        imageSrc={firstQuestion?.image}
+        onFinish={() => {
+          revealCurrent();
+          setPendingMode(null);
+        }}
+      />
+    );
+  }
 
   if (!session) {
     return (
       <ModeSelection
         questionCount={questionCount}
         onSelectCount={setQuestionCount}
-        onSelect={(mode) => startQuiz.mutate(mode)}
-        isPending={startQuiz.isPending}
+        onSelect={(mode) => {
+          setPendingMode(mode);
+          startQuiz.mutate(mode);
+        }}
         error={startQuiz.isError ? (startQuiz.error as Error).message : null}
       />
     );

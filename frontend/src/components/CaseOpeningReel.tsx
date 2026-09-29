@@ -7,6 +7,21 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 export const SPIN_DURATION_MS = 3500;
 export const FLIP_DURATION_MS = 1000;
 
+// How long StartingReel's idle loop stays up before it's allowed to hand
+// off to the real spin, and how long the two crossfade for — see
+// StartingReel below and docs/decisions.md #044.
+export const MIN_IDLE_DURATION_MS = 700;
+export const CROSSFADE_MS = 250;
+
+function usePrefersReducedMotion(): boolean {
+  return useMemo(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true,
+    [],
+  );
+}
+
 // Decoys before the winning slot — enough to feel like a real spinning reel
 // over SPIN_DURATION_MS without an excessive number of DOM nodes.
 const DECOY_COUNT = 20;
@@ -85,12 +100,7 @@ function CaseOpeningReel({
   alt,
   onFinish,
 }: CaseOpeningReelProps) {
-  const prefersReducedMotion = useMemo(
-    () =>
-      typeof window !== 'undefined' &&
-      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true,
-    [],
-  );
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   // Randomized once per mount, not on every render.
   const decoyTiers = useMemo(
@@ -214,6 +224,130 @@ function CaseOpeningReel({
           />
         </div>
       )}
+    </div>
+  );
+}
+
+// Fades freshly-mounted `children` in from opacity 0 — same rAF-after-mount
+// trick used above (`started`/`revealed`), needed because a fresh mount and
+// its "real" opacity would otherwise land in the same paint, giving CSS
+// nothing to transition from.
+function RevealFadeIn({ children }: { children: React.ReactNode }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  return (
+    <div
+      className={`case-opening-reveal-fade${visible ? ' visible' : ''}`}
+      style={{ transitionDuration: `${CROSSFADE_MS}ms` }}
+    >
+      {children}
+    </div>
+  );
+}
+
+interface StartingReelProps {
+  // Whether the real first question has arrived yet — until it has, this
+  // renders an idle loop instead of the real spin (there's nothing to spin
+  // toward yet). See docs/decisions.md #044.
+  ready: boolean;
+  rarity?: string;
+  imageSrc?: string;
+  onFinish: () => void;
+}
+
+// Sits in front of CaseOpeningReel while the very first question is still
+// being fetched, so there's something to look at (a slow, idling loop of
+// generic card backs — no real data needed) instead of a dead pause between
+// picking a mode and the reel actually starting. Once the real question
+// arrives, it hands off to the unmodified CaseOpeningReel for the actual
+// fast spin-and-reveal, crossfading the two so the speed-up reads as a
+// "pull the lever" moment rather than a jump cut. See docs/decisions.md
+// #044 — only ever used for the first question of a quiz; every later
+// question already has its data on hand (decisions.md #040), so there's no
+// pause left to fill.
+export function StartingReel({
+  ready,
+  rarity,
+  imageSrc,
+  onFinish,
+}: StartingReelProps) {
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  // Same idle decoy count as the real spin, just for visual density — the
+  // idle loop has no landing math to keep in sync with, unlike DECOY_COUNT
+  // elsewhere in this file.
+  const idleTiers = useMemo(
+    () => Array.from({ length: DECOY_COUNT }, randomTier),
+    [],
+  );
+
+  // Keeps the idle loop up for at least this long even if the real data
+  // arrives instantly, so it always reads as a deliberate "idling, then
+  // pulled" beat rather than a flicker. Skipped under reduced motion — an
+  // artificial wait has no upside for a user who's asked for less motion.
+  const [minIdleElapsed, setMinIdleElapsed] = useState(prefersReducedMotion);
+  useEffect(() => {
+    if (prefersReducedMotion) return;
+    const timer = setTimeout(
+      () => setMinIdleElapsed(true),
+      MIN_IDLE_DURATION_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [prefersReducedMotion]);
+
+  const revealing =
+    ready && minIdleElapsed && rarity !== undefined && imageSrc !== undefined;
+
+  // Kept mounted for one crossfade beyond the moment `revealing` flips true,
+  // so the idle loop and the real spin briefly overlap instead of hard-
+  // cutting. Only meaningful without reduced motion (which skips
+  // transitions entirely, so there's nothing to keep overlapping for) —
+  // that case is handled below without a timer.
+  const [crossfadeElapsed, setCrossfadeElapsed] = useState(false);
+  useEffect(() => {
+    if (!revealing || prefersReducedMotion) return;
+    const timer = setTimeout(() => setCrossfadeElapsed(true), CROSSFADE_MS);
+    return () => clearTimeout(timer);
+  }, [revealing, prefersReducedMotion]);
+
+  const showIdle = prefersReducedMotion
+    ? !revealing
+    : !(revealing && crossfadeElapsed);
+
+  const idleView = (
+    <div
+      className={`case-opening${revealing ? ' fading-out' : ''}`}
+      style={
+        revealing ? { transitionDuration: `${CROSSFADE_MS}ms` } : undefined
+      }
+    >
+      <div className="case-opening-pointer" />
+      <div className="case-opening-idle-track">
+        {[...idleTiers, ...idleTiers].map((tier, index) => (
+          <div key={index} className="case-opening-item">
+            <CardBack tier={tier} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  if (!revealing) return idleView;
+
+  return (
+    <div className="case-opening-handoff">
+      {showIdle && idleView}
+      <RevealFadeIn>
+        <CaseOpeningReel
+          rarity={rarity}
+          imageSrc={imageSrc}
+          alt="Card to guess"
+          onFinish={onFinish}
+        />
+      </RevealFadeIn>
     </div>
   );
 }
