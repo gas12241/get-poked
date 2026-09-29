@@ -454,6 +454,18 @@
   text-align: left;
 }
 
+/* Keeps the submit button beside the guess input on every mode, not just
+   the plain-<input> ones — .name-autocomplete (guess_card/guess_set) is a
+   block-level div by default, which without this would push the button
+   onto its own line below, right where the suggestions dropdown (absolute,
+   spanning .name-autocomplete's own width) would end up covering it. */
+.quiz-question form {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
 /* Case-opening reel (docs/decisions.md #040) — a viewport onto a
    horizontally-sliding track of small card-back rectangles ("items", CS:GO
    case-opening style — a few neighbors visible on each side of the

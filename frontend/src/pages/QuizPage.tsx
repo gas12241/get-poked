@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   checkQuizAnswer,
   getQuizQuestions,
   submitQuizAttempt,
 } from '../api/quiz';
 import type { QuizAnswerInput, QuizMode } from '../api/quiz';
-import { getCardNames } from '../api/cards';
+import { filterSetNameSuggestions, getCardNames, getSets } from '../api/cards';
 import type { QuizSession } from '../store/quizStore';
 import { useQuizStore } from '../store/quizStore';
 import { useAuthStore } from '../store/authStore';
@@ -135,6 +135,12 @@ function QuizQuestionView({
     session.currentRevealed ? Date.now() : null,
   );
 
+  // Full set list, cached under the same ['sets'] query key CardListPage
+  // already uses — fetched once and filtered client-side per keystroke
+  // (see filterSetNameSuggestions), not re-fetched every question or every
+  // character typed.
+  const setsQuery = useQuery({ queryKey: ['sets'], queryFn: getSets });
+
   const question = session.questions[session.currentIndex];
 
   const checkMutation = useMutation({
@@ -217,6 +223,20 @@ function QuizQuestionView({
                   value={guess}
                   onChange={setGuess}
                   fetchSuggestions={(text) => getCardNames({ search: text })}
+                  ariaLabel="Your guess"
+                />
+              ) : session.mode === 'guess_set' ? (
+                // Same reasoning as guess_card above — the full set list
+                // isn't scoped to this question's eligible pool, so it
+                // can't hint at the answer. See docs/decisions.md #045.
+                <NameAutocomplete
+                  value={guess}
+                  onChange={setGuess}
+                  fetchSuggestions={(text) =>
+                    Promise.resolve(
+                      filterSetNameSuggestions(setsQuery.data ?? [], text),
+                    )
+                  }
                   ariaLabel="Your guess"
                 />
               ) : (
