@@ -8,12 +8,18 @@ export interface QuizSession {
   currentIndex: number;
   answers: QuizAnswerInput[];
   submitted: boolean;
+  // Whether the case-opening reel has already played for the question at
+  // currentIndex — persisted so leaving the quiz page (or reloading) and
+  // coming back doesn't replay it for a question already shown. Reset
+  // whenever currentIndex advances to a fresh, unrevealed question.
+  currentRevealed: boolean;
 }
 
 interface QuizState {
   session: QuizSession | null;
   startSession: (mode: QuizMode, questions: QuizQuestion[]) => void;
   recordAnswer: (answer: QuizAnswerInput) => void;
+  revealCurrent: () => void;
   markSubmitted: () => void;
   abandonSession: () => void;
 }
@@ -34,6 +40,7 @@ export const useQuizStore = create<QuizState>()(
             currentIndex: 0,
             answers: [],
             submitted: false,
+            currentRevealed: false,
           },
         }),
       recordAnswer: (answer) =>
@@ -44,9 +51,16 @@ export const useQuizStore = create<QuizState>()(
               ...state.session,
               answers: [...state.session.answers, answer],
               currentIndex: state.session.currentIndex + 1,
+              currentRevealed: false,
             },
           };
         }),
+      revealCurrent: () =>
+        set((state) =>
+          state.session
+            ? { session: { ...state.session, currentRevealed: true } }
+            : state,
+        ),
       markSubmitted: () =>
         set((state) =>
           state.session

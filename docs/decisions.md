@@ -591,6 +591,23 @@ Why
 
 ---
 
+## Decision 043
+
+Case-opening reel no longer replays for a question already revealed
+
+Why
+
+- **Found via live-browser testing, not a design ask**: decision #040 explicitly called replaying the reel on every remount "a deliberate simplification, not a bug," reasoning that no one would realistically leave and rejoin the quiz page within seconds. Testing showed the more common real case: navigating to Cards and back, or reloading, mid-quiz — genuinely disruptive to replay a ~4.5s animation for a card the player has already seen and may already be mid-guess on
+- **A single `currentRevealed: boolean` added to the persisted `QuizSession`** (`quizStore.ts`), not a full history of revealed indices — only the question at `currentIndex` can ever be "in view" needing this, so tracking anything more (e.g. a set of all revealed indices across the whole quiz) would be unused state. Reset to `false` whenever `currentIndex` advances (`recordAnswer`), set to `true` by a new `revealCurrent` action called from the reel's `onFinish`
+- **Piggybacked on the existing persistence rather than adding new plumbing**: `QuizSession` was already persisted via `zustand/persist` for the "quiz survives a reload" behavior (decisions.md #030), so this "was this question already shown" flag survives the exact same way, for free
+- **`QuizQuestionView`'s `isOpening`/`startedAt` initial state read `session.currentRevealed` once at mount**, matching how the component already remounts fresh per question (`key={session.currentIndex}`, decisions.md #040) — no extra effect needed to sync it. `startedAt` is set immediately (not left null) when skipping the reel, so `time_taken_seconds` still starts counting from when the question actually became visible
+- **`useState(() => ...)` (lazy initializer), not a bare value, for the `Date.now()` case** — a newer ESLint rule (`react-hooks/purity`) flags calling an impure function like `Date.now()` directly in a render-time expression; the lazy-initializer form is React's sanctioned "compute once at mount" pattern and satisfies the rule
+- **An old, already-persisted session with no `currentRevealed` field** (from before this change) reads as `undefined`, which is falsy — so it safely falls back to the old "always show the reel" behavior for anyone mid-quiz when this ships, no migration needed
+- **The existing "resumes after remounting" test's own comment (which said this replay was deliberate) needed correcting**, not just a new test added — it happens to unmount *before* the reel's `onFinish` actually fires (the reveal image appears at the 'landed' phase, well before `onFinish` fires at 'done' — decisions.md #040 addendum), so `currentRevealed` was never set and that test still validates the "not yet revealed" replay case correctly; a new test covers the already-revealed case by waiting for the guess form (proof `onFinish` ran) before unmounting
+- **Verified live**: started a quiz, waited for the reveal, navigated to Cards and back — guess form appeared immediately, no reel, confirmed via computed page state rather than a screenshot alone; a hard reload showed the same
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

@@ -83,10 +83,12 @@ function QuizQuestionView({
   session,
   onAnswered,
   onAbandon,
+  onRevealed,
 }: {
   session: QuizSession;
   onAnswered: (answer: QuizAnswerInput) => void;
   onAbandon: () => void;
+  onRevealed: () => void;
 }) {
   const [guess, setGuess] = useState('');
   const [feedback, setFeedback] = useState<{
@@ -96,11 +98,16 @@ function QuizQuestionView({
   // Every question gets its own case-opening reveal — this component
   // remounts fresh per question (see the `key` prop where it's rendered
   // below), so this state naturally resets each time. See
-  // docs/decisions.md #040.
-  const [isOpening, setIsOpening] = useState(true);
+  // docs/decisions.md #040. Skipped if this question was already revealed
+  // before this mount (e.g. navigating away and back, or a reload) — see
+  // docs/decisions.md #043.
+  const [isOpening, setIsOpening] = useState(!session.currentRevealed);
   // Set once the reel finishes, not at mount — otherwise every question's
-  // recorded time would be inflated by the reel's own duration.
-  const [startedAt, setStartedAt] = useState<number | null>(null);
+  // recorded time would be inflated by the reel's own duration. If already
+  // revealed, there's no reel to wait on, so the timer starts right away.
+  const [startedAt, setStartedAt] = useState<number | null>(() =>
+    session.currentRevealed ? Date.now() : null,
+  );
 
   const question = session.questions[session.currentIndex];
 
@@ -141,6 +148,7 @@ function QuizQuestionView({
           onFinish={() => {
             setIsOpening(false);
             setStartedAt(Date.now());
+            onRevealed();
           }}
         />
       ) : (
@@ -266,6 +274,7 @@ function QuizPage() {
   const session = useQuizStore((s) => s.session);
   const startSession = useQuizStore((s) => s.startSession);
   const recordAnswer = useQuizStore((s) => s.recordAnswer);
+  const revealCurrent = useQuizStore((s) => s.revealCurrent);
   const markSubmitted = useQuizStore((s) => s.markSubmitted);
   const abandonSession = useQuizStore((s) => s.abandonSession);
   const isAuthenticated = useAuthStore((s) => s.accessToken !== null);
@@ -308,6 +317,7 @@ function QuizPage() {
       session={session}
       onAnswered={recordAnswer}
       onAbandon={abandonSession}
+      onRevealed={revealCurrent}
     />
   );
 }
