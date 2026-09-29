@@ -38,9 +38,7 @@ class CardOrderingFilter(OrderingFilter):
             return queryset
 
         has_number = any(field.lstrip("-") == "number" for field in ordering)
-        has_release_date = any(
-            field.lstrip("-") == "release_date" for field in ordering
-        )
+        has_release_date = any(field.lstrip("-") == "release_date" for field in ordering)
         has_name = any(field.lstrip("-") == "name" for field in ordering)
         if not has_number and not has_release_date and not has_name:
             return queryset.order_by(*ordering)

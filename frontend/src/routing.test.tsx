@@ -161,7 +161,9 @@ describe('Cards list scroll position', () => {
         });
       }),
     );
-    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
 
     renderApp('/?page=1');
     await screen.findByText('Next');
@@ -196,7 +198,9 @@ describe('Cards list scroll position', () => {
         });
       }),
     );
-    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
 
     renderApp('/?page=2');
     await screen.findByText('Charizard');

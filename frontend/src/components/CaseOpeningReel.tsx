@@ -79,7 +79,12 @@ interface CaseOpeningReelProps {
 // then the winning slot un-docks from the track and grows into a
 // full-size card as it flips to reveal the actual (already-masked) card
 // for this question. See docs/decisions.md #040.
-function CaseOpeningReel({ rarity, imageSrc, alt, onFinish }: CaseOpeningReelProps) {
+function CaseOpeningReel({
+  rarity,
+  imageSrc,
+  alt,
+  onFinish,
+}: CaseOpeningReelProps) {
   const prefersReducedMotion = useMemo(
     () =>
       typeof window !== 'undefined' &&
@@ -189,16 +194,24 @@ function CaseOpeningReel({ rarity, imageSrc, alt, onFinish }: CaseOpeningReelPro
       {phase !== 'spinning' && (
         <div
           className={
-            revealed ? 'case-opening-winner grown flipped' : 'case-opening-winner'
+            revealed
+              ? 'case-opening-winner grown flipped'
+              : 'case-opening-winner'
           }
           style={{
-            transitionDuration: prefersReducedMotion ? '0ms' : `${FLIP_DURATION_MS}ms`,
+            transitionDuration: prefersReducedMotion
+              ? '0ms'
+              : `${FLIP_DURATION_MS}ms`,
           }}
         >
           <div className="case-opening-face">
             <CardBack tier={tierForRarity(rarity)} />
           </div>
-          <img className="case-opening-face case-opening-face-reveal" src={imageSrc} alt={alt} />
+          <img
+            className="case-opening-face case-opening-face-reveal"
+            src={imageSrc}
+            alt={alt}
+          />
         </div>
       )}
     </div>
