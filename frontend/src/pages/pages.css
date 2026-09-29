@@ -618,6 +618,72 @@
   transform: rotateY(180deg);
 }
 
+/* StartingReel's idle loop (docs/decisions.md #044) — a slow, endless
+   scroll of generic card backs shown while the very first question is
+   still being fetched, so there's motion to look at instead of a dead
+   pause. Two copies of the same decoy list are rendered back to back and
+   the track scrolls exactly half its own width (`-50%`), so it loops with
+   no visible seam regardless of how many decoys there are. Much slower
+   than the real spin (14s to cross the full set vs. SPIN_DURATION_MS) —
+   deliberately idling, not racing. */
+@keyframes case-opening-idle-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.case-opening-idle-track {
+  display: flex;
+  gap: var(--reel-gap);
+  height: 100%;
+  width: max-content;
+  animation: case-opening-idle-scroll 14s linear infinite;
+}
+
+/* Once the real question arrives, the idle view and the real
+   CaseOpeningReel briefly overlap in the same cell (grid stacking, not
+   absolute positioning, so neither needs to duplicate `.case-opening`'s
+   own sizing) and crossfade — see StartingReel in CaseOpeningReel.tsx. */
+.case-opening-handoff {
+  display: grid;
+}
+
+.case-opening-handoff > * {
+  grid-area: 1 / 1;
+}
+
+.case-opening.fading-out {
+  /* Duration set inline from CROSSFADE_MS in CaseOpeningReel.tsx, same
+     convention as .case-opening-winner above. */
+  transition-property: opacity;
+  transition-timing-function: ease;
+  opacity: 0;
+}
+
+.case-opening-reveal-fade {
+  opacity: 0;
+  transition-property: opacity;
+  transition-timing-function: ease;
+}
+
+.case-opening-reveal-fade.visible {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .case-opening-idle-track {
+    animation: none;
+  }
+
+  .case-opening.fading-out,
+  .case-opening-reveal-fade {
+    transition: none;
+  }
+}
+
 .quiz-abandon {
   float: right;
 }

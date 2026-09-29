@@ -7,7 +7,9 @@ import { renderWithProviders } from '../test/renderWithProviders';
 import { useQuizStore } from '../store/quizStore';
 import { useAuthStore } from '../store/authStore';
 import {
+  CROSSFADE_MS,
   FLIP_DURATION_MS,
+  MIN_IDLE_DURATION_MS,
   SPIN_DURATION_MS,
 } from '../components/CaseOpeningReel';
 import QuizPage from './QuizPage';
@@ -27,8 +29,16 @@ beforeEach(() => {
 // from the moment it mounts, not just once spinning finishes — only the
 // guess form is actually gated on that. Derived from the component's own
 // exported durations, not a hardcoded number, so this can't silently fall
-// out of sync if those change.
-const REEL_TIMEOUT_MS = SPIN_DURATION_MS + FLIP_DURATION_MS + 1000;
+// out of sync if those change. The very first question of a quiz also sits
+// through StartingReel's idle loop and crossfade before its own spin even
+// starts (docs/decisions.md #044) — every helper below starts from
+// ModeSelection, so all of them pay that cost.
+const REEL_TIMEOUT_MS =
+  MIN_IDLE_DURATION_MS +
+  CROSSFADE_MS +
+  SPIN_DURATION_MS +
+  FLIP_DURATION_MS +
+  1000;
 
 async function startQuiz() {
   renderWithProviders(<QuizPage />);
