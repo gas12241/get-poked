@@ -21,11 +21,21 @@ const MODES: { value: QuizMode; label: string }[] = [
   { value: 'guess_hp', label: 'Guess the HP' },
 ];
 
+const QUESTION_COUNTS: { value: number; label: string }[] = [
+  { value: 3, label: 'Short' },
+  { value: 5, label: 'Medium' },
+  { value: 7, label: 'Long' },
+];
+
 function ModeSelection({
+  questionCount,
+  onSelectCount,
   onSelect,
   isPending,
   error,
 }: {
+  questionCount: number;
+  onSelectCount: (count: number) => void;
   onSelect: (mode: QuizMode) => void;
   isPending: boolean;
   error: string | null;
@@ -41,6 +51,26 @@ function ModeSelection({
             disabled={isPending}
           >
             {mode.label}
+          </button>
+        ))}
+      </div>
+      <p className="quiz-count-label">Quiz length</p>
+      <div
+        className="quiz-count-picker"
+        role="radiogroup"
+        aria-label="Quiz length"
+      >
+        {QUESTION_COUNTS.map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={questionCount === value}
+            className={questionCount === value ? 'active' : undefined}
+            onClick={() => onSelectCount(value)}
+            disabled={isPending}
+          >
+            {label} ({value})
           </button>
         ))}
       </div>
@@ -236,15 +266,18 @@ function QuizPage() {
   const markSubmitted = useQuizStore((s) => s.markSubmitted);
   const abandonSession = useQuizStore((s) => s.abandonSession);
   const isAuthenticated = useAuthStore((s) => s.accessToken !== null);
+  const [questionCount, setQuestionCount] = useState(5);
 
   const startQuiz = useMutation({
-    mutationFn: (mode: QuizMode) => getQuizQuestions({ mode }),
+    mutationFn: (mode: QuizMode) => getQuizQuestions({ mode, count: questionCount }),
     onSuccess: (data, mode) => startSession(mode, data.questions),
   });
 
   if (!session) {
     return (
       <ModeSelection
+        questionCount={questionCount}
+        onSelectCount={setQuestionCount}
         onSelect={(mode) => startQuiz.mutate(mode)}
         isPending={startQuiz.isPending}
         error={startQuiz.isError ? (startQuiz.error as Error).message : null}

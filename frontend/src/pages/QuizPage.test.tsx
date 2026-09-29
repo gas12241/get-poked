@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
@@ -49,6 +49,41 @@ describe('QuizPage', () => {
   it('shows mode selection and starts a quiz for the selected mode', async () => {
     await startQuiz();
     expect(screen.getByText('Question 1 of 1')).toBeInTheDocument();
+  });
+
+  it('defaults to a Medium (5-question) quiz, and sends the chosen length as count', async () => {
+    let capturedCount: string | null = null;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/quiz/`, ({ request }) => {
+        capturedCount = new URL(request.url).searchParams.get('count');
+        return HttpResponse.json({
+          questions: [
+            {
+              card: 1,
+              image: 'https://example.com/masked.png',
+              rarity: 'Rare Holo',
+              supertype: 'Pokémon',
+              types: ['Fire'],
+            },
+          ],
+        });
+      }),
+    );
+
+    renderWithProviders(<QuizPage />);
+
+    const mediumButton = screen.getByRole('radio', { name: 'Medium (5)' });
+    expect(mediumButton).toHaveAttribute('aria-checked', 'true');
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Short (3)' }));
+    expect(screen.getByRole('radio', { name: 'Short (3)' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Guess the Card' }));
+
+    await waitFor(() => expect(capturedCount).toBe('3'));
   });
 
   it('offers name suggestions for "Guess the Card" without scoping them to a set or series', async () => {

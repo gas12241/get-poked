@@ -310,7 +310,7 @@ Returns a randomly generated quiz.
 Params
 
 - `mode` — `guess_card`, `guess_set`, `guess_hp` (required)
-- `count` — number of questions, default 10, capped at 20
+- `count` — number of questions, default 5, capped at 20. The frontend's quiz-length picker (Short/Medium/Long) always sends this explicitly as 3/5/7 — see docs/decisions.md #041
 - `rarities` — comma-separated list (e.g. `Ultra Rare,Secret Rare,Special Illustration Rare`) further narrowing the card pool within whatever's already eligible for the mode. Applies to all modes. Omitted or empty means no additional restriction.
 
 Description

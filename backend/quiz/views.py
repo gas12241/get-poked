@@ -13,7 +13,7 @@ from .questions import build_question, check_answer
 from .serializers import QuizAttemptSerializer
 
 VALID_MODES = (GUESS_CARD, GUESS_SET, GUESS_HP)
-DEFAULT_QUESTION_COUNT = 10
+DEFAULT_QUESTION_COUNT = 5
 MAX_QUESTION_COUNT = 20
 
 
