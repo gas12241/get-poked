@@ -168,9 +168,11 @@ describe('QuizPage', () => {
 
     renderWithProviders(<QuizPage />);
 
-    // Remounting replays the case-opening reel too (it's keyed to the
-    // question view's own mount, with no separate "already seen" tracking
-    // across reloads — a deliberate simplification, not a bug).
+    // Unmounted mid-reel, before it actually finished (the reveal image
+    // appears as soon as the reel lands, well before its onFinish fires —
+    // see docs/decisions.md #040 addendum), so this question was never
+    // marked revealed. Remounting replays the reel in full. See the next
+    // test for the already-revealed case (docs/decisions.md #043).
     expect(
       await screen.findByAltText(
         'Card to guess',
@@ -178,6 +180,28 @@ describe('QuizPage', () => {
         { timeout: REEL_TIMEOUT_MS },
       ),
     ).toBeInTheDocument();
+    expect(screen.getByText('Question 1 of 1')).toBeInTheDocument();
+  });
+
+  it('skips the case-opening reel on remount for a question already revealed', async () => {
+    const { unmount } = renderWithProviders(<QuizPage />);
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Guess the Card' }),
+    );
+    // Wait for the reel to actually finish (the guess form only appears
+    // once it does), unlike the previous test which unmounts mid-reel.
+    await screen.findByLabelText(
+      'Your guess',
+      {},
+      { timeout: REEL_TIMEOUT_MS },
+    );
+    unmount();
+
+    renderWithProviders(<QuizPage />);
+
+    // Already revealed before this remount, so the reel is skipped
+    // entirely and the guess form is there immediately.
+    expect(screen.getByLabelText('Your guess')).toBeInTheDocument();
     expect(screen.getByText('Question 1 of 1')).toBeInTheDocument();
   });
 });
