@@ -168,3 +168,23 @@ export const getCardNames = ({
   }
   return apiClient<string[]>(`/api/v1/card-names/?${params.toString()}`);
 };
+
+// Set-name suggestions for the Quiz page's "Guess the Set" input — unlike
+// card names, there's no dedicated backend endpoint: GET /api/v1/sets/
+// already returns the full unpaginated set list (~174 today), small enough
+// to fetch once (React Query caches it under queryKey ['sets'], shared
+// with CardListPage) and filter client-side on every keystroke instead of
+// hitting the network each time. Same shortest-first-8-alphabetical shape
+// as getCardNames, minus the dedicated ranking that one needs (set names
+// don't cluster around shared prefixes the way species reprints do).
+export function filterSetNameSuggestions(sets: Set[], search: string) {
+  const trimmed = search.trim().toLowerCase();
+  if (!trimmed) return [];
+  const matches = new Set<string>();
+  for (const set of sets) {
+    if (set.name.toLowerCase().startsWith(trimmed)) {
+      matches.add(set.name);
+    }
+  }
+  return [...matches].sort((a, b) => a.localeCompare(b)).slice(0, 8);
+}

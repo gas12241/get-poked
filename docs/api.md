@@ -177,7 +177,7 @@ GET /api/v1/sets/
 
 Description
 
-Returns the full list of sets, unpaginated (see docs/decisions.md #028). Supports `?ordering=` (`name`, `release_date`). No authentication required.
+Returns the full list of sets, unpaginated (see docs/decisions.md #028). Supports `?ordering=` (`name`, `release_date`). No authentication required. Small enough (~174 sets) that the Quiz page's "Guess the Set" name suggestions filter this same response client-side rather than calling a dedicated search endpoint — see docs/decisions.md #045.
 
 Status
 

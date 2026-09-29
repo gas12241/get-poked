@@ -629,6 +629,22 @@ Why
 
 ---
 
+## Decision 045
+
+Quiz guess form: submit button stays beside the input on every mode, and "Guess the Set" gets the same name-autocomplete as "Guess the Card"
+
+Why
+
+- **The submit button was already visually beside the plain `<input>`** used for "Guess the HP" and (previously) "Guess the Set" — but `NameAutocomplete`'s outer wrapper is a `<div>` (block-level), so once "Guess the Card" started using it (decisions.md #036), the button landed on its own line below it instead, and the suggestions dropdown (absolutely positioned, spanning the div's own width) would render right on top of where that button was. Found by the user, not something jsdom-based tests would have caught (no real layout engine) — fixed live, confirmed with a screenshot
+- **Fixed with `display: flex` on `.quiz-question form`**, not by changing `NameAutocomplete` itself — the div stays block-level, but as a flex item in a row it naturally shrinks to its input's width instead of stretching full-width, which also means the dropdown (still sized to its own parent) no longer has any excess width to cover the now-beside-it button with. One CSS rule fixes all three modes at once, plain `<input>` included, rather than a fix specific to the autocomplete case
+- **"Guess the Set" now uses `NameAutocomplete` too**, reusing the exact same component "Guess the Card" already has, just with a different `fetchSuggestions`. Same non-leaking reasoning as decisions.md #036: the suggestion list is the full, unscoped set catalog, not narrowed to this question's eligible pool, so it can't hint at the answer
+- **No new backend endpoint** — `GET /api/v1/sets/` already returns the full unpaginated set list (~174 today, see docs/decisions.md #028), small enough to fetch once and filter client-side per keystroke instead of adding a `set-names` endpoint mirroring `card-names` (decisions.md #036). Fetched via `useQuery({ queryKey: ['sets'], queryFn: getSets })` in `QuizQuestionView` — same query key `CardListPage` already uses for its own set list, so React Query's cache is shared rather than issuing a second independent fetch if a user visits both pages in one session; only re-fetched once per that cache's lifetime, not once per question or per keystroke
+- **`filterSetNameSuggestions` is a small, pure, directly-testable function** (`api/cards.ts`) — prefix match, case-insensitive, deduped, capped at 8, alphabetical — deliberately kept separate from the `useQuery` call so it has no network/React dependency of its own to mock in tests
+- **The user also asked whether "charizard" (lowercase) is accepted for "Charizard"** — yes, unchanged, already true and already documented: `check_answer` (`quiz/questions.py`) strips and lowercases both the guess and the real answer before comparing, for every mode. No code change needed, just confirmed by reading the existing implementation
+- **Verified live**: screenshots of "Guess the Card" confirmed the submit button now stays visible beside the input with the suggestions dropdown open beneath it (previously fully covered); "Guess the Set" confirmed offering and accepting real set-name suggestions ("Base", "Base Set 2", "Battle Styles" for "ba") against the real synced catalog. A new regression test for the set suggestions was confirmed to fail without the fix (falls back to the plain input) before restoring it
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

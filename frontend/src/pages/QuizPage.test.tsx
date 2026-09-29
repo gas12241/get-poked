@@ -118,6 +118,58 @@ describe('QuizPage', () => {
     expect(lastRequest.get('series')).toBeNull();
   });
 
+  it('offers set-name suggestions for "Guess the Set", filtered by prefix', async () => {
+    server.use(
+      http.get(`${BASE_URL}/api/v1/quiz/`, () => {
+        return HttpResponse.json({
+          questions: [
+            {
+              card: 1,
+              image: 'https://example.com/masked.png',
+              rarity: 'Rare Holo',
+              supertype: 'Pokémon',
+              types: ['Fire'],
+              name: 'Charizard',
+              hp: '120',
+            },
+          ],
+        });
+      }),
+      http.get(`${BASE_URL}/api/v1/sets/`, () => {
+        return HttpResponse.json([
+          { id: 1, name: 'Base', series: 'Base', release_date: null },
+          { id: 2, name: 'Base Set 2', series: 'Base', release_date: null },
+          { id: 3, name: 'Jungle', series: 'Base', release_date: null },
+        ]);
+      }),
+    );
+
+    renderWithProviders(<QuizPage />);
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Guess the Set' }),
+    );
+    await screen.findByLabelText(
+      'Your guess',
+      {},
+      { timeout: REEL_TIMEOUT_MS },
+    );
+
+    await userEvent.type(screen.getByLabelText('Your guess'), 'ba');
+
+    expect(
+      await screen.findByRole('option', { name: 'Base' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: 'Base Set 2' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', { name: 'Jungle' }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('option', { name: 'Base' }));
+    expect(screen.getByLabelText('Your guess')).toHaveValue('Base');
+  });
+
   it('shows feedback for a guess and advances to the summary', async () => {
     await completeOneQuestionQuiz();
     expect(screen.getByText('Score: 1 / 1')).toBeInTheDocument();
