@@ -289,10 +289,16 @@ describe('CardListPage', () => {
   });
 
   it('offers "Newest print first" for Name/Number sorts, sends it as newest_first, and hides it for Release date sort', async () => {
-    let capturedParams: URLSearchParams | null = null;
+    // A plain `let capturedParams: URLSearchParams | null` here trips a
+    // narrowing quirk in the pinned TypeScript version specifically in this
+    // test (the same pattern works fine elsewhere in this file) — a ref
+    // object sidesteps it.
+    const capturedParams: { current: URLSearchParams | null } = {
+      current: null,
+    };
     server.use(
       http.get(`${BASE_URL}/api/v1/cards/`, ({ request }) => {
-        capturedParams = new URL(request.url).searchParams;
+        capturedParams.current = new URL(request.url).searchParams;
         return HttpResponse.json({
           count: 0,
           next: null,
@@ -303,26 +309,30 @@ describe('CardListPage', () => {
     );
 
     renderWithProviders(<CardListPage />);
-    await waitFor(() => expect(capturedParams).not.toBeNull());
+    await waitFor(() => expect(capturedParams.current).not.toBeNull());
 
     // Default sort is Name, so the toggle is visible from the start.
     const toggle = screen.getByLabelText('Newest print first');
     expect(toggle).not.toBeChecked();
-    expect(capturedParams?.get('newest_first')).toBeNull();
+    expect(capturedParams.current?.get('newest_first')).toBeNull();
 
     await userEvent.click(toggle);
-    await waitFor(() => expect(capturedParams?.get('newest_first')).toBe('true'));
+    await waitFor(() =>
+      expect(capturedParams.current?.get('newest_first')).toBe('true'),
+    );
 
     await userEvent.selectOptions(
       screen.getByRole('combobox', { name: 'Sort by' }),
       'release_date',
     );
-    expect(screen.queryByLabelText('Newest print first')).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText('Newest print first'),
+    ).not.toBeInTheDocument();
     await waitFor(() =>
       // Irrelevant to a release_date sort, so it isn't sent even though
       // it's still checked underneath (the toggle reappears pre-checked
       // if the user switches back to Name/Number).
-      expect(capturedParams?.get('newest_first')).toBeNull(),
+      expect(capturedParams.current?.get('newest_first')).toBeNull(),
     );
   });
 

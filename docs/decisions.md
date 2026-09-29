@@ -577,6 +577,20 @@ Why
 
 ---
 
+## Decision 042
+
+Fixed CI failing on both jobs (lint/format drift, plus a real `tsc -b` narrowing bug in one test)
+
+Why
+
+- **CI had been silently not running per-commit for a stretch**: pushes since decisions.md #037/#038/#039/#040 landed without `ruff format`/`ruff check`/`prettier --check` being run locally first, so formatting drift accumulated across several backend (`cards/ordering.py`, `cards/tests/test_images.py`, `cards/tests/test_views.py`) and frontend (`CaseOpeningReel.tsx`, `CardListPage.test.tsx`, `QuizPage.test.tsx`, `routing.test.tsx`) files without being caught. Both CI jobs failed as soon as they actually ran again (on decision #040's and #041's pushes) — the backend job at `ruff check` (one genuine `E501` line-too-long in `test_images.py`), the frontend job at `prettier --check`. Fixed by running `ruff format .` and `npx prettier --write .` across the whole tree rather than hand-fixing each file
+- **A second, unrelated problem was hiding behind the first**: CI's frontend job runs Lint → Format check → Type check → Tests in sequence and stops at the first failure, so the format-check failure was masking a real `npx tsc -b` error in `CardListPage.test.tsx` (introduced by decision #038's commit) that would have failed CI on its own regardless. Confirmed by running the full local check sequence end-to-end after the formatting fix, matching `.github/workflows/ci.yml` step-by-step, rather than assuming one fix meant CI was green
+- **The `tsc` error was a real, reproducible narrowing quirk in the pinned TypeScript version, not a mistake in the test's logic**: `let capturedParams: URLSearchParams | null = null;` reassigned inside an MSW request-handler closure, then read via `capturedParams?.get(...)` — the exact same pattern used successfully twice elsewhere in the same file — type-checked to `never` at every read site in this one test specifically. Isolated with a minimal reproduction outside the project (confirmed against fresh installs of three different TypeScript versions) before concluding it wasn't project-specific misconfiguration; never fully pinned down which exact statement triggers it despite bisecting the test body, so this is recorded as an observed compiler limitation to work around, not a fully explained one
+- **Fixed by capturing into a ref object (`{ current: URLSearchParams | null }`) instead of a bare reassigned `let`** — reading `capturedParams.current?.get(...)` is a plain property access on every read, not a flow-narrowed local variable, so it doesn't hit whatever code path in the checker produces the bad narrowing. Scoped the fix to just this one test (the other two working usages of the bare-`let` pattern in the same file were left alone) rather than rewriting the pattern project-wide for a bug that, as far as could be determined, only manifests here
+- **No test behavior changed** — this was purely a compile-time fix; the full backend (98% coverage) and frontend (73 tests) suites, plus `ruff check`/`ruff format --check`/`prettier --check`/`eslint`/`tsc -b`/migration-check, were all run locally end-to-end to confirm they match what CI actually runs before pushing
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

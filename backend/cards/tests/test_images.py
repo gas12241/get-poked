@@ -9,7 +9,9 @@ from cards.models import Card, Set
 
 class CheckAndFixCardImagesTests(TestCase):
     def setUp(self):
-        self.set_a = Set.objects.create(tcg_id="mcd14", name="McDonald's Collection 2014", series="Promo")
+        self.set_a = Set.objects.create(
+            tcg_id="mcd14", name="McDonald's Collection 2014", series="Promo"
+        )
 
     def make_card(self, tcg_id, image_small, image_large):
         return Card.objects.create(
@@ -25,7 +27,9 @@ class CheckAndFixCardImagesTests(TestCase):
     @responses.activate
     def test_leaves_a_working_small_image_untouched(self):
         card = self.make_card(
-            "ok1", "https://images.pokemontcg.io/ok1.png", "https://images.pokemontcg.io/ok1_hires.png"
+            "ok1",
+            "https://images.pokemontcg.io/ok1.png",
+            "https://images.pokemontcg.io/ok1_hires.png",
         )
         responses.add(responses.HEAD, card.image_small, status=200)
 
@@ -40,7 +44,9 @@ class CheckAndFixCardImagesTests(TestCase):
     @responses.activate
     def test_falls_back_to_image_large_when_only_that_one_works(self):
         card = self.make_card(
-            "broken1", "https://images.pokemontcg.io/broken1.png", "https://images.pokemontcg.io/broken1_hires.png"
+            "broken1",
+            "https://images.pokemontcg.io/broken1.png",
+            "https://images.pokemontcg.io/broken1_hires.png",
         )
         responses.add(responses.HEAD, card.image_small, status=404)
         responses.add(responses.HEAD, card.image_large, status=200)
@@ -56,7 +62,9 @@ class CheckAndFixCardImagesTests(TestCase):
     @responses.activate
     def test_blanks_both_when_neither_image_works(self):
         card = self.make_card(
-            "dead1", "https://images.pokemontcg.io/dead1.png", "https://images.pokemontcg.io/dead1_hires.png"
+            "dead1",
+            "https://images.pokemontcg.io/dead1.png",
+            "https://images.pokemontcg.io/dead1_hires.png",
         )
         responses.add(responses.HEAD, card.image_small, status=404)
         responses.add(responses.HEAD, card.image_large, status=404)
@@ -72,7 +80,9 @@ class CheckAndFixCardImagesTests(TestCase):
     @responses.activate
     def test_a_network_error_is_treated_the_same_as_unreachable(self):
         card = self.make_card(
-            "err1", "https://images.pokemontcg.io/err1.png", "https://images.pokemontcg.io/err1_hires.png"
+            "err1",
+            "https://images.pokemontcg.io/err1.png",
+            "https://images.pokemontcg.io/err1_hires.png",
         )
         responses.add(
             responses.HEAD,
@@ -88,7 +98,9 @@ class CheckAndFixCardImagesTests(TestCase):
     @responses.activate
     def test_management_command_runs_and_reports(self):
         card = self.make_card(
-            "cmd1", "https://images.pokemontcg.io/cmd1.png", "https://images.pokemontcg.io/cmd1_hires.png"
+            "cmd1",
+            "https://images.pokemontcg.io/cmd1.png",
+            "https://images.pokemontcg.io/cmd1_hires.png",
         )
         responses.add(responses.HEAD, card.image_small, status=404)
         responses.add(responses.HEAD, card.image_large, status=200)

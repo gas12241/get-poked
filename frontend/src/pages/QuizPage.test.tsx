@@ -81,7 +81,9 @@ describe('QuizPage', () => {
       'true',
     );
 
-    await userEvent.click(screen.getByRole('button', { name: 'Guess the Card' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Guess the Card' }),
+    );
 
     await waitFor(() => expect(capturedCount).toBe('3'));
   });
@@ -130,11 +132,17 @@ describe('QuizPage', () => {
 
   it('does not show the guess form (or let a guess be typed) until the case-opening reel finishes', async () => {
     renderWithProviders(<QuizPage />);
-    await userEvent.click(screen.getByRole('button', { name: 'Guess the Card' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Guess the Card' }),
+    );
 
     expect(screen.queryByLabelText('Your guess')).not.toBeInTheDocument();
 
-    await screen.findByLabelText('Your guess', {}, { timeout: REEL_TIMEOUT_MS });
+    await screen.findByLabelText(
+      'Your guess',
+      {},
+      { timeout: REEL_TIMEOUT_MS },
+    );
   });
 
   it('returns to mode selection when a quiz is abandoned', async () => {
@@ -151,7 +159,11 @@ describe('QuizPage', () => {
     await userEvent.click(
       screen.getByRole('button', { name: 'Guess the Card' }),
     );
-    await screen.findByAltText('Card to guess', {}, { timeout: REEL_TIMEOUT_MS });
+    await screen.findByAltText(
+      'Card to guess',
+      {},
+      { timeout: REEL_TIMEOUT_MS },
+    );
     unmount();
 
     renderWithProviders(<QuizPage />);
@@ -160,7 +172,11 @@ describe('QuizPage', () => {
     // question view's own mount, with no separate "already seen" tracking
     // across reloads — a deliberate simplification, not a bug).
     expect(
-      await screen.findByAltText('Card to guess', {}, { timeout: REEL_TIMEOUT_MS }),
+      await screen.findByAltText(
+        'Card to guess',
+        {},
+        { timeout: REEL_TIMEOUT_MS },
+      ),
     ).toBeInTheDocument();
     expect(screen.getByText('Question 1 of 1')).toBeInTheDocument();
   });

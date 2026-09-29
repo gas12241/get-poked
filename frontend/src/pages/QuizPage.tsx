@@ -192,7 +192,10 @@ function QuizQuestionView({
                   onChange={(e) => setGuess(e.target.value)}
                 />
               )}
-              <button type="submit" disabled={checkMutation.isPending || !guess}>
+              <button
+                type="submit"
+                disabled={checkMutation.isPending || !guess}
+              >
                 Submit guess
               </button>
             </form>
@@ -269,7 +272,8 @@ function QuizPage() {
   const [questionCount, setQuestionCount] = useState(5);
 
   const startQuiz = useMutation({
-    mutationFn: (mode: QuizMode) => getQuizQuestions({ mode, count: questionCount }),
+    mutationFn: (mode: QuizMode) =>
+      getQuizQuestions({ mode, count: questionCount }),
     onSuccess: (data, mode) => startSession(mode, data.questions),
   });
 

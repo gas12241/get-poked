@@ -183,37 +183,61 @@ class CardReleaseDateOrderingTests(APITestCase):
         # default alphabetical-by-name ordering instead of really sorting
         # by release date.
         self.newest_set = Set.objects.create(
-            tcg_id="swsh1", name="Sword & Shield", series="Sword & Shield",
+            tcg_id="swsh1",
+            name="Sword & Shield",
+            series="Sword & Shield",
             release_date="2020-02-07",
         )
         self.oldest_set = Set.objects.create(
-            tcg_id="base1", name="Base", series="Base", release_date="1999-01-09",
+            tcg_id="base1",
+            name="Base",
+            series="Base",
+            release_date="1999-01-09",
         )
         self.middle_set = Set.objects.create(
-            tcg_id="neo1", name="Neo Genesis", series="Neo", release_date="2000-12-16",
+            tcg_id="neo1",
+            name="Neo Genesis",
+            series="Neo",
+            release_date="2000-12-16",
         )
         # Two cards in the same set (same release date) — a tiebreak is
         # needed for these to come back in checklist order. Numbered so
         # checklist order ("Zapdos" #1 before "Ninetales" #2) also
         # disagrees with alphabetical name order, for the same reason.
         Card.objects.create(
-            tcg_id="base1-1", set=self.oldest_set, name="Zapdos", number="1",
-            supertype="Pokémon", image_small="https://example.com/small.png",
+            tcg_id="base1-1",
+            set=self.oldest_set,
+            name="Zapdos",
+            number="1",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
             image_large="https://example.com/large.png",
         )
         Card.objects.create(
-            tcg_id="base1-2", set=self.oldest_set, name="Ninetales", number="2",
-            supertype="Pokémon", image_small="https://example.com/small.png",
+            tcg_id="base1-2",
+            set=self.oldest_set,
+            name="Ninetales",
+            number="2",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
             image_large="https://example.com/large.png",
         )
         Card.objects.create(
-            tcg_id="neo1-1", set=self.middle_set, name="Lugia", number="1",
-            supertype="Pokémon", image_small="https://example.com/small.png",
+            tcg_id="neo1-1",
+            set=self.middle_set,
+            name="Lugia",
+            number="1",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
             image_large="https://example.com/large.png",
         )
         Card.objects.create(
-            tcg_id="swsh1-1", set=self.newest_set, name="Alakazam", number="1",
-            supertype="Pokémon", image_small="https://example.com/small.png",
+            tcg_id="swsh1-1",
+            set=self.newest_set,
+            name="Alakazam",
+            number="1",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
             image_large="https://example.com/large.png",
         )
 
@@ -249,10 +273,16 @@ class CardNameNumberReleaseDateTiebreakTests(APITestCase):
 
     def setUp(self):
         self.new_set = Set.objects.create(
-            tcg_id="new1", name="New Set", series="New", release_date="2020-02-07",
+            tcg_id="new1",
+            name="New Set",
+            series="New",
+            release_date="2020-02-07",
         )
         self.old_set = Set.objects.create(
-            tcg_id="old1", name="Old Set", series="Old", release_date="1999-01-09",
+            tcg_id="old1",
+            name="Old Set",
+            series="Old",
+            release_date="1999-01-09",
         )
         # Numbers/names are deliberately picked so a *wrong* tiebreak
         # (falling back to number-ascending, or to alphabetical name)
@@ -262,23 +292,39 @@ class CardNameNumberReleaseDateTiebreakTests(APITestCase):
         # date is what must decide their order, not insertion/id order,
         # which a fresh table can otherwise coincide with.
         self.abra_new = Card.objects.create(
-            tcg_id="new1-1", set=self.new_set, name="Abra", number="1",
-            supertype="Pokémon", image_small="https://example.com/small.png",
+            tcg_id="new1-1",
+            set=self.new_set,
+            name="Abra",
+            number="1",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
             image_large="https://example.com/large.png",
         )
         self.abra_old = Card.objects.create(
-            tcg_id="old1-99", set=self.old_set, name="Abra", number="99",
-            supertype="Pokémon", image_small="https://example.com/small.png",
+            tcg_id="old1-99",
+            set=self.old_set,
+            name="Abra",
+            number="99",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
             image_large="https://example.com/large.png",
         )
         self.kadabra = Card.objects.create(
-            tcg_id="old1-50", set=self.old_set, name="Kadabra", number="50",
-            supertype="Pokémon", image_small="https://example.com/small.png",
+            tcg_id="old1-50",
+            set=self.old_set,
+            name="Kadabra",
+            number="50",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
             image_large="https://example.com/large.png",
         )
         self.zubat = Card.objects.create(
-            tcg_id="old1-1", set=self.old_set, name="Zubat", number="1",
-            supertype="Pokémon", image_small="https://example.com/small.png",
+            tcg_id="old1-1",
+            set=self.old_set,
+            name="Zubat",
+            number="1",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
             image_large="https://example.com/large.png",
         )
 
@@ -301,10 +347,7 @@ class CardNameNumberReleaseDateTiebreakTests(APITestCase):
         # If this instead fell back to alphabetical name, Abra/New would
         # wrongly come before Zubat/Old within the "#1" group.
         response = self.client.get(reverse("card-list"), {"ordering": "number"})
-        results = [
-            (c["number"], c["name"], c["set"]["name"])
-            for c in response.data["results"]
-        ]
+        results = [(c["number"], c["name"], c["set"]["name"]) for c in response.data["results"]]
         self.assertEqual(
             results,
             [
@@ -334,10 +377,7 @@ class CardNameNumberReleaseDateTiebreakTests(APITestCase):
         response = self.client.get(
             reverse("card-list"), {"ordering": "number", "newest_first": "true"}
         )
-        results = [
-            (c["number"], c["name"], c["set"]["name"])
-            for c in response.data["results"]
-        ]
+        results = [(c["number"], c["name"], c["set"]["name"]) for c in response.data["results"]]
         self.assertEqual(
             results,
             [
