@@ -563,6 +563,20 @@ Why
 
 ---
 
+## Decision 041
+
+Quiz length picker (Short/Medium/Long = 3/5/7 questions), shown below the mode-selection buttons
+
+Why
+
+- **The backend already supported an arbitrary `?count=`** (`QuizQuestionsView`, `quiz/views.py`) — clamped between 1 and `MAX_QUESTION_COUNT` (20) — so this was almost entirely a frontend addition; the only backend change was lowering `DEFAULT_QUESTION_COUNT` from 10 to 5 to match the frontend's new default, kept as a sane fallback even though the frontend now always sends `count` explicitly
+- **Fixed labels (Short/Medium/Long) over a free-form number input**, per explicit user request — the three counts (3/5/7) map directly to those labels rather than exposing the raw numbers as the primary UI (the button text still shows the number in parentheses, e.g. "Medium (5)", so it's not hidden)
+- **Rendered as a `radiogroup`/`radio` pair of buttons, not native `<input type="radio">`** — consistent with the existing custom-control pattern already used for `NameAutocomplete`'s option list, giving full control over styling (reusing the established `.active` treatment) while keeping it accessible via `aria-checked`
+- **Placed directly below the existing mode-selection buttons**, per explicit user request, rather than above them or beside each mode button — the length applies uniformly across all three modes, so one shared picker made more sense than duplicating it per mode
+- **Lifted to `QuizPage` state (`questionCount`), not local to `ModeSelection`** — the mutation that actually fires the request lives in `QuizPage`, so the picker's value needs to be readable there at mutate-time; `ModeSelection` stays a controlled, presentational component
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

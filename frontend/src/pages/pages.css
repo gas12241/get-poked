@@ -402,6 +402,44 @@
   gap: 12px;
 }
 
+.quiz-count-label {
+  margin: 20px 0 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.quiz-count-picker {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.quiz-count-picker button {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--accent-bg);
+  }
+
+  &.active {
+    background: var(--accent-bg);
+    color: var(--accent);
+    border-color: var(--accent-border);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
 .quiz-question img {
   width: var(--quiz-card-width);
   max-width: 100%;
