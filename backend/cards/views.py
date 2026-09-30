@@ -119,28 +119,40 @@ class SupertypeListView(APIView):
 
 class CardNameListView(APIView):
     # Powers the search box's typeahead suggestions — distinct card names
-    # starting with `?search=`, capped and unpaginated (a suggestion list
-    # needs to be short, not paginated). `?set=`/`?series=` scope it the
-    # same way as Rarities/Types/Supertypes; the Cards page uses that
-    # scoping, but the Quiz page's guess-the-card input deliberately never
-    # sends either — a global, answer-independent suggestion list can't
-    # leak which card a given question is about, whereas one scoped to a
-    # question's small eligible pool sometimes could. See
-    # docs/decisions.md #036.
+    # containing `?search=` anywhere, not just as a prefix (see
+    # docs/decisions.md #046 — e.g. searching "Jigglypuff" now finds "Mega
+    # Lopunny & Jigglypuff GX", not just a card named exactly "Jigglypuff"),
+    # capped and unpaginated (a suggestion list needs to be short, not
+    # paginated). `?set=`/`?series=` scope it the same way as
+    # Rarities/Types/Supertypes; the Cards page uses that scoping, but the
+    # Quiz page's guess-the-card input deliberately never sends either — a
+    # global, answer-independent suggestion list can't leak which card a
+    # given question is about, whereas one scoped to a question's small
+    # eligible pool sometimes could. See docs/decisions.md #036.
     permission_classes = [AllowAny]
     MAX_RESULTS = 8
+    # A search shorter than this is rejected outright, not just left to the
+    # frontend's own minimum (NameAutocomplete's MIN_CHARS) — a substring
+    # match on a single character is genuinely pathological against real
+    # data (confirmed: "a" alone matches ~70% of all distinct card names),
+    # unlike a prefix match of the same length. Matches the frontend's
+    # MIN_CHARS so a directly-called API request behaves the same either
+    # way.
+    MIN_SEARCH_LENGTH = 2
     # Cap on the raw distinct-name fetch, before ranking — bounds cost for
-    # a pathologically broad 1-2 character search; real prefixes match far
-    # fewer than this.
-    MAX_CANDIDATES = 500
+    # a pathologically broad search. Sized well above the worst realistic
+    # 2-character substring measured against real data (~760 distinct names
+    # for "ar"), now that matching is substring-based rather than
+    # prefix-based (a real prefix of the same length matches far fewer).
+    MAX_CANDIDATES = 2000
 
     def get(self, request):
         search = request.query_params.get("search", "")
-        if not search:
+        if len(search) < self.MIN_SEARCH_LENGTH:
             return Response([])
         queryset = scope_cards_by_set_or_series(Card.objects.all(), request)
         candidates = (
-            queryset.filter(name__istartswith=search)
+            queryset.filter(name__icontains=search)
             .values_list("name", flat=True)
             .distinct()[: self.MAX_CANDIDATES]
         )
