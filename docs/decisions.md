@@ -820,6 +820,20 @@ Why
 
 ---
 
+## Decision 058
+
+Quiz's "Play again" button and guess inputs restyled to match the rest of the app
+
+Why
+
+- **User-reported, and correct on inspection**: "Play again" (on the summary screen), the guess input for every mode (a plain `<input>` for Guess the HP, or the one `NameAutocomplete` renders for Guess the Card/Set — both literal `<input>` elements), and by direct consequence "Save score", "Submit guess", and "Next" had never been given a className at all, so they rendered as bare browser-default widgets next to the rest of the Quiz page's consistent, deliberately-styled look (`.quiz-picker button`, `.quiz-start-button`, `.quiz-abandon`, `.confirm-dialog-actions button`)
+- **Scope grew slightly beyond the two things named** ("Play again" and the search bars) to their immediate siblings on the same screen — "Save score" sits right next to "Play again" in `.quiz-summary`, and "Submit guess"/"Next" sit right next to the guess input in `.quiz-revealed-details`. Styling only the named elements would have made the mismatch more visible, not less, so the fix was extended to whichever bare button or input shares a screen with something that needed to match — call this out explicitly, since it wasn't asked for by name
+- **Two different existing shapes reused, not a new one invented**: the guess input matches `.filters input` — the Cards page's own search box (6px radius, `1px solid var(--border)`) is the only precedent in this app for styling a text input, so this reuses it verbatim rather than picking a new look. The buttons match the Quiz page's own established pill language (`border-radius: 999px`, same border/background/hover as `.quiz-picker button` and `.confirm-dialog-actions button`) — pills throughout Quiz specifically, rather than the Cards page's rounded-rect buttons, since consistency within the screen the user was looking at outweighs matching a different page's shape
+- **No new tests** — pure CSS, no new logic branches (same reasoning as #048's "Quiz mode buttons... pure CSS change, no new tests — jsdom doesn't do real layout"); the existing 99-test suite (role/label-based queries, none tied to visual styling) passes unchanged
+- **Verified live** in both light and dark mode: guess inputs (HP's plain input and the Card mode's NameAutocomplete, dropdown still positioned correctly beneath it) and Quiz's buttons (Submit guess, Next, Save score, Play again) all now read as part of the same design language as the rest of the page
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

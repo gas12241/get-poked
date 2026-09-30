@@ -385,6 +385,33 @@
   text-align: center;
 }
 
+/* "Save score" and "Play again" — plain, unstyled buttons by default
+   (browser chrome), which stood out next to the rest of the Quiz page's
+   consistent pill-button look (.quiz-picker button, .quiz-start-button,
+   .quiz-abandon). Matches that same neutral outlined pill rather than
+   inventing a new shape. */
+.quiz-summary button {
+  display: block;
+  margin: 16px auto 0;
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--accent-bg);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
 .quiz-question {
   /* Wider than the other two quiz screens (deliberately split out of their
      shared rule, not shared with them) — room for the image and its stats
@@ -566,6 +593,44 @@
 
   @media (max-width: 700px) {
     justify-content: center;
+  }
+}
+
+/* The guess input itself (a plain <input> for "Guess the HP", or the one
+   NameAutocomplete renders for the other two modes — both are literal
+   <input> elements here, so this one rule covers all three) was unstyled
+   browser chrome, standing out next to the rest of the app. Matches the
+   look the Cards page's own search input already established (.filters
+   input), rather than inventing a second "text input" style. */
+.quiz-question form input {
+  font: inherit;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+/* "Submit guess" and "Next" — same reasoning as .quiz-summary button
+   above: plain browser buttons that stood out once the input beside them
+   (above) was styled. */
+.quiz-revealed-details button {
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--accent-bg);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
   }
 }
 
