@@ -415,7 +415,7 @@
    query below rather than pulled from one variable). */
 .quiz-revealed {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   gap: 24px;
   text-align: left;
@@ -432,7 +432,6 @@
   flex-direction: column;
   gap: 12px;
   min-width: 260px;
-  padding-top: 4px;
 }
 
 .quiz-mode-buttons {
