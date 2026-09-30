@@ -98,6 +98,53 @@ describe('QuizPage', () => {
     await waitFor(() => expect(capturedCount).toBe('3'));
   });
 
+  it('defaults to Medium difficulty, and sends the chosen difficulty', async () => {
+    let capturedDifficulty: string | null = null;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/quiz/`, ({ request }) => {
+        capturedDifficulty = new URL(request.url).searchParams.get(
+          'difficulty',
+        );
+        return HttpResponse.json({
+          questions: [
+            {
+              card: 1,
+              image: 'https://example.com/masked.png',
+              rarity: 'Common',
+              supertype: 'Pokémon',
+              types: ['Fire'],
+            },
+          ],
+        });
+      }),
+    );
+
+    renderWithProviders(<QuizPage />);
+
+    const mediumButton = screen.getByRole('radio', { name: 'Medium' });
+    expect(mediumButton).toHaveAttribute('aria-checked', 'true');
+    expect(
+      screen.getByText(
+        'Everything in between — Rare Holo, EX, GX, V, VMAX, VSTAR, and similar',
+      ),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Hard' }));
+    expect(screen.getByRole('radio', { name: 'Hard' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(
+      screen.getByText('Common, Uncommon, and Rare cards'),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Guess the Card' }),
+    );
+
+    await waitFor(() => expect(capturedDifficulty).toBe('hard'));
+  });
+
   it('offers name suggestions for "Guess the Card" without scoping them to a set or series', async () => {
     const requestedParams: URLSearchParams[] = [];
     server.use(

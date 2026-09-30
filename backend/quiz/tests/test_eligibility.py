@@ -15,6 +15,9 @@ class EligibilityTests(TestCase):
             "t2", "Professor's Research", "Trainer", "Rare Secret"
         )
         self.energy = self._make_card("e1", "Fire Energy", "Energy", "Common")
+        self.pokemon_rare_holo = self._make_card(
+            "p3", "Charizard", "Pokémon", "Rare Holo", hp="120"
+        )
 
     def _make_card(self, tcg_id, name, supertype, rarity, hp=""):
         return Card.objects.create(
@@ -63,4 +66,32 @@ class EligibilityTests(TestCase):
         # A common Trainer card is still ineligible even when "Common" is requested —
         # rarities narrows within the baseline, it can't make an otherwise-ineligible
         # card eligible.
+        self.assertNotIn(self.trainer_common.id, ids)
+
+    def test_easy_difficulty_is_the_chase_tier(self):
+        # Reversed from what "rare" suggests, per explicit user direction —
+        # a distinctive chase-tier card is easier for most players to place
+        # by set than a common. See docs/decisions.md #047.
+        ids = eligible_card_ids("guess_card", difficulty="easy")
+        self.assertIn(self.trainer_secret_rare.id, ids)
+        self.assertNotIn(self.pokemon_common.id, ids)
+        self.assertNotIn(self.pokemon_rare_holo.id, ids)
+
+    def test_hard_difficulty_is_common_uncommon_rare(self):
+        ids = eligible_card_ids("guess_card", difficulty="hard")
+        self.assertIn(self.pokemon_common.id, ids)
+        self.assertNotIn(self.trainer_secret_rare.id, ids)
+        self.assertNotIn(self.pokemon_rare_holo.id, ids)
+
+    def test_medium_difficulty_is_everything_between(self):
+        ids = eligible_card_ids("guess_card", difficulty="medium")
+        self.assertIn(self.pokemon_rare_holo.id, ids)
+        self.assertNotIn(self.pokemon_common.id, ids)
+        self.assertNotIn(self.trainer_secret_rare.id, ids)
+
+    def test_hard_difficulty_narrows_but_does_not_widen(self):
+        # A common Trainer card is still ineligible under "hard" even though
+        # "Common" is one of hard's rarities — difficulty narrows within the
+        # mode's baseline, same as the plain rarities param above.
+        ids = eligible_card_ids("guess_card", difficulty="hard")
         self.assertNotIn(self.trainer_common.id, ids)

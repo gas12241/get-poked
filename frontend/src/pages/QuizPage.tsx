@@ -6,7 +6,7 @@ import {
   getQuizQuestions,
   submitQuizAttempt,
 } from '../api/quiz';
-import type { QuizAnswerInput, QuizMode } from '../api/quiz';
+import type { QuizAnswerInput, QuizDifficulty, QuizMode } from '../api/quiz';
 import { filterSetNameSuggestions, getCardNames, getSets } from '../api/cards';
 import type { QuizSession } from '../store/quizStore';
 import { useQuizStore } from '../store/quizStore';
@@ -27,17 +27,51 @@ const QUESTION_COUNTS: { value: number; label: string }[] = [
   { value: 7, label: 'Long' },
 ];
 
+// Deliberately the reverse of what "rare" suggests: most players recognize
+// a distinctive chase card's set on sight more easily than a common, which
+// they've likely seen dozens of across different sets — confirmed directly
+// with the user rather than assumed. See docs/decisions.md #047.
+const DIFFICULTIES: {
+  value: QuizDifficulty;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: 'easy',
+    label: 'Easy',
+    description:
+      'Chase cards — Ultra Rare, Secret Rare, Special Illustration Rare, and similar',
+  },
+  {
+    value: 'medium',
+    label: 'Medium',
+    description:
+      'Everything in between — Rare Holo, EX, GX, V, VMAX, VSTAR, and similar',
+  },
+  {
+    value: 'hard',
+    label: 'Hard',
+    description: 'Common, Uncommon, and Rare cards',
+  },
+];
+
 function ModeSelection({
   questionCount,
   onSelectCount,
+  difficulty,
+  onSelectDifficulty,
   onSelect,
   error,
 }: {
   questionCount: number;
   onSelectCount: (count: number) => void;
+  difficulty: QuizDifficulty;
+  onSelectDifficulty: (difficulty: QuizDifficulty) => void;
   onSelect: (mode: QuizMode) => void;
   error: string | null;
 }) {
+  const selectedDifficulty = DIFFICULTIES.find((d) => d.value === difficulty);
+
   return (
     <div className="quiz-mode-selection">
       <h1>Quiz</h1>
@@ -48,12 +82,28 @@ function ModeSelection({
           </button>
         ))}
       </div>
-      <p className="quiz-count-label">Quiz length</p>
-      <div
-        className="quiz-count-picker"
-        role="radiogroup"
-        aria-label="Quiz length"
-      >
+      <p className="quiz-picker-label">Difficulty</p>
+      <div className="quiz-picker" role="radiogroup" aria-label="Difficulty">
+        {DIFFICULTIES.map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={difficulty === value}
+            className={difficulty === value ? 'active' : undefined}
+            onClick={() => onSelectDifficulty(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {selectedDifficulty && (
+        <p className="quiz-picker-description">
+          {selectedDifficulty.description}
+        </p>
+      )}
+      <p className="quiz-picker-label">Quiz length</p>
+      <div className="quiz-picker" role="radiogroup" aria-label="Quiz length">
         {QUESTION_COUNTS.map(({ value, label }) => (
           <button
             key={value}
@@ -325,6 +375,7 @@ function QuizPage() {
   const abandonSession = useQuizStore((s) => s.abandonSession);
   const isAuthenticated = useAuthStore((s) => s.accessToken !== null);
   const [questionCount, setQuestionCount] = useState(5);
+  const [difficulty, setDifficulty] = useState<QuizDifficulty>('medium');
   // Set the moment a mode is picked, cleared once its first question has
   // been fully revealed — while set (and not errored), StartingQuestion
   // replaces ModeSelection/QuizQuestionView so there's a continuous idle
@@ -334,7 +385,7 @@ function QuizPage() {
 
   const startQuiz = useMutation({
     mutationFn: (mode: QuizMode) =>
-      getQuizQuestions({ mode, count: questionCount }),
+      getQuizQuestions({ mode, count: questionCount, difficulty }),
     // Session creation happens as soon as the fetch resolves — same timing
     // as before this feature existed — so it's persisted the moment real
     // question data exists. Navigating away or reloading mid-reveal then
@@ -375,6 +426,8 @@ function QuizPage() {
       <ModeSelection
         questionCount={questionCount}
         onSelectCount={setQuestionCount}
+        difficulty={difficulty}
+        onSelectDifficulty={setDifficulty}
         onSelect={(mode) => {
           setPendingMode(mode);
           startQuiz.mutate(mode);
