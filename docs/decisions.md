@@ -748,6 +748,21 @@ Why
 
 ---
 
+## Decision 053
+
+Revealed quiz question: image and stats side by side, not stacked, and the card shrunk from 480px to 400px
+
+Why
+
+- **The stacked layout (image, then stats, then guess form, all in one 480px column) was too tall** — on an 800px-viewport laptop, the page needed scrolling just to see the footer, which the user flagged directly. Their own proposed fix — stats and the guess form in a column beside the image, not below it — was the right one, and is what got built
+- **`.quiz-question` split out of the `max-width: 480px` rule it used to share with `.quiz-mode-selection`/`.quiz-summary`**, into its own wider (860px) rule — those two screens are simple single-column pickers with no reason to widen, so they keep the original shared rule; only the question screen needed more horizontal room
+- **New `.quiz-revealed`/`.quiz-revealed-details` wrapper** around the revealed image + stats/form (JSX restructuring in `QuizQuestionView`, not just CSS) — a flex row, image on the left, a flex column (stats `<dl>`, then the guess form or the correct/incorrect feedback) on the right, top-aligned rather than vertically centered so the shorter details column doesn't look like it's floating in the middle of the much-taller image. Falls back to the original stacked, centered layout below 700px, so it doesn't get cramped on narrow/mobile screens
+- **The side-by-side layout alone wasn't enough** — measured directly (an 800px-tall headless-browser viewport) rather than eyeballing it: even with nothing stacked below it anymore, the 480px-wide card's own height (~670px, from the fixed 63:88 card ratio) left the page at 900px, still 100px past the viewport. Shrunk `--quiz-card-width` from 480px to 400px (image height ~558px) to close that gap — chosen empirically against the same 800px measurement, not a round number picked in advance
+- **The shrink applies to the case-opening reel too, not just the revealed image** — both read the same `--quiz-card-width` variable by design (decisions.md #040: "resizing the card later means changing it here only"), so the reel is now proportionally smaller as a direct, intended consequence, not a separate change. Verified live that this doesn't look wrong — the reel was already comfortably within its own space before, and stays that way, just slightly smaller
+- **Verified live at exactly the viewport size that was the problem**: page scroll height measured 900px before the size reduction, 800px (exactly matching the viewport) after — the footer is now on-screen with no scrolling needed. Also checked the sub-700px fallback (stacks back to the original centered layout) and the unaffected mode-selection screen (still 480px, untouched)
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).
