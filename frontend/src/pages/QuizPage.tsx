@@ -12,7 +12,7 @@ import type { QuizSession } from '../store/quizStore';
 import { useQuizStore } from '../store/quizStore';
 import { useAuthStore } from '../store/authStore';
 import NameAutocomplete from '../components/NameAutocomplete';
-import CaseOpeningReel, { StartingReel } from '../components/CaseOpeningReel';
+import { StartingReel } from '../components/CaseOpeningReel';
 import ConfirmDialog from '../components/ConfirmDialog';
 import './pages.css';
 
@@ -243,10 +243,16 @@ function QuizQuestionView({
         Question {session.currentIndex + 1} of {session.questions.length}
       </p>
       {isOpening ? (
-        <CaseOpeningReel
+        // StartingReel rather than CaseOpeningReel directly: with this
+        // question's data already on hand, `ready` is true from the first
+        // render, but StartingReel still idles for MIN_IDLE_DURATION_MS
+        // before crossfading into the real spin (see docs/decisions.md
+        // #057) — the same brief wind-up question 1 gets, so the cut from
+        // "Next" straight into a full-speed 3.5s spin doesn't feel abrupt.
+        <StartingReel
+          ready
           rarity={question.rarity}
           imageSrc={question.image}
-          alt="Card to guess"
           difficulty={session.difficulty}
           onFinish={() => {
             setIsOpening(false);

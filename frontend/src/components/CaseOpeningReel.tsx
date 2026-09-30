@@ -284,16 +284,17 @@ interface StartingReelProps {
   onFinish: () => void;
 }
 
-// Sits in front of CaseOpeningReel while the very first question is still
-// being fetched, so there's something to look at (a slow, idling loop of
-// generic card backs — no real data needed) instead of a dead pause between
-// picking a mode and the reel actually starting. Once the real question
-// arrives, it hands off to the unmodified CaseOpeningReel for the actual
-// fast spin-and-reveal, crossfading the two so the speed-up reads as a
-// "pull the lever" moment rather than a jump cut. See docs/decisions.md
-// #044 — only ever used for the first question of a quiz; every later
-// question already has its data on hand (decisions.md #040), so there's no
-// pause left to fill.
+// Sits in front of CaseOpeningReel so there's always a brief idling loop of
+// generic card backs before the real spin-and-reveal, crossfading the two
+// so the speed-up reads as a "pull the lever" moment rather than a jump
+// cut. For the very first question of a quiz, `ready` starts false and
+// this idle loop also genuinely fills the wait for that question's data to
+// arrive (docs/decisions.md #044). For every later question, the data is
+// already on hand (decisions.md #040) and `ready` is true from the first
+// render — the idle loop still holds for at least MIN_IDLE_DURATION_MS
+// before handing off, purely for the wind-up, since without it "Next"
+// jump-cut straight into a full-speed 3.5s spin, which read as rushed. See
+// docs/decisions.md #057.
 export function StartingReel({
   ready,
   rarity,

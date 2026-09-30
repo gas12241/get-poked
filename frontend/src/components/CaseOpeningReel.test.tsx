@@ -241,6 +241,35 @@ describe('StartingReel', () => {
     });
   });
 
+  it('idles for a minimum duration even when ready from the very first render', async () => {
+    // Every question after the first now passes ready=true from the start
+    // (its data is already on hand — decisions.md #040) rather than ready
+    // flipping true partway through an idle wait, like the previous test
+    // simulates. The idle loop must still show first rather than jump-
+    // cutting straight into the real spin — that jump cut is exactly what
+    // read as "rushed" and prompted this fix. See docs/decisions.md #057.
+    const onFinish = vi.fn();
+    const { container } = render(
+      <StartingReel
+        ready
+        rarity="Rare Holo"
+        imageSrc="https://example.com/card.png"
+        difficulty="medium"
+        onFinish={onFinish}
+      />,
+    );
+
+    expect(container.querySelector('.case-opening-idle-track')).not.toBeNull();
+    expect(screen.queryByAltText('Card to guess')).not.toBeInTheDocument();
+
+    await waitFor(
+      () => expect(screen.getByAltText('Card to guess')).toBeInTheDocument(),
+      {
+        timeout: MIN_IDLE_DURATION_MS + CROSSFADE_MS + SPIN_DURATION_MS + 500,
+      },
+    );
+  });
+
   it('skips the minimum idle wait when the user prefers reduced motion', async () => {
     const matchMediaSpy = vi.spyOn(window, 'matchMedia').mockReturnValue({
       matches: true,
