@@ -400,11 +400,10 @@
      and the landing math in CaseOpeningReel.tsx) read this one variable,
      so resizing the card later means changing it here only. Ratio matches
      a real card's proportions (~0.714). See docs/decisions.md #040.
-     Reduced from 480px so the whole question screen — image, stats, and
-     footer — fits without scrolling on a typical viewport; the side-by-side
-     layout alone wasn't enough, since the image's own height was already
-     close to the ceiling. See docs/decisions.md #053. */
-  --quiz-card-width: 400px;
+     Reduced from 480px (then 400px) so the whole question screen — image,
+     stats, abandon button, and footer — fits without scrolling on a
+     typical viewport. See docs/decisions.md #053, #055. */
+  --quiz-card-width: 360px;
   --quiz-card-ratio: 63 / 88;
 }
 
@@ -801,5 +800,18 @@
 }
 
 .quiz-abandon {
-  float: right;
+  display: block;
+  margin: 16px auto 0;
+  padding: 8px 18px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--danger);
+  background: var(--bg);
+  border: 1px solid var(--danger-border);
+  border-radius: 999px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--danger-bg);
+  }
 }

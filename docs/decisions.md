@@ -775,6 +775,21 @@ Why
 
 ---
 
+## Decision 055
+
+Abandon quiz: moved to the bottom, styled red, and now asks for confirmation
+
+Why
+
+- **Three explicit user requests**: move "Abandon quiz" from the top (beside "Question X of Y") to the bottom of the question screen; color it red; require confirmation before it actually abandons, instead of one accidental click losing all progress
+- **`window.confirm()`, not a custom modal** — a simple, low-frequency, one-shot "are you sure" gate is exactly what the native confirm dialog is for, and it comes with keyboard/screen-reader support for free. The rest of this app avoids native controls for *interactive, frequently-used* UI (radiogroups, autocomplete), but a rare confirmation for a destructive action is a different category; building custom modal UI for this would be more machinery than the request asked for
+- **New `--danger`/`--danger-bg`/`--danger-border` tokens**, varying per light/dark theme the same way `--accent` does (text/border blended with the page background, unlike the fixed `--cta` pink) — `.quiz-abandon` became a red-outlined button (matching the existing outline-button convention used elsewhere on this page) rather than a solid red fill, so it reads as "destructive" without competing visually with the bold pink "Start Quiz" CTA (decisions.md #051) on the other screen
+- **Moving the button to the bottom reintroduced the exact scrolling problem decisions.md #053 had just fixed** — measured directly again rather than assumed: adding ~60px of button-plus-margin at the bottom pushed the page back to 857px on an 800px viewport. Fixed by shrinking `--quiz-card-width` further (400px → 360px) and tightening the button's own top margin (24px → 16px), re-measured back to exactly 800px. A direct example of why this project measures fit rather than eyeballing it — the fix from #053 doesn't automatically stay valid every time something new gets added below the fold
+- **Two new tests, not one** — confirming abandon actually works when the dialog is accepted, and (just as important) that declining it leaves the quiz untouched; `vi.spyOn(window, 'confirm')` mocks the return value in each direction. The "declined" test was confirmed to fail against a version that called `onAbandon()` unconditionally, before restoring the real guard
+- **Verified live**: the real `window.confirm()` dialog appears with the expected message; dismissing it keeps the quiz active; accepting it returns to mode selection; page height re-measured at exactly 800px with the button in its new position
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

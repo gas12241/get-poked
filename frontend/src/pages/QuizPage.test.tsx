@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -292,13 +292,33 @@ describe('QuizPage', () => {
     );
   });
 
-  it('returns to mode selection when a quiz is abandoned', async () => {
+  it('asks for confirmation, then returns to mode selection when a quiz is abandoned', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     await startQuiz();
+
     await userEvent.click(screen.getByRole('button', { name: 'Abandon quiz' }));
 
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
     expect(
       screen.getByRole('radio', { name: 'Guess the Card' }),
     ).toBeInTheDocument();
+
+    confirmSpy.mockRestore();
+  });
+
+  it('does not abandon the quiz if the confirmation is declined', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    await startQuiz();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Abandon quiz' }));
+
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText('Your guess')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('radio', { name: 'Guess the Card' }),
+    ).not.toBeInTheDocument();
+
+    confirmSpy.mockRestore();
   });
 
   it('resumes an in-progress quiz after remounting', async () => {
