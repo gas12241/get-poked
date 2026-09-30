@@ -235,11 +235,14 @@ function QuizQuestionView({
     });
   }
 
+  function handleAbandon() {
+    if (window.confirm('Abandon this quiz? Your progress will be lost.')) {
+      onAbandon();
+    }
+  }
+
   return (
     <div className="quiz-question">
-      <button onClick={onAbandon} className="quiz-abandon">
-        Abandon quiz
-      </button>
       <p>
         Question {session.currentIndex + 1} of {session.questions.length}
       </p>
@@ -340,6 +343,9 @@ function QuizQuestionView({
           </div>
         </div>
       )}
+      <button onClick={handleAbandon} className="quiz-abandon">
+        Abandon quiz
+      </button>
     </div>
   );
 }
