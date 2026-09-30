@@ -457,7 +457,15 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  /* Fixed, not just a floor — the form and the post-guess feedback
+     ("Incorrect. The answer was <a possibly long name>.") swap in and out
+     of this same column, and with only a min-width the column grew to fit
+     whichever was longer. .quiz-revealed's own justify-content: center
+     then re-centered the whole row on every guess, visibly shifting the
+     image sideways. Long feedback text now wraps within this fixed width
+     instead of growing it. */
   min-width: 260px;
+  max-width: 260px;
 }
 
 .quiz-mode-buttons {
@@ -578,6 +586,16 @@
      comes from .quiz-revealed-details' own gap instead, now that both live
      inside that flex column together. */
   text-align: left;
+}
+
+/* The post-guess "Correct!"/"Incorrect..." text and the Next button below
+   it — centered together rather than left-aligned (like the dl/form above
+   them), since a short "Correct!" left-aligned with Next tucked under its
+   left edge read fine, but "Incorrect. The answer was <name>." often wraps
+   to a second line, and Next staying pinned to the left under a wrapped,
+   left-aligned paragraph looked disconnected from it. */
+.quiz-feedback {
+  text-align: center;
 }
 
 /* Keeps the submit button beside the guess input on every mode, not just

@@ -834,6 +834,19 @@ Why
 
 ---
 
+## Decision 059
+
+Fixed the card image shifting sideways after a guess, and centered the feedback + Next button
+
+Why
+
+- **User-reported**: submitting a guess visibly shifted the card image (and the stats column) to the side. Root cause: `.quiz-revealed-details` only had a `min-width: 260px`, not a fixed width, so it grew to fit whichever content was currently inside it — the guess form, or the post-guess feedback text ("Incorrect. The answer was &lt;name&gt;."), often longer than the form. `.quiz-revealed`'s own `justify-content: center` then re-centered the whole row every time that width changed, moving the image along with it
+- **Fix**: added `max-width: 260px` alongside the existing `min-width: 260px` on `.quiz-revealed-details`, pinning it to exactly 260px in the side-by-side layout. Long feedback text now wraps inside that fixed width instead of growing the column — the minimal one-line fix, not a restructuring of the layout
+- **Second, related ask**: the feedback text and "Next" button were left-aligned (inherited from `.quiz-revealed`'s `text-align: left`, used for the stats `<dl>` above them), which looked fine for a short "Correct!" but left "Next" stranded under the left edge of a wrapped, multi-line "Incorrect..." message. The user specifically flagged that centering *only* the button while leaving the text left-aligned would look just as wrong the other way — correctly anticipating the failure mode. New `.quiz-feedback` class (on the existing wrapper div around the feedback `<p>` and the Next button, previously classless) centers both together, scoped only to that block — the `<dl>` stats above it stay left-aligned as before
+- **No new tests** — pure CSS, no new logic branches (same reasoning as #048/#058); verified instead by measuring the image's actual bounding-box position via Playwright before and after submitting a guess (confirmed identical `x`, where it previously shifted), and visually in both the "Correct!" and "Incorrect" cases, in both the desktop side-by-side and the sub-700px stacked mobile layout
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

@@ -333,7 +333,7 @@ function QuizQuestionView({
                 </button>
               </form>
             ) : (
-              <div>
+              <div className="quiz-feedback">
                 <p>
                   {feedback.correct
                     ? 'Correct!'
