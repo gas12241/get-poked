@@ -97,6 +97,39 @@ class QuizQuestionsViewTests(QuizTestBase):
         response = self.client.get(reverse("quiz-questions"), {"mode": "not_a_real_mode"})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_invalid_difficulty_returns_400(self):
+        response = self.client.get(
+            reverse("quiz-questions"), {"mode": "guess_card", "difficulty": "extreme"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @responses.activate
+    def test_hard_difficulty_only_returns_common_uncommon_rare_cards(self):
+        # See docs/decisions.md #047 — "hard" is Common/Uncommon/Rare.
+        # self.pokemon_card is Rare Holo, so it's excluded here even though
+        # nothing else disqualifies it for guess_card.
+        common_card = Card.objects.create(
+            tcg_id="base1-5",
+            set=self.set_obj,
+            name="Squirtle",
+            number="5",
+            rarity="Common",
+            hp="40",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        responses.add(responses.GET, common_card.image_large, body=make_test_image_bytes())
+
+        response = self.client.get(
+            reverse("quiz-questions"),
+            {"mode": "guess_card", "difficulty": "hard", "count": 5},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        card_ids = [q["card"] for q in response.data["questions"]]
+        self.assertEqual(card_ids, [common_card.id])
+
     @responses.activate
     def test_does_not_require_authentication(self):
         responses.add(responses.GET, self.pokemon_card.image_large, body=make_test_image_bytes())

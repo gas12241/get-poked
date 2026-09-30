@@ -659,6 +659,22 @@ Why
 
 ---
 
+## Decision 047
+
+Quiz difficulty picker (Easy/Medium/Hard), mapped to rarity tiers — reversed from the "obvious" mapping, per explicit user direction
+
+Why
+
+- **The rarity-to-difficulty mapping is backwards from what "rare" suggests, deliberately**: the initial proposal was Easy = Common/Uncommon/Rare, Hard = chase tier, reasoning that a rarer card is objectively harder to reproduce. The user reversed this: most players recognize a distinctive chase card's set/era on sight, while commons are easy to confuse across different sets precisely because there are so many near-identical ones. Implemented exactly as directed rather than the initially-proposed mapping — a real product/game-feel call, not a technical one, and the user's read on their own players is the one that matters here
+- **Reuses the existing "chase" tier (`SPECIAL_TIER_RARITIES`, `quiz/eligibility.py`) for Easy** rather than defining a new list — that set already exists for a related reason (deciding Trainer-card eligibility, decisions.md #017) and is the authoritative, already-tested source for "distinctive enough to recognize," so Easy inherits it directly instead of risking a second, slowly-drifting copy
+- **Hard is an explicit small set (`{"Common", "Uncommon", "Rare"}`)**; **Medium has no enumerated list of its own** — it's implemented as "eligible and not Easy, not Hard" (a Django `.exclude()`, not an inclusion list). A future data sync introducing a new rarity string falls into Medium automatically instead of being silently excluded from every difficulty until someone remembers to add it to an enumerated list — the same forward-compatibility reasoning already applied to `filterSetNameSuggestions`' "everything else" set-name matching (though there it was about substring search, not rarity)
+- **New `difficulty` query param on `GET /api/v1/quiz/`, not just a frontend-side `rarities` list** — `rarities` (already existing) only supports inclusion (`rarity__in`), so Medium's "exclude two known sets" logic couldn't be expressed through it at all without enumerating Medium's rarities explicitly on the frontend, which would need to be kept in sync with the backend's rarity data by hand. Keeping the mapping and its logic entirely server-side matches the project's standing rule that business logic belongs in Django, not React
+- **No changes needed to `getQuizQuestions` beyond adding the param** — the frontend API client already had a `rarities?: string[]` slot from before any UI used it; `difficulty` was added the same way, and `QuizPage`'s difficulty state just flows into the existing mutation call, the same pattern the quiz-length picker (decisions.md #041) already established
+- **Reused the "Quiz length" picker's exact visual pattern** (radiogroup of pill buttons, one active) rather than inventing a new one, placed directly above it per the user's explicit request — the underlying CSS classes (`.quiz-count-label`/`.quiz-count-picker`) were renamed to the generic `.quiz-picker-label`/`.quiz-picker` so both pickers share one definition instead of duplicating a near-identical block; a new `.quiz-picker-description` shows one line of human-readable rarities for whichever difficulty is currently selected, updating as the selection changes, rather than trying to fit a description under all three buttons at once
+- **Verified against the real synced catalog, not just the fixture-based test suite**: `?difficulty=easy` returned only chase-tier rarities (Rare Ultra, Rare Secret, Illustration Rare, ...) and `?difficulty=hard` returned only Common/Uncommon/Rare, both checked directly against live API responses. New backend tests (eligibility-level and view-level, including the invalid-difficulty 400 case) and a new frontend test (default selection, description text updates, and the chosen difficulty is actually sent) — each confirmed to fail without its respective fix before being restored
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

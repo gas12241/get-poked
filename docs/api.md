@@ -312,6 +312,7 @@ Params
 - `mode` — `guess_card`, `guess_set`, `guess_hp` (required)
 - `count` — number of questions, default 5, capped at 20. The frontend's quiz-length picker (Short/Medium/Long) always sends this explicitly as 3/5/7 — see docs/decisions.md #041
 - `rarities` — comma-separated list (e.g. `Ultra Rare,Secret Rare,Special Illustration Rare`) further narrowing the card pool within whatever's already eligible for the mode. Applies to all modes. Omitted or empty means no additional restriction.
+- `difficulty` — `easy`, `medium`, or `hard` (optional; 400 if given and not one of these). The frontend's difficulty picker sends this explicitly. `easy` is the existing chase-rarity tier (Ultra Rare, Secret Rare, Special Illustration Rare, ...); `hard` is Common/Uncommon/Rare; `medium` is everything eligible that's neither — deliberately the reverse of what "rare" suggests, since most players recognize a distinctive chase card's set on sight more easily than a common's. See docs/decisions.md #047. Composable with `rarities` in principle, though nothing sends both at once today.
 
 Description
 
@@ -321,7 +322,7 @@ Baseline card pool eligibility depends on `mode` and supertype (see ARCHITECTURE
 - `guess_hp` — Pokémon-only, any rarity (Trainer/Energy cards have no HP).
 - `guess_set` — same rule as `guess_card`.
 
-The `rarities` param narrows further within that baseline — it cannot make an otherwise-ineligible card (a common Trainer, or any Energy card) eligible. See docs/decisions.md #017.
+The `rarities`/`difficulty` params narrow further within that baseline — neither can make an otherwise-ineligible card (a common Trainer, or any Energy card) eligible. See docs/decisions.md #017.
 
 Response is `{"questions": [...]}`, one object per question: `card` (id), `image` (absolute URL to the masked card image), `rarity`, `supertype`, `types`, plus whichever of `name`/`hp`/`set` are *not* the field being guessed for that mode. The guessed field itself is never present in the payload (see docs/decisions.md #029).
 

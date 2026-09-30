@@ -1,6 +1,7 @@
 import { apiClient } from '../lib/apiClient';
 
 export type QuizMode = 'guess_card' | 'guess_set' | 'guess_hp';
+export type QuizDifficulty = 'easy' | 'medium' | 'hard';
 
 export interface QuizQuestion {
   card: number;
@@ -46,6 +47,7 @@ export interface QuizQuestionsParams {
   mode: QuizMode;
   count?: number;
   rarities?: string[];
+  difficulty?: QuizDifficulty;
 }
 
 function toQueryString(params: Record<string, string | number | undefined>) {
@@ -63,9 +65,10 @@ export const getQuizQuestions = ({
   mode,
   count,
   rarities,
+  difficulty,
 }: QuizQuestionsParams) =>
   apiClient<QuizQuestionsResponse>(
-    `/api/v1/quiz/${toQueryString({ mode, count, rarities: rarities?.join(',') })}`,
+    `/api/v1/quiz/${toQueryString({ mode, count, rarities: rarities?.join(','), difficulty })}`,
   );
 
 export const checkQuizAnswer = (payload: {

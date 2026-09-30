@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 
 from cards.models import Card
 
-from .eligibility import GUESS_CARD, GUESS_HP, GUESS_SET, eligible_card_ids
+from .eligibility import DIFFICULTIES, GUESS_CARD, GUESS_HP, GUESS_SET, eligible_card_ids
 from .models import QuizAttempt
 from .questions import build_question, check_answer
 from .serializers import QuizAttemptSerializer
@@ -31,13 +31,20 @@ class QuizQuestionsView(APIView):
         rarities_param = request.query_params.get("rarities")
         rarities = [r for r in rarities_param.split(",") if r] if rarities_param else None
 
+        difficulty = request.query_params.get("difficulty")
+        if difficulty is not None and difficulty not in DIFFICULTIES:
+            return Response(
+                {"detail": f"difficulty must be one of: {', '.join(DIFFICULTIES)}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         try:
             count = int(request.query_params.get("count", DEFAULT_QUESTION_COUNT))
         except ValueError:
             count = DEFAULT_QUESTION_COUNT
         count = max(1, min(count, MAX_QUESTION_COUNT))
 
-        ids = eligible_card_ids(mode, rarities)
+        ids = eligible_card_ids(mode, rarities, difficulty)
         sample_ids = random.sample(ids, min(count, len(ids)))
         cards_by_id = {
             card.id: card
