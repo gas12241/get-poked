@@ -703,6 +703,20 @@ Why
 
 ---
 
+## Decision 050
+
+Reel decoy colors reversed back to a graduated palette (Easy: orange only; Medium: orange+blue; Hard: all three) — supersedes decision #049's stricter version
+
+Why
+
+- **Decision #049 restricted every difficulty's decoys to the single tier its real rarity pool could produce** (Easy always 'chase', Medium always 'mid', Hard always 'common'), reasoning that showing a color that could never actually be the answer was misleading. The user reconsidered and asked for the opposite: a widening palette per difficulty (Easy: orange only; Medium: orange and blue; Hard: all three), explicitly "to signify the different options you could get in each difficulty"
+- **This is a deliberate stylistic choice, not a return to full randomness** — decoys are still drawn from a *fixed, per-difficulty* palette (`tiersForDifficulty`, a direct replacement for #049's `tierForDifficulty`), just a wider one at Medium and Hard than their real rarity pools would strictly justify. Hard's real cards are always Common/Uncommon/Rare (never actually chase/mid), so an orange or blue decoy during a Hard spin is a color that can't be the real answer — an intentional, known tradeoff in exchange for visually signaling "this difficulty has more range," which the strict version couldn't do since Hard's real pool has no range to signal
+- **The winning slot's own tint is untouched by this reversal** — it still always reflects `tierForRarity(rarity)`, the real card's real rarity, regardless of what palette the surrounding decoys draw from. Decision #049's actual bug fix (exact rarity-set matching instead of a loose keyword guess, so "ACE SPEC Rare" and similar land correctly) is independent of the decoy-palette question and stays as-is
+- **`randomTierFrom` reintroduces per-decoy randomness**, scoped to the current tier's allowed set — the opposite of #049's uniform fill, but the same "randomized once per mount" `useMemo` pattern from before #049 (re-added, since a wider palette needs actual per-item variety again, not just one repeated value)
+- **Verified live**: Hard-difficulty decoys showed a real mix of all three tints (11 orange / 8 blue / 8 grey out of 26 in one live spin) rather than a single uniform color; Medium and Easy re-checked against their own new palettes. New/updated component tests assert each difficulty's decoys are drawn only from its allowed subset and that every tier in that subset actually appears (with sample sizes chosen so the odds of a false pass from randomness alone are astronomically small — documented inline)
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

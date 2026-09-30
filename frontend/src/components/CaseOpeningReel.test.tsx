@@ -139,7 +139,36 @@ describe('CaseOpeningReel', () => {
     );
   });
 
-  it('restricts every decoy to grey for hard difficulty', () => {
+  it('draws medium-difficulty decoys from chase and mid, never grey', () => {
+    // See docs/decisions.md #050 — a graduated palette per difficulty,
+    // Medium's is chase+mid. With 26 decoys drawn independently from 2
+    // options, the odds either color never appears are ~3e-8 — safe to
+    // assert both actually show up, not just "doesn't crash".
+    const { container } = render(
+      <CaseOpeningReel
+        rarity="Rare Holo"
+        imageSrc="https://example.com/card.png"
+        alt="Card to guess"
+        difficulty="medium"
+        onFinish={() => {}}
+      />,
+    );
+
+    expect(
+      container.querySelectorAll('.case-opening-back-chase').length,
+    ).toBeGreaterThan(0);
+    expect(
+      container.querySelectorAll('.case-opening-back-mid').length,
+    ).toBeGreaterThan(0);
+    expect(
+      container.querySelectorAll('.case-opening-back-common'),
+    ).toHaveLength(0);
+  });
+
+  it('draws hard-difficulty decoys from all three tiers', () => {
+    // Hard's palette is all three (docs/decisions.md #050) — 26 decoys
+    // drawn independently from 3 options makes any tier never appearing
+    // astronomically unlikely (~3e-5), so this is a safe, non-flaky check.
     const { container } = render(
       <CaseOpeningReel
         rarity="Common"
@@ -153,12 +182,12 @@ describe('CaseOpeningReel', () => {
     expect(
       container.querySelectorAll('.case-opening-back-common').length,
     ).toBeGreaterThan(0);
-    expect(container.querySelectorAll('.case-opening-back-mid')).toHaveLength(
-      0,
-    );
-    expect(container.querySelectorAll('.case-opening-back-chase')).toHaveLength(
-      0,
-    );
+    expect(
+      container.querySelectorAll('.case-opening-back-mid').length,
+    ).toBeGreaterThan(0);
+    expect(
+      container.querySelectorAll('.case-opening-back-chase').length,
+    ).toBeGreaterThan(0);
   });
 });
 
