@@ -675,6 +675,19 @@ Why
 
 ---
 
+## Decision 048
+
+Quiz mode buttons are a row of three boxy tiles, not a stack of thin bars
+
+Why
+
+- **The three "Guess the ___" buttons were plain, unstyled, full-width, stacked buttons** — small and easy to overlook next to the Difficulty/Quiz length pickers added since (decisions.md #041, #047). The user asked for a row of three taller rectangles instead
+- **A fixed `min-height` (92px) on a flex row, not `aspect-ratio` or a large fixed size** — the user explicitly didn't want the page pushed down; a modest height increase (from the browser-default ~36px to 92px, an extra ~56px total) reads as a deliberate tile rather than a thin bar without meaningfully affecting what's visible on load. Checked directly: the full mode-selection screen (mode tiles, difficulty picker + description, quiz length picker) still fits inside an 800px viewport with zero scrolling
+- **Same color tokens and hover treatment as the Difficulty/Quiz length pill buttons** (`var(--border)`, `var(--bg)`, `var(--accent-bg)`, `var(--accent-border)`) — a different shape (rounded rectangle vs. pill) for a different kind of control (a one-shot navigation action vs. a persistent selection), but the same visual language, not a third ad hoc button style on one page
+- **Verified live** at a real 1280×800 viewport: three roughly-square tiles side by side, page height exactly matches viewport height (no scroll needed)
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

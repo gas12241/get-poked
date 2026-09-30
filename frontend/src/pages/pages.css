@@ -398,8 +398,30 @@
 
 .quiz-mode-buttons {
   display: flex;
-  flex-direction: column;
   gap: 12px;
+}
+
+.quiz-mode-buttons button {
+  flex: 1;
+  min-height: 92px;
+  padding: 12px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--accent-bg);
+    border-color: var(--accent-border);
+  }
 }
 
 .quiz-picker-label {
