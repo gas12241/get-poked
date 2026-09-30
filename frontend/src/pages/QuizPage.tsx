@@ -256,86 +256,89 @@ function QuizQuestionView({
           }}
         />
       ) : (
-        <>
+        <div className="quiz-revealed">
           <img src={question.image} alt="Card to guess" />
-          <dl>
-            {question.name && (
-              <>
-                <dt>Name</dt>
-                <dd>{question.name}</dd>
-              </>
-            )}
-            {question.hp && (
-              <>
-                <dt>HP</dt>
-                <dd>{question.hp}</dd>
-              </>
-            )}
-            {question.set && (
-              <>
-                <dt>Set</dt>
-                <dd>{question.set.name}</dd>
-              </>
-            )}
-            <dt>Rarity</dt>
-            <dd>{question.rarity || '—'}</dd>
-            <dt>Types</dt>
-            <dd>{question.types.join(', ') || '—'}</dd>
-          </dl>
-
-          {!feedback ? (
-            <form onSubmit={handleSubmitGuess}>
-              {session.mode === 'guess_card' ? (
-                // Deliberately unscoped (no set/series) — suggestions drawn
-                // from the whole catalog are the same regardless of which
-                // card this question is actually about, so they can't leak
-                // the answer the way scoping to this question's small
-                // eligible pool sometimes could. See docs/decisions.md #036.
-                <NameAutocomplete
-                  value={guess}
-                  onChange={setGuess}
-                  fetchSuggestions={(text) => getCardNames({ search: text })}
-                  ariaLabel="Your guess"
-                />
-              ) : session.mode === 'guess_set' ? (
-                // Same reasoning as guess_card above — the full set list
-                // isn't scoped to this question's eligible pool, so it
-                // can't hint at the answer. See docs/decisions.md #045.
-                <NameAutocomplete
-                  value={guess}
-                  onChange={setGuess}
-                  fetchSuggestions={(text) =>
-                    Promise.resolve(
-                      filterSetNameSuggestions(setsQuery.data ?? [], text),
-                    )
-                  }
-                  ariaLabel="Your guess"
-                />
-              ) : (
-                <input
-                  aria-label="Your guess"
-                  value={guess}
-                  onChange={(e) => setGuess(e.target.value)}
-                />
+          <div className="quiz-revealed-details">
+            <dl>
+              {question.name && (
+                <>
+                  <dt>Name</dt>
+                  <dd>{question.name}</dd>
+                </>
               )}
-              <button
-                type="submit"
-                disabled={checkMutation.isPending || !guess}
-              >
-                Submit guess
-              </button>
-            </form>
-          ) : (
-            <div>
-              <p>
-                {feedback.correct
-                  ? 'Correct!'
-                  : `Incorrect. The answer was ${feedback.answer}.`}
-              </p>
-              <button onClick={handleNext}>Next</button>
-            </div>
-          )}
-        </>
+              {question.hp && (
+                <>
+                  <dt>HP</dt>
+                  <dd>{question.hp}</dd>
+                </>
+              )}
+              {question.set && (
+                <>
+                  <dt>Set</dt>
+                  <dd>{question.set.name}</dd>
+                </>
+              )}
+              <dt>Rarity</dt>
+              <dd>{question.rarity || '—'}</dd>
+              <dt>Types</dt>
+              <dd>{question.types.join(', ') || '—'}</dd>
+            </dl>
+
+            {!feedback ? (
+              <form onSubmit={handleSubmitGuess}>
+                {session.mode === 'guess_card' ? (
+                  // Deliberately unscoped (no set/series) — suggestions
+                  // drawn from the whole catalog are the same regardless of
+                  // which card this question is actually about, so they
+                  // can't leak the answer the way scoping to this
+                  // question's small eligible pool sometimes could. See
+                  // docs/decisions.md #036.
+                  <NameAutocomplete
+                    value={guess}
+                    onChange={setGuess}
+                    fetchSuggestions={(text) => getCardNames({ search: text })}
+                    ariaLabel="Your guess"
+                  />
+                ) : session.mode === 'guess_set' ? (
+                  // Same reasoning as guess_card above — the full set list
+                  // isn't scoped to this question's eligible pool, so it
+                  // can't hint at the answer. See docs/decisions.md #045.
+                  <NameAutocomplete
+                    value={guess}
+                    onChange={setGuess}
+                    fetchSuggestions={(text) =>
+                      Promise.resolve(
+                        filterSetNameSuggestions(setsQuery.data ?? [], text),
+                      )
+                    }
+                    ariaLabel="Your guess"
+                  />
+                ) : (
+                  <input
+                    aria-label="Your guess"
+                    value={guess}
+                    onChange={(e) => setGuess(e.target.value)}
+                  />
+                )}
+                <button
+                  type="submit"
+                  disabled={checkMutation.isPending || !guess}
+                >
+                  Submit guess
+                </button>
+              </form>
+            ) : (
+              <div>
+                <p>
+                  {feedback.correct
+                    ? 'Correct!'
+                    : `Incorrect. The answer was ${feedback.answer}.`}
+                </p>
+                <button onClick={handleNext}>Next</button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

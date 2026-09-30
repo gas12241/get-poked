@@ -378,7 +378,6 @@
 }
 
 .quiz-mode-selection,
-.quiz-question,
 .quiz-summary {
   max-width: 480px;
   margin: 0 auto;
@@ -387,13 +386,53 @@
 }
 
 .quiz-question {
+  /* Wider than the other two quiz screens (deliberately split out of their
+     shared rule, not shared with them) — room for the image and its stats
+     side by side once revealed, so the whole thing fits on screen without
+     scrolling. See docs/decisions.md #053. */
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 20px;
+  text-align: center;
+
   /* Single point of control for the quiz card's displayed size — both the
      revealed card image and the case-opening reel (viewport, item size,
      and the landing math in CaseOpeningReel.tsx) read this one variable,
      so resizing the card later means changing it here only. Ratio matches
-     a real card's proportions (~0.714). See docs/decisions.md #040. */
-  --quiz-card-width: 480px;
+     a real card's proportions (~0.714). See docs/decisions.md #040.
+     Reduced from 480px so the whole question screen — image, stats, and
+     footer — fits without scrolling on a typical viewport; the side-by-side
+     layout alone wasn't enough, since the image's own height was already
+     close to the ceiling. See docs/decisions.md #053. */
+  --quiz-card-width: 400px;
   --quiz-card-ratio: 63 / 88;
+}
+
+/* Image on the left, stats + guess form in a column to its right — see
+   docs/decisions.md #053. Falls back to the original stacked layout below
+   700px, where there isn't room for both side by side (CSS media queries
+   can't reference a custom property, so this width is duplicated in the
+   query below rather than pulled from one variable). */
+.quiz-revealed {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 24px;
+  text-align: left;
+
+  @media (max-width: 700px) {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+}
+
+.quiz-revealed-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 260px;
+  padding-top: 4px;
 }
 
 .quiz-mode-buttons {
@@ -510,7 +549,9 @@
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 4px 12px;
-  margin: 16px 0;
+  /* No margin of its own — spacing from the form/feedback block below it
+     comes from .quiz-revealed-details' own gap instead, now that both live
+     inside that flex column together. */
   text-align: left;
 }
 
@@ -521,9 +562,13 @@
    spanning .name-autocomplete's own width) would end up covering it. */
 .quiz-question form {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   gap: 8px;
+
+  @media (max-width: 700px) {
+    justify-content: center;
+  }
 }
 
 /* Case-opening reel (docs/decisions.md #040) — a viewport onto a
