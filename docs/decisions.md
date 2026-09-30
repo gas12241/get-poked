@@ -688,6 +688,21 @@ Why
 
 ---
 
+## Decision 049
+
+Reel decoys are restricted to the single color that difficulty could actually produce
+
+Why
+
+- **User-requested consistency**: with a difficulty picker now controlling which rarities a quiz's cards are drawn from (decisions.md #047), it looked wrong for the spin to show all three decoy colors (grey/blue/orange) regardless of difficulty — a Hard-difficulty quiz (Common/Uncommon/Rare only) could never actually produce an orange chase card, so an orange decoy during a Hard spin was always a color that could never be the real answer
+- **Every decoy uses one single tier per difficulty, not a mix** — Easy's rarities are exactly the existing chase tier, so its decoys are always 'chase' (orange); Hard's rarities are exactly Common/Uncommon/Rare, so its decoys are always 'common' (grey); Medium's rarities are, by construction, everything that's neither, so its decoys are always 'mid' (blue). This isn't a stylistic choice among options — it's the only self-consistent one once "never show an impossible color" is the goal, since each difficulty's real rarity pool maps to exactly one tint
+- **A real, pre-existing bug found and fixed along the way**: the winning slot's own card-back tint (shown pre-flip, already using the real card's actual rarity via `tierForRarity`) relied on a loose keyword heuristic ("ultra", "secret", "vmax", ...) that was only ever meant to be "close enough" cosmetically (its own comment said so). Restricting decoys to an exact tier made this loose matching a real correctness bug: "ACE SPEC Rare", "Rare ACE", and "Classic Collection" are Easy/chase-tier rarities but contain none of the chase keywords, so they fell through to 'mid' (blue) — meaning an Easy-difficulty quiz (all-orange decoys) could land on a blue-tinted winning card for those three rarities, a visible contradiction. Fixed by making `tierForRarity` match the exact same `EASY_RARITIES`/`HARD_RARITIES` sets `tierForDifficulty` uses (mirroring `quiz/eligibility.py`'s `EASY_RARITIES`/`HARD_RARITIES` precisely, not approximated) — the two functions now partition every rarity identically by construction, so the winning card's tint and the difficulty's decoy tint can never disagree
+- **The difficulty a quiz was started with is now persisted on the session** (`QuizSession.difficulty`), not just held in `QuizPage`'s local state — every question after the first needs it too (each question's card came from the same difficulty-filtered pool), and `QuizQuestionView` remounts fresh per question with no access to `QuizPage`'s local state. An old, already-persisted session with no `difficulty` field reads as `undefined` at runtime, which `tierForDifficulty` treats as Medium ('mid') — a safe, sensible fallback, no migration needed, same pattern already established for `currentRevealed` (decisions.md #043)
+- **`randomTier()` removed entirely** — with every decoy in a spin now forced to the same single tier, there was no randomness left to generate; the decoy arrays became plain fixed-length fills instead
+- **Verified live against the real catalog**: Easy showed 40/40 decoy backs as 'chase' tint and zero of any other; Hard showed 40/40 as 'common' and zero of any other; Medium showed all 'mid'; the winning slot's own tint matched the decoys' tier in every case. New component tests cover the tint restriction per difficulty and the specific "ACE SPEC Rare" exact-match regression, the latter confirmed to fail under the old keyword heuristic before the fix
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

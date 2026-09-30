@@ -18,6 +18,7 @@ describe('CaseOpeningReel', () => {
         rarity="Rare Holo"
         imageSrc="https://example.com/card.png"
         alt="Card to guess"
+        difficulty="medium"
         onFinish={onFinish}
       />,
     );
@@ -41,6 +42,7 @@ describe('CaseOpeningReel', () => {
         rarity="Rare Holo"
         imageSrc="https://example.com/card.png"
         alt="Card to guess"
+        difficulty="medium"
         onFinish={() => {}}
       />,
     );
@@ -74,6 +76,7 @@ describe('CaseOpeningReel', () => {
         rarity="Common"
         imageSrc="https://example.com/card.png"
         alt="Card to guess"
+        difficulty="hard"
         onFinish={onFinish}
       />,
     );
@@ -86,12 +89,85 @@ describe('CaseOpeningReel', () => {
 
     matchMediaSpy.mockRestore();
   });
+
+  it('restricts every decoy to the tint matching the difficulty', () => {
+    // See docs/decisions.md #049 — no decoy should show a color that
+    // couldn't actually be the real answer at this difficulty. "Ultra
+    // Rare" is an Easy-tier rarity, so both the decoys and the winning
+    // slot should be the 'chase' (orange) tint here.
+    const { container } = render(
+      <CaseOpeningReel
+        rarity="Ultra Rare"
+        imageSrc="https://example.com/card.png"
+        alt="Card to guess"
+        difficulty="easy"
+        onFinish={() => {}}
+      />,
+    );
+
+    expect(
+      container.querySelectorAll('.case-opening-back-chase').length,
+    ).toBeGreaterThan(0);
+    expect(
+      container.querySelectorAll('.case-opening-back-common'),
+    ).toHaveLength(0);
+    expect(container.querySelectorAll('.case-opening-back-mid')).toHaveLength(
+      0,
+    );
+  });
+
+  it('tints correctly for a rarity the old keyword heuristic used to miss', () => {
+    // "ACE SPEC Rare" is an Easy/chase-tier rarity (docs/decisions.md #047)
+    // but contains none of the old tierForRarity's keywords
+    // ("ultra"/"secret"/"rainbow"/etc.) — it used to fall through to 'mid'
+    // (blue) instead of 'chase' (orange). Exact-set matching fixes this.
+    const { container } = render(
+      <CaseOpeningReel
+        rarity="ACE SPEC Rare"
+        imageSrc="https://example.com/card.png"
+        alt="Card to guess"
+        difficulty="easy"
+        onFinish={() => {}}
+      />,
+    );
+
+    expect(
+      container.querySelectorAll('.case-opening-back-chase').length,
+    ).toBeGreaterThan(0);
+    expect(container.querySelectorAll('.case-opening-back-mid')).toHaveLength(
+      0,
+    );
+  });
+
+  it('restricts every decoy to grey for hard difficulty', () => {
+    const { container } = render(
+      <CaseOpeningReel
+        rarity="Common"
+        imageSrc="https://example.com/card.png"
+        alt="Card to guess"
+        difficulty="hard"
+        onFinish={() => {}}
+      />,
+    );
+
+    expect(
+      container.querySelectorAll('.case-opening-back-common').length,
+    ).toBeGreaterThan(0);
+    expect(container.querySelectorAll('.case-opening-back-mid')).toHaveLength(
+      0,
+    );
+    expect(container.querySelectorAll('.case-opening-back-chase')).toHaveLength(
+      0,
+    );
+  });
 });
 
 describe('StartingReel', () => {
   it('shows an idle loop and does not call onFinish while not ready', async () => {
     const onFinish = vi.fn();
-    render(<StartingReel ready={false} onFinish={onFinish} />);
+    render(
+      <StartingReel ready={false} difficulty="medium" onFinish={onFinish} />,
+    );
 
     expect(screen.queryByAltText('Card to guess')).not.toBeInTheDocument();
     expect(onFinish).not.toHaveBeenCalled();
@@ -108,7 +184,7 @@ describe('StartingReel', () => {
   it('hands off to the real spin once ready, and eventually reveals it', async () => {
     const onFinish = vi.fn();
     const { rerender } = render(
-      <StartingReel ready={false} onFinish={onFinish} />,
+      <StartingReel ready={false} difficulty="medium" onFinish={onFinish} />,
     );
 
     // Simulates the real question data arriving mid-idle, same as QuizPage
@@ -119,6 +195,7 @@ describe('StartingReel', () => {
         ready
         rarity="Rare Holo"
         imageSrc="https://example.com/card.png"
+        difficulty="medium"
         onFinish={onFinish}
       />,
     );
@@ -153,6 +230,7 @@ describe('StartingReel', () => {
         ready
         rarity="Common"
         imageSrc="https://example.com/card.png"
+        difficulty="hard"
         onFinish={onFinish}
       />,
     );
