@@ -174,17 +174,31 @@ export const getCardNames = ({
 // already returns the full unpaginated set list (~174 today), small enough
 // to fetch once (React Query caches it under queryKey ['sets'], shared
 // with CardListPage) and filter client-side on every keystroke instead of
-// hitting the network each time. Same shortest-first-8-alphabetical shape
-// as getCardNames, minus the dedicated ranking that one needs (set names
-// don't cluster around shared prefixes the way species reprints do).
+// hitting the network each time. Matches anywhere in the name, not just as
+// a prefix — e.g. typing "Black" finds "SM Black Star Promos" — same
+// reasoning as getCardNames (docs/decisions.md #046). No pathological-1-
+// character-search concern here the way that endpoint has: this filters an
+// already-fetched ~174-item array in memory, not a database query, and
+// NameAutocomplete's own MIN_CHARS already keeps this from being called
+// below 2 characters anyway.
+//
+// Ranked shortest-name-first, not alphabetically, for the same reason as
+// getCardNames: real set names cluster around a shared suffix with
+// different era prefixes ("BW Black Star Promos", "DP Black Star Promos",
+// "SM Black Star Promos", ...) — confirmed against real data that a plain
+// alphabetical cap for "black" pushes "SM Black Star Promos" (the era the
+// user actually wanted) out of the top 8 entirely, crowded out by earlier
+// alphabet entries in the same cluster.
 export function filterSetNameSuggestions(sets: Set[], search: string) {
   const trimmed = search.trim().toLowerCase();
   if (!trimmed) return [];
   const matches = new Set<string>();
   for (const set of sets) {
-    if (set.name.toLowerCase().startsWith(trimmed)) {
+    if (set.name.toLowerCase().includes(trimmed)) {
       matches.add(set.name);
     }
   }
-  return [...matches].sort((a, b) => a.localeCompare(b)).slice(0, 8);
+  return [...matches]
+    .sort((a, b) => a.length - b.length || a.localeCompare(b))
+    .slice(0, 8);
 }

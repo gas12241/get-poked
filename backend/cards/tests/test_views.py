@@ -602,7 +602,7 @@ class CardNameListViewTests(APITestCase):
                 image_large="https://example.com/large.png",
             )
 
-    def test_returns_names_starting_with_the_search_term(self):
+    def test_returns_names_containing_the_search_term_as_a_prefix(self):
         response = self.client.get(reverse("card-name-list"), {"search": "pi"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(sorted(response.data), ["Pidgey", "Pikachu", "Piplup"])
@@ -611,15 +611,37 @@ class CardNameListViewTests(APITestCase):
         response = self.client.get(reverse("card-name-list"), {"search": "PI"})
         self.assertEqual(sorted(response.data), ["Pidgey", "Pikachu", "Piplup"])
 
-    def test_excludes_names_not_starting_with_the_search_term(self):
-        # "charizard" contains no "pi" substring anyway, but this also
-        # proves it's a startswith match, not a substring one — e.g.
-        # searching "zard" should not match "Charizard".
+    def test_matches_the_search_term_anywhere_in_the_name_not_just_as_a_prefix(self):
+        # See docs/decisions.md #046 — a substring match, not startswith:
+        # "zard" (mid/end of "Charizard") should still find it.
         response = self.client.get(reverse("card-name-list"), {"search": "zard"})
-        self.assertEqual(response.data, [])
+        self.assertEqual(response.data, ["Charizard"])
+
+    def test_finds_a_species_name_embedded_in_a_longer_tag_team_card_name(self):
+        # The exact real-world case reported: searching a species name
+        # embedded partway through a combined "X & Y" tag-team card name
+        # should surface it, not just a card named exactly that species.
+        Card.objects.create(
+            tcg_id="tag-team",
+            set=self.set_c,
+            name="Mega Lopunny & Jigglypuff GX",
+            number="300",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        response = self.client.get(reverse("card-name-list"), {"search": "jigglypuff"})
+        self.assertIn("Mega Lopunny & Jigglypuff GX", response.data)
 
     def test_empty_search_returns_no_suggestions(self):
         response = self.client.get(reverse("card-name-list"))
+        self.assertEqual(response.data, [])
+
+    def test_single_character_search_returns_no_suggestions(self):
+        # Rejected outright rather than run as a substring match — see
+        # MIN_SEARCH_LENGTH's own comment for why a 1-character substring
+        # search is pathologically broad against real data.
+        response = self.client.get(reverse("card-name-list"), {"search": "p"})
         self.assertEqual(response.data, [])
 
     def test_scoped_to_a_set_excludes_names_only_present_elsewhere(self):

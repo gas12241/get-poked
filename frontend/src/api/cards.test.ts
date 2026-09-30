@@ -80,16 +80,54 @@ describe('filterSetNameSuggestions', () => {
     ]);
   });
 
+  it('also matches mid-name, not just as a prefix', () => {
+    // See docs/decisions.md #046 — the exact case reported: "Black" should
+    // find "SM Black Star Promos" even though the name doesn't start with
+    // it.
+    const sets = ['SM Black Star Promos', 'Jungle'].map(makeSet);
+    expect(filterSetNameSuggestions(sets, 'black')).toEqual([
+      'SM Black Star Promos',
+    ]);
+  });
+
+  it('prefers shorter names over longer ones sharing a common suffix, not pure alphabetical order', () => {
+    // Real bug found via live testing: a plain alphabetical cap for "black"
+    // pushed "SM Black Star Promos" out of the top 8 entirely, crowded out
+    // by earlier-alphabet era prefixes sharing the same "Black Star
+    // Promos" suffix (BW, DP, HGSS, Nintendo, ...). Shortest-first surfaces
+    // it.
+    const names = [
+      'Black & White',
+      'Black Bolt',
+      'BW Black Star Promos',
+      'DP Black Star Promos',
+      'HGSS Black Star Promos',
+      'Nintendo Black Star Promos',
+      'Pitch Black',
+      'Scarlet & Violet Black Star Promos',
+      'SM Black Star Promos',
+      'SWSH Black Star Promos',
+      'Wizards Black Star Promos',
+      'XY Black Star Promos',
+    ];
+    const sets = names.map(makeSet);
+    expect(filterSetNameSuggestions(sets, 'black')).toContain(
+      'SM Black Star Promos',
+    );
+  });
+
   it('returns nothing for an empty or whitespace-only search', () => {
     const sets = ['Base'].map(makeSet);
     expect(filterSetNameSuggestions(sets, '')).toEqual([]);
     expect(filterSetNameSuggestions(sets, '   ')).toEqual([]);
   });
 
-  it('dedupes repeated set names and caps at 8, sorted alphabetically', () => {
-    // 9 unique names (A-I) plus a duplicate "Set A". If the duplicate
-    // weren't deduped before the top-8 cap, "Set A" would appear twice and
-    // "Set H" would be pushed out instead.
+  it('dedupes repeated set names and caps at 8, alphabetical among equal lengths', () => {
+    // 9 unique same-length names (A-I) plus a duplicate "Set A" — with
+    // every name the same length, this falls back entirely to the
+    // alphabetical tiebreak. If the duplicate weren't deduped before the
+    // top-8 cap, "Set A" would appear twice and "Set H" would be pushed
+    // out instead.
     const names = [
       'Set I',
       'Set B',

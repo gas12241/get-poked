@@ -645,6 +645,20 @@ Why
 
 ---
 
+## Decision 046
+
+Name-suggestion search (card names and set names) matches anywhere in the name, not just as a prefix
+
+Why
+
+- **Two real, user-reported gaps in the same underlying assumption**: both the Quiz page's card-name suggestions (`GET /api/v1/card-names/`, decisions.md #036) and the new set-name suggestions (decisions.md #045) matched only a leading prefix. A card like "Mega Lopunny & Jigglypuff-GX" was never suggested when searching "Jigglypuff" (it's not a prefix), and a set like "SM Black Star Promos" was never suggested when searching "Black" — real, non-hypothetical cases confirmed against the synced catalog, not edge cases invented for the fix
+- **`name__istartswith` → `name__icontains`** on the backend `card-names` endpoint; the frontend's `filterSetNameSuggestions` switched from `.startsWith()` to `.includes()` the same way, for the same reason
+- **A minimum search length (2 characters) added to the backend endpoint itself**, not left to the frontend's existing `NameAutocomplete` `MIN_CHARS` alone — substring matching is far more expensive than prefix matching for very short queries: measured against the real ~4,453-distinct-name catalog, a single-character search like `"a"` matches ~70% of all names (3,079), versus a handful for a real 1-2 character *prefix*. `MAX_CANDIDATES` (the pre-ranking fetch cap) was raised from 500 to 2000 for the same reason — 500 was already being exceeded by ordinary 2-character substrings ("an" → 584, "ar" → 758 distinct names), which would have silently truncated *before* the shortest-name ranking ran, risking dropping the actual best match. No equivalent guard was needed for `filterSetNameSuggestions` — it filters an already-fetched ~174-item array in memory, not a database query, so even a pathological 1-character search costs nothing meaningful there (and `NameAutocomplete`'s own `MIN_CHARS` already prevents one from ever being sent through the real UI regardless)
+- **A second real bug found via live-browser verification of the fix itself**: `filterSetNameSuggestions` was still sorting purely alphabetically (unlike `getCardNames`, which already uses shortest-name-first specifically to avoid this). Broadening to substring matching made the exact clustering problem #036 already solved for card names show up for sets too — searching "black" surfaced 12 real matches, 8 of them sharing the suffix "... Black Star Promos" with different era prefixes, and a plain alphabetical cap pushed "SM Black Star Promos" (the era actually being searched for) out of the top 8, crowded out by earlier-alphabet eras (BW, DP, HGSS, Nintendo). Fixed by applying the same shortest-name-first, alphabetical-tiebreak ranking `getCardNames` already uses
+- **Verified live against the real synced catalog for both original reports**: `?search=jigglypuff` now returns `["Jigglypuff", "Erika's Jigglypuff", "Mega Lopunny & Jigglypuff-GX"]`; set suggestions for "black" now include "SM Black Star Promos" in the top 8. New backend tests for the substring match, the minimum-length rejection, and a tag-team-card regression test mirroring the exact reported case; new frontend tests for substring matching and the shortest-first ranking fix — all confirmed to fail without their respective fixes before being restored
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).
