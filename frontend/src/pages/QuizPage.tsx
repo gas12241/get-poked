@@ -13,6 +13,7 @@ import { useQuizStore } from '../store/quizStore';
 import { useAuthStore } from '../store/authStore';
 import NameAutocomplete from '../components/NameAutocomplete';
 import CaseOpeningReel, { StartingReel } from '../components/CaseOpeningReel';
+import ConfirmDialog from '../components/ConfirmDialog';
 import './pages.css';
 
 const MODES: { value: QuizMode; label: string }[] = [
@@ -192,6 +193,7 @@ function QuizQuestionView({
     correct: boolean;
     answer: string;
   } | null>(null);
+  const [confirmingAbandon, setConfirmingAbandon] = useState(false);
   // Every question gets its own case-opening reveal — this component
   // remounts fresh per question (see the `key` prop where it's rendered
   // below), so this state naturally resets each time. See
@@ -233,12 +235,6 @@ function QuizQuestionView({
       time_taken_seconds: (Date.now() - (startedAt ?? Date.now())) / 1000,
       order: session.currentIndex,
     });
-  }
-
-  function handleAbandon() {
-    if (window.confirm('Abandon this quiz? Your progress will be lost.')) {
-      onAbandon();
-    }
   }
 
   return (
@@ -343,9 +339,20 @@ function QuizQuestionView({
           </div>
         </div>
       )}
-      <button onClick={handleAbandon} className="quiz-abandon">
+      <button
+        onClick={() => setConfirmingAbandon(true)}
+        className="quiz-abandon"
+      >
         Abandon quiz
       </button>
+      {confirmingAbandon && (
+        <ConfirmDialog
+          message="Abandon this quiz? Your progress will be lost."
+          confirmLabel="Abandon quiz"
+          onConfirm={onAbandon}
+          onCancel={() => setConfirmingAbandon(false)}
+        />
+      )}
     </div>
   );
 }

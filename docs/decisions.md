@@ -790,6 +790,22 @@ Why
 
 ---
 
+## Decision 056
+
+Abandon quiz's confirmation is now a custom React component, not `window.confirm()`
+
+Why
+
+- **Follow-up user request**: replace the native `window.confirm()` dialog added in #055 with an app-styled equivalent, so the confirmation looks consistent with the rest of the UI instead of an OS-styled popup — the tradeoff (more code, hand-built focus/escape/click-outside handling) was discussed and accepted before building
+- **New `ConfirmDialog` component**, deliberately generic (`message`/`confirmLabel`/`cancelLabel` props, not hardcoded to "abandon") rather than a one-off — the same reasoning `NameAutocomplete` already follows for being shared across quiz modes, so any future destructive confirmation in the app can reuse it
+- **Mirrors `window.confirm()`'s own safety defaults** rather than inventing new ones: Cancel is focused on open (a stray Enter cancels, not confirms — appropriate for a dialog whose whole purpose is guarding a destructive action), Escape cancels, and clicking outside the panel (the backdrop) cancels too
+- **Styling reuses existing tokens** rather than introducing new ones — `--danger`/`--shadow`/`--border`/`--bg` (from #055 and the app's base token set), a solid red fill for the confirm button (distinct from the outlined `--danger` "Abandon quiz" trigger button, so the trigger and the actual point of no return read differently), `.confirm-dialog-*` classes added to `pages.css` alongside the app's other shared component styles (no component owns its own CSS file in this codebase — see `NameAutocomplete`, `CaseOpeningReel`)
+- **`role="alertdialog"` + `aria-modal="true"` + `aria-describedby`**, keeping the accessibility `window.confirm()` gave for free rather than losing it in the swap
+- **7 new component tests** (`ConfirmDialog.test.tsx`) covering the confirm click, cancel click, Escape, a non-Escape key (added specifically to close a real branch-coverage gap found in this segment), backdrop click, and click-inside-the-panel *not* cancelling; `QuizPage.test.tsx`'s two abandon tests rewritten to interact with the real rendered dialog instead of mocking `window.confirm`. The "declined" test was re-confirmed to fail against a deliberately broken version that skipped the dialog entirely
+- **Verified live** in both themes: dialog opens with the exact message, confirm returns to mode selection, cancel/Escape/backdrop-click all dismiss without abandoning, and the solid red confirm button reads correctly against both the light and dark panel backgrounds
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

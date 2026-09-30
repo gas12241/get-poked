@@ -815,3 +815,80 @@
     background: var(--danger-bg);
   }
 }
+
+/* App-styled replacement for window.confirm() (see ConfirmDialog.tsx) —
+   deliberately generic, not named after "abandon", so any future
+   destructive confirmation can reuse it the same way NameAutocomplete is
+   reused across quiz modes. */
+.confirm-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  animation: confirm-dialog-fade-in 0.15s ease-out;
+}
+
+.confirm-dialog {
+  max-width: 360px;
+  padding: 24px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.confirm-dialog p {
+  margin: 0 0 20px;
+  color: var(--text-h);
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.confirm-dialog-actions button {
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.confirm-dialog-actions button:not(.confirm-dialog-confirm) {
+  color: var(--text-h);
+  background: var(--bg);
+  border: 1px solid var(--border);
+
+  &:hover {
+    background: var(--accent-bg);
+  }
+}
+
+.confirm-dialog-confirm {
+  color: #fff;
+  background: var(--danger);
+  border: none;
+
+  &:hover {
+    opacity: 0.85;
+  }
+}
+
+@keyframes confirm-dialog-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confirm-dialog-backdrop {
+    animation: none;
+  }
+}
