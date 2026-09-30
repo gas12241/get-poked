@@ -717,6 +717,22 @@ Why
 
 ---
 
+## Decision 051
+
+A dedicated "Start Quiz" button — mode selection no longer starts the quiz immediately
+
+Why
+
+- **Previously, clicking a "Guess the ___" tile started the quiz immediately** — the only settings a user could configure *before* committing were Difficulty and Quiz length, picked after the mode tiles but with no way to change your mind about the mode without abandoning and restarting. The user asked for all three choices (mode, difficulty, length) to be pure selections, confirmed by one explicit action
+- **The three mode tiles became a fourth `radiogroup`** (`role="radiogroup"`/`role="radio"`, `aria-checked`, `.active` on the selected tile) — the same pattern already used for Difficulty and Quiz length, instead of a one-off "buttons that also happen to be actions" design. `QuizPage` now holds the selected mode in state (`mode`, defaulting to the first entry, `guess_card`) the same way it already holds `questionCount` and `difficulty`
+- **A new `.quiz-start-button`, deliberately not styled like the pill pickers above it** — a solid-filled, bold button in a new fixed "CTA" color (`--cta`/`--cta-hover`, a vivid pink, `#ec4899`/`#db2777`) per the user's explicit "eye popping color" ask. Unlike `--accent` (which shifts between a light and dark variant per theme, since it's blended with the page background as text/borders), `--cta` stays one fixed vivid value in both themes — it's a solid fill sitting on its own, not blended with anything
+- **Placed directly below the Quiz length picker** (the last of the three settings sections), matching the user's "under all the settings" request literally — mode, difficulty, and length all sit above it in a natural top-to-bottom read order ending in the one action to take
+- **No loading/disabled state needed on the button** — same reasoning already established when the old per-mode action buttons lost their `isPending` disabled state (decision #044's cleanup): clicking Start immediately swaps `ModeSelection` out for `StartingQuestion`, so there's no window where a second click on a since-unmounted button could matter
+- **A broad test-suite update, not just new tests**: every existing test that used to click a "Guess the ___" button directly to start a quiz now needed either an explicit mode-radio click (when the test cares which mode) or nothing at all (when it doesn't — `guess_card` is already the default, so several tests simplified to just clicking "Start Quiz"). A new dedicated test covers the default mode, confirms picking a mode alone doesn't start anything, and confirms the actually-sent mode matches the last pick — confirmed to fail (quiz starts on mode-pick alone) when deliberately re-coupling selection and start, before restoring the fix
+- **Verified live**: picking each mode tile updates its active state without leaving the mode-selection screen; the pink Start button stays visible throughout; pressing it launches the quiz with whatever mode/difficulty/length was last selected
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

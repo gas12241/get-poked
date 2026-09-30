@@ -7,6 +7,12 @@
   --accent: #aa3bff;
   --accent-bg: rgba(170, 59, 255, 0.1);
   --accent-border: rgba(170, 59, 255, 0.5);
+  /* A single fixed, vivid "press me" color for solid-filled call-to-action
+     buttons (e.g. the Quiz page's Start button) — deliberately not varied
+     per theme like --accent, since a solid fill doesn't need to blend with
+     the page background the way text/borders do. */
+  --cta: #ec4899;
+  --cta-hover: #db2777;
   --social-bg: rgba(244, 243, 236, 0.5);
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;

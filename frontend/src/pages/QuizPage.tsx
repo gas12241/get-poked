@@ -56,18 +56,22 @@ const DIFFICULTIES: {
 ];
 
 function ModeSelection({
+  mode,
+  onSelectMode,
   questionCount,
   onSelectCount,
   difficulty,
   onSelectDifficulty,
-  onSelect,
+  onStart,
   error,
 }: {
+  mode: QuizMode;
+  onSelectMode: (mode: QuizMode) => void;
   questionCount: number;
   onSelectCount: (count: number) => void;
   difficulty: QuizDifficulty;
   onSelectDifficulty: (difficulty: QuizDifficulty) => void;
-  onSelect: (mode: QuizMode) => void;
+  onStart: () => void;
   error: string | null;
 }) {
   const selectedDifficulty = DIFFICULTIES.find((d) => d.value === difficulty);
@@ -75,10 +79,21 @@ function ModeSelection({
   return (
     <div className="quiz-mode-selection">
       <h1>Quiz</h1>
-      <div className="quiz-mode-buttons">
-        {MODES.map((mode) => (
-          <button key={mode.value} onClick={() => onSelect(mode.value)}>
-            {mode.label}
+      <div
+        className="quiz-mode-buttons"
+        role="radiogroup"
+        aria-label="Quiz mode"
+      >
+        {MODES.map((m) => (
+          <button
+            key={m.value}
+            type="button"
+            role="radio"
+            aria-checked={mode === m.value}
+            className={mode === m.value ? 'active' : undefined}
+            onClick={() => onSelectMode(m.value)}
+          >
+            {m.label}
           </button>
         ))}
       </div>
@@ -117,6 +132,9 @@ function ModeSelection({
           </button>
         ))}
       </div>
+      <button type="button" className="quiz-start-button" onClick={onStart}>
+        Start Quiz
+      </button>
       {error && <p>Failed to start quiz: {error}</p>}
     </div>
   );
@@ -378,6 +396,7 @@ function QuizPage() {
   const markSubmitted = useQuizStore((s) => s.markSubmitted);
   const abandonSession = useQuizStore((s) => s.abandonSession);
   const isAuthenticated = useAuthStore((s) => s.accessToken !== null);
+  const [mode, setMode] = useState<QuizMode>(MODES[0].value);
   const [questionCount, setQuestionCount] = useState(5);
   const [difficulty, setDifficulty] = useState<QuizDifficulty>('medium');
   // Set the moment a mode is picked, cleared once its first question has
@@ -429,11 +448,13 @@ function QuizPage() {
   if (!session) {
     return (
       <ModeSelection
+        mode={mode}
+        onSelectMode={setMode}
         questionCount={questionCount}
         onSelectCount={setQuestionCount}
         difficulty={difficulty}
         onSelectDifficulty={setDifficulty}
-        onSelect={(mode) => {
+        onStart={() => {
           setPendingMode(mode);
           startQuiz.mutate(mode);
         }}

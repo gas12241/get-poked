@@ -422,6 +422,12 @@
     background: var(--accent-bg);
     border-color: var(--accent-border);
   }
+
+  &.active {
+    background: var(--accent-bg);
+    color: var(--accent);
+    border-color: var(--accent-border);
+  }
 }
 
 .quiz-picker-label {
@@ -467,6 +473,30 @@
   &:disabled {
     cursor: not-allowed;
     opacity: 0.5;
+  }
+}
+
+/* Deliberately not the pill-picker style above — a bold, solid-filled
+   action button reads as "the thing to press when you're done", distinct
+   from the selection controls above it. --cta is a fixed vivid color (not
+   varied per light/dark theme like --accent) since it's a solid fill
+   rather than text/border blended with the page background. */
+.quiz-start-button {
+  display: block;
+  width: fit-content;
+  margin: 28px auto 0;
+  padding: 14px 32px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--cta);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cta-hover);
   }
 }
 

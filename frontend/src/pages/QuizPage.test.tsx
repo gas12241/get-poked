@@ -42,7 +42,8 @@ const REEL_TIMEOUT_MS =
 
 async function startQuiz() {
   renderWithProviders(<QuizPage />);
-  await userEvent.click(screen.getByRole('button', { name: 'Guess the Card' }));
+  await userEvent.click(screen.getByRole('radio', { name: 'Guess the Card' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Start Quiz' }));
   await screen.findByLabelText('Your guess', {}, { timeout: REEL_TIMEOUT_MS });
 }
 
@@ -59,6 +60,50 @@ describe('QuizPage', () => {
   it('shows mode selection and starts a quiz for the selected mode', async () => {
     await startQuiz();
     expect(screen.getByText('Question 1 of 1')).toBeInTheDocument();
+  });
+
+  it('defaults to Guess the Card mode, does not start until Start Quiz is pressed, and sends the chosen mode', async () => {
+    let capturedMode: string | null = null;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/quiz/`, ({ request }) => {
+        capturedMode = new URL(request.url).searchParams.get('mode');
+        return HttpResponse.json({
+          questions: [
+            {
+              card: 1,
+              image: 'https://example.com/masked.png',
+              rarity: 'Common',
+              supertype: 'Pokémon',
+              types: ['Fire'],
+              name: 'Charizard',
+            },
+          ],
+        });
+      }),
+    );
+
+    renderWithProviders(<QuizPage />);
+
+    const cardRadio = screen.getByRole('radio', { name: 'Guess the Card' });
+    expect(cardRadio).toHaveAttribute('aria-checked', 'true');
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Guess the HP' }));
+    expect(screen.getByRole('radio', { name: 'Guess the HP' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(cardRadio).toHaveAttribute('aria-checked', 'false');
+
+    // Picking a mode alone doesn't start anything — still on the
+    // mode-selection screen.
+    expect(
+      screen.getByRole('button', { name: 'Start Quiz' }),
+    ).toBeInTheDocument();
+    expect(capturedMode).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Start Quiz' }));
+
+    await waitFor(() => expect(capturedMode).toBe('guess_hp'));
   });
 
   it('defaults to a Medium (5-question) quiz, and sends the chosen length as count', async () => {
@@ -91,9 +136,7 @@ describe('QuizPage', () => {
       'true',
     );
 
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Guess the Card' }),
-    );
+    await userEvent.click(screen.getByRole('button', { name: 'Start Quiz' }));
 
     await waitFor(() => expect(capturedCount).toBe('3'));
   });
@@ -138,9 +181,7 @@ describe('QuizPage', () => {
       screen.getByText('Common, Uncommon, and Rare cards'),
     ).toBeInTheDocument();
 
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Guess the Card' }),
-    );
+    await userEvent.click(screen.getByRole('button', { name: 'Start Quiz' }));
 
     await waitFor(() => expect(capturedDifficulty).toBe('hard'));
   });
@@ -192,9 +233,8 @@ describe('QuizPage', () => {
     );
 
     renderWithProviders(<QuizPage />);
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Guess the Set' }),
-    );
+    await userEvent.click(screen.getByRole('radio', { name: 'Guess the Set' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Start Quiz' }));
     await screen.findByLabelText(
       'Your guess',
       {},
@@ -241,9 +281,7 @@ describe('QuizPage', () => {
 
   it('does not show the guess form (or let a guess be typed) until the case-opening reel finishes', async () => {
     renderWithProviders(<QuizPage />);
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Guess the Card' }),
-    );
+    await userEvent.click(screen.getByRole('button', { name: 'Start Quiz' }));
 
     expect(screen.queryByLabelText('Your guess')).not.toBeInTheDocument();
 
@@ -259,15 +297,13 @@ describe('QuizPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Abandon quiz' }));
 
     expect(
-      screen.getByRole('button', { name: 'Guess the Card' }),
+      screen.getByRole('radio', { name: 'Guess the Card' }),
     ).toBeInTheDocument();
   });
 
   it('resumes an in-progress quiz after remounting', async () => {
     const { unmount } = renderWithProviders(<QuizPage />);
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Guess the Card' }),
-    );
+    await userEvent.click(screen.getByRole('button', { name: 'Start Quiz' }));
     await screen.findByAltText(
       'Card to guess',
       {},
@@ -294,9 +330,7 @@ describe('QuizPage', () => {
 
   it('skips the case-opening reel on remount for a question already revealed', async () => {
     const { unmount } = renderWithProviders(<QuizPage />);
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Guess the Card' }),
-    );
+    await userEvent.click(screen.getByRole('button', { name: 'Start Quiz' }));
     // Wait for the reel to actually finish (the guess form only appears
     // once it does), unlike the previous test which unmounts mid-reel.
     await screen.findByLabelText(
