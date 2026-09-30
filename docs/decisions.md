@@ -763,6 +763,18 @@ Why
 
 ---
 
+## Decision 054
+
+Revealed quiz question's details column is vertically centered beside the image, not top-aligned — corrects decision #053
+
+Why
+
+- **#053 deliberately chose top-aligned** (`align-items: flex-start`), reasoning that vertically centering a details column much shorter than the image would look like it was "floating" oddly in the middle. The user tried it and asked for centered anyway — their own eyes on the actual rendered page are the real test here, not the a priori reasoning
+- **One-line change** (`flex-start` → `center` on `.quiz-revealed`), plus dropping `.quiz-revealed-details`' small `padding-top: 4px` — that padding existed only to fine-tune the top-aligned look and has no purpose once centered
+- **Verified live**: page height still measures exactly 800px on an 800px viewport (unaffected by this change, as expected — it's a vertical-alignment change within already-available space, not a size change)
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).
