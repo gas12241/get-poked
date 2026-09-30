@@ -806,6 +806,20 @@ Why
 
 ---
 
+## Decision 057
+
+Every question now gets the idle-then-pull wind-up before its reel, not just the first
+
+Why
+
+- **User-reported feel, not a bug**: the second question onward jump-cut straight from clicking "Next" into the full-speed 3.5s spin, with no lead-in — asked whether this was worth fixing, and whether a fade or replaying the idle animation would help. Recommended reusing the existing idle build-up over a fade, since a fade smooths the cut visually but doesn't address the actual absence of a wind-up
+- **No new component** — `StartingReel` (docs/decisions.md #044) already implements exactly "idle for at least `MIN_IDLE_DURATION_MS`, then crossfade into the real spin," and already tolerates `ready` being true from the very first render (it just means the idle loop's minimum hold, not a genuine data-wait, is what delays the handoff). `QuizQuestionView` now renders `StartingReel` with `ready` hardcoded true (its question's data is already synchronously on hand, per #040) instead of rendering `CaseOpeningReel` directly — a one-block swap, no new state or CSS
+- **`StartingReel`'s old doc comment** (only used for the first question, since later ones have no wait to fill) was no longer accurate and rewritten — it's now used for every question, and the idle loop's role shifts from "filling a real wait" (question 1) to "a deliberate, fixed-length wind-up" (every question after)
+- **New tests, not just reused ones**: a `CaseOpeningReel.test.tsx` test pins down the specific behavior this fix leans on — the idle loop still shows even when `ready` is true from the very first render, not just when it flips true mid-idle (the only case the existing test covered). A `QuizPage.test.tsx` test starts a 2-question quiz, answers question 1, clicks Next, and asserts `.case-opening-idle-track` is present immediately after — checking for the *idle track specifically*, since "the guess form isn't visible yet" alone is true either way (both the idle loop and a direct spin hide the guess form while running) and wouldn't have caught a regression back to the old jump-cut, as found by testing it against the un-fixed version first
+- **Verified live**: a 7-question quiz, answered question 1, clicked Next — the idle loop visibly plays immediately after, then hands off into the real spin, exactly matching question 1's own feel
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

@@ -329,6 +329,63 @@ describe('QuizPage', () => {
     ).not.toBeInTheDocument();
   });
 
+  it(
+    "shows an idle wind-up before the second question's reel too, not just the first",
+    async () => {
+      // Previously only the very first question got the idle-then-pull
+      // build-up (StartingQuestion/StartingReel) — every later question
+      // rendered CaseOpeningReel directly and jump-cut straight into its
+      // full-speed spin, which read as rushed. QuizQuestionView now uses
+      // StartingReel for every question. See docs/decisions.md #057.
+      server.use(
+        http.get(`${BASE_URL}/api/v1/quiz/`, () => {
+          return HttpResponse.json({
+            questions: [
+              {
+                card: 1,
+                image: 'https://example.com/masked-1.png',
+                rarity: 'Common',
+                supertype: 'Pokémon',
+                types: ['Fire'],
+                name: 'Charmander',
+              },
+              {
+                card: 2,
+                image: 'https://example.com/masked-2.png',
+                rarity: 'Common',
+                supertype: 'Pokémon',
+                types: ['Water'],
+                name: 'Squirtle',
+              },
+            ],
+          });
+        }),
+      );
+
+      await startQuiz();
+      await userEvent.type(screen.getByLabelText('Your guess'), 'Charmander');
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Submit guess' }),
+      );
+      await screen.findByText('Correct!');
+      await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+      expect(screen.getByText('Question 2 of 2')).toBeInTheDocument();
+      // Specifically the idle loop (StartingReel), not CaseOpeningReel's
+      // own spin straight away — both equally hide the guess form while
+      // running, so that alone wouldn't catch a regression back to the
+      // rushed jump-cut.
+      expect(document.querySelector('.case-opening-idle-track')).not.toBeNull();
+
+      await screen.findByLabelText(
+        'Your guess',
+        {},
+        { timeout: REEL_TIMEOUT_MS },
+      );
+    },
+    REEL_TIMEOUT_MS * 2,
+  );
+
   it('resumes an in-progress quiz after remounting', async () => {
     const { unmount } = renderWithProviders(<QuizPage />);
     await userEvent.click(screen.getByRole('button', { name: 'Start Quiz' }));
