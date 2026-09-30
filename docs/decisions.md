@@ -733,6 +733,21 @@ Why
 
 ---
 
+## Decision 052
+
+Quiz masking is a Gaussian blur, not a solid black rectangle
+
+Why
+
+- **User-requested**: the flat black bar over the guessed field (name/HP/set symbol) worked but looked plain; a blur reads as a more natural "obscured" effect for a photo-like card image
+- **`draw.rectangle(..., fill="black")` replaced with crop → `ImageFilter.GaussianBlur` → paste back**, same regions, same lazy generate-and-cache flow (`quiz/imaging.py`) — the masking *mechanism* changed, nothing about *where* or *when* masking happens did
+- **`BLUR_RADIUS = 25`**, chosen generously rather than tuned to a bare-minimum — this region still has to reliably obscure the answer (the same standard the region boundaries themselves are already held to, decisions.md #029), and a blur radius too small relative to text stroke width can leave dense text semi-legible. Checked visually against real cards across all three quiz modes (name, HP, set symbol) rather than just trusting the number
+- **A real, necessary test-fixture fix, not just new tests**: the existing masked-image tests generated their source image as a single flat color (`Image.new(..., color=SOURCE_COLOR)`). A Gaussian blur of a perfectly uniform region is a no-op — averaging identical pixel values returns the same value — so the existing "masked region differs from the original" assertion would have falsely failed against a correct blur implementation, not because the blur was wrong but because the fixture gave it nothing to blur. Fixed by adding a small checkerboard pattern inside the one region (`HP_REGION`) these tests actually sample, leaving the rest of the image flat so the existing "untouched region is byte-identical" assertion still holds
+- **A new dedicated test proves it's a genuine blur, not just a differently-colored solid fill** — samples several pixels across the masked region and asserts they're not all identical to each other and none is pure black (the checkerboard's own un-blurred color); a solid fill of any single color would make every sampled pixel identical, which this test would catch. Confirmed to fail when the implementation was temporarily reverted to a solid black fill, before restoring the real fix
+- **Verified live against real synced cards** for all three modes (name, HP, set-symbol regions) — the local `quiz_masks` cache (regeneratable per the lazy generate-and-cache design, decisions.md #030) was cleared first so verification exercised the new code path rather than serving already-cached black-bar images from earlier in this session
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).
