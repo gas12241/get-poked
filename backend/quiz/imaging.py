@@ -5,7 +5,7 @@ from io import BytesIO
 import requests
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-from PIL import Image, ImageDraw
+from PIL import Image, ImageFilter
 
 # Regions are fractions of (width, height): (left, top, right, bottom).
 # Deliberately generous, not pixel-exact — the goal is reliably obscuring the
@@ -27,6 +27,12 @@ BOTTOM_LEFT = (0.0, 0.90, 0.22, 1.0)  # fixed position, Sun & Moon onward
 # Reprint set mixing original WOTC-era cards and newer-style cards — carries the
 # set symbol in both possible spots depending on which original card is reprinted.
 BEST_OF_GAME_TCG_ID = "bp"
+
+# Gaussian blur, not a solid fill — high enough that dense text/symbols
+# genuinely wash out into an unreadable smear rather than just looking
+# softened, matching the same "reliably obscuring the answer" goal the
+# regions above are already held to. See docs/decisions.md #052.
+BLUR_RADIUS = 25
 
 
 def symbol_regions(card):
@@ -70,9 +76,10 @@ def get_or_create_masked_image(card, mode) -> str:
     response.raise_for_status()
 
     image = Image.open(BytesIO(response.content)).convert("RGB")
-    draw = ImageDraw.Draw(image)
     for region in _regions_for(card, mode):
-        draw.rectangle(_to_pixels(region, image.size), fill="black")
+        box = tuple(round(coordinate) for coordinate in _to_pixels(region, image.size))
+        blurred = image.crop(box).filter(ImageFilter.GaussianBlur(BLUR_RADIUS))
+        image.paste(blurred, box)
 
     buffer = BytesIO()
     image.save(buffer, format="PNG")

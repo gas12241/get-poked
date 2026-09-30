@@ -139,7 +139,7 @@ alphabetically never reached "Pikachu" or "Piplup", both buried behind
 
 Original card images are stored.
 
-Quiz images are generated server-side by Django (Pillow), never by the frontend.
+Quiz images are generated server-side by Django (Pillow), never by the frontend. The guessed region is obscured with a Gaussian blur, not a solid fill — see docs/decisions.md #052.
 
 Generation strategy: lazy generate-and-cache. A masked variant is generated the first time it is requested for a given card and quiz mode, then saved to media storage and served from cache on every subsequent request. This avoids recomputing identical output on every quiz request (as a no-cache approach would) and avoids generating variants for cards that are never actually quizzed (as precomputing every variant at import time would).
 

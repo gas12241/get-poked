@@ -6,12 +6,13 @@ from io import BytesIO
 import responses
 from django.core.files.storage import default_storage
 from django.test import TestCase, override_settings
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from cards.models import Card, Set
 from quiz.imaging import (
     BOTTOM_LEFT,
     BOTTOM_RIGHT,
+    HP_REGION,
     WOTC_FLAVOR_LINE,
     _sanitize,
     _to_pixels,
@@ -25,6 +26,19 @@ SOURCE_COLOR = (200, 200, 200)
 
 def make_test_image_bytes():
     image = Image.new("RGB", SOURCE_SIZE, color=SOURCE_COLOR)
+    # A blur has no visible effect on a perfectly uniform region — a
+    # checkerboard inside HP_REGION (the one this file's tests actually
+    # sample) gives it real high-contrast detail to smooth out, so
+    # asserting the masked pixel changed is a genuine check rather than a
+    # tautology. Everywhere else stays flat SOURCE_COLOR so the
+    # "untouched region is byte-identical" assertion still holds.
+    draw = ImageDraw.Draw(image)
+    square = 10
+    left, top, right, bottom = _to_pixels(HP_REGION, SOURCE_SIZE)
+    for y in range(int(top), int(bottom), square):
+        for x in range(int(left), int(right), square):
+            if (x // square + y // square) % 2 == 0:
+                draw.rectangle([x, y, x + square, y + square], fill=(0, 0, 0))
     buffer = BytesIO()
     image.save(buffer, format="PNG")
     return buffer.getvalue()
@@ -114,6 +128,30 @@ class MaskedImageTests(TestCase):
 
         self.assertNotEqual(masked_pixel, SOURCE_COLOR)
         self.assertEqual(untouched_pixel, SOURCE_COLOR)
+
+    @responses.activate
+    def test_masked_region_is_genuinely_blurred_not_a_differently_colored_fill(self):
+        # See docs/decisions.md #052. A solid fill (of any color, including
+        # one that happens to differ from SOURCE_COLOR) would make every
+        # pixel in the region identical; a real Gaussian blur of the
+        # checkerboard instead smooths neighboring cells into a gradient of
+        # *different* intermediate values, so no two sampled pixels should
+        # be exactly equal to each other, and none should be pure black
+        # (0, 0, 0) — the checkerboard's own un-blurred color.
+        responses.add(responses.GET, self.card.image_large, body=make_test_image_bytes())
+
+        get_or_create_masked_image(self.card, "guess_hp")
+        path = f"quiz_masks/guess_hp/{_sanitize(self.card.tcg_id)}.png"
+        with default_storage.open(path) as f:
+            result = Image.open(f)
+            result.load()
+
+        left, top, right, bottom = _to_pixels(HP_REGION, result.size)
+        y = int((top + bottom) / 2)
+        sampled = {result.getpixel((x, y)) for x in range(int(left) + 5, int(right) - 5, 15)}
+
+        self.assertNotIn((0, 0, 0), sampled)
+        self.assertGreater(len(sampled), 1)
 
     @responses.activate
     def test_masking_base_set_card_does_not_error(self):
