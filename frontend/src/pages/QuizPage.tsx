@@ -134,12 +134,14 @@ function StartingQuestion({
   ready,
   rarity,
   imageSrc,
+  difficulty,
   onFinish,
 }: {
   questionCount: number;
   ready: boolean;
   rarity?: string;
   imageSrc?: string;
+  difficulty: QuizDifficulty;
   onFinish: () => void;
 }) {
   return (
@@ -149,6 +151,7 @@ function StartingQuestion({
         ready={ready}
         rarity={rarity}
         imageSrc={imageSrc}
+        difficulty={difficulty}
         onFinish={onFinish}
       />
     </div>
@@ -227,6 +230,7 @@ function QuizQuestionView({
           rarity={question.rarity}
           imageSrc={question.image}
           alt="Card to guess"
+          difficulty={session.difficulty}
           onFinish={() => {
             setIsOpening(false);
             setStartedAt(Date.now());
@@ -392,7 +396,7 @@ function QuizPage() {
     // only ever loses the cosmetic idle/crossfade, never the fetched quiz
     // itself; QuizQuestionView's own currentRevealed check (#043) already
     // handles resuming an interrupted, not-yet-revealed first question.
-    onSuccess: (data, mode) => startSession(mode, data.questions),
+    onSuccess: (data, mode) => startSession(mode, data.questions, difficulty),
   });
 
   // Covers both halves of starting a quiz: still fetching (session doesn't
@@ -413,6 +417,7 @@ function QuizPage() {
         ready={firstQuestion !== undefined}
         rarity={firstQuestion?.rarity}
         imageSrc={firstQuestion?.image}
+        difficulty={difficulty}
         onFinish={() => {
           revealCurrent();
           setPendingMode(null);

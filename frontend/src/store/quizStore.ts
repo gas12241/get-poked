@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { QuizAnswerInput, QuizMode, QuizQuestion } from '../api/quiz';
+import type {
+  QuizAnswerInput,
+  QuizDifficulty,
+  QuizMode,
+  QuizQuestion,
+} from '../api/quiz';
 
 export interface QuizSession {
   mode: QuizMode;
@@ -13,11 +18,19 @@ export interface QuizSession {
   // coming back doesn't replay it for a question already shown. Reset
   // whenever currentIndex advances to a fresh, unrevealed question.
   currentRevealed: boolean;
+  // The difficulty this quiz was started with — every question's card was
+  // drawn from that difficulty's rarity pool, so the reel needs it for
+  // every question, not just the first. See docs/decisions.md #049.
+  difficulty: QuizDifficulty;
 }
 
 interface QuizState {
   session: QuizSession | null;
-  startSession: (mode: QuizMode, questions: QuizQuestion[]) => void;
+  startSession: (
+    mode: QuizMode,
+    questions: QuizQuestion[],
+    difficulty: QuizDifficulty,
+  ) => void;
   recordAnswer: (answer: QuizAnswerInput) => void;
   revealCurrent: () => void;
   markSubmitted: () => void;
@@ -32,7 +45,7 @@ export const useQuizStore = create<QuizState>()(
   persist(
     (set) => ({
       session: null,
-      startSession: (mode, questions) =>
+      startSession: (mode, questions, difficulty) =>
         set({
           session: {
             mode,
@@ -41,6 +54,7 @@ export const useQuizStore = create<QuizState>()(
             answers: [],
             submitted: false,
             currentRevealed: false,
+            difficulty,
           },
         }),
       recordAnswer: (answer) =>

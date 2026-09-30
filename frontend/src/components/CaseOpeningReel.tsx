@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { QuizDifficulty } from '../api/quiz';
 
 // Real timers, not CSS transitionend — transitionend is unreliable in tests
 // (jsdom) and can double-fire across browsers. CSS just needs to match
@@ -33,36 +34,48 @@ const DECOY_COUNT = 20;
 // at all, since that only cares about what comes before the winner.
 const TRAILING_DECOY_COUNT = 6;
 
-const TIERS = ['common', 'mid', 'chase'] as const;
-type Tier = (typeof TIERS)[number];
+type Tier = 'common' | 'mid' | 'chase';
 
-// Cosmetic only — buckets the ~38 real rarity strings into a handful of
-// tint tiers for the reel. Deliberately looser than
-// `quiz/eligibility.py`'s SPECIAL_TIER_RARITIES (which has to be exact,
-// since it decides real quiz eligibility); getting a tint "close enough"
-// here has no functional consequence.
+// Exact rarity sets, mirroring `quiz/eligibility.py`'s EASY_RARITIES (=
+// SPECIAL_TIER_RARITIES) and HARD_RARITIES precisely — not a loose keyword
+// guess. This has to be exact now (docs/decisions.md #049): decoys are
+// restricted to a single tier per difficulty (see tierForDifficulty
+// below), so the winning card's own tint must land in exactly the bucket
+// its real rarity belongs to, or "the reel lands on a color matching the
+// card" breaks for any rarity a keyword heuristic would misclassify (e.g.
+// "ACE SPEC Rare" contains no "ultra"/"secret"/etc. substring). Keep in
+// sync with the backend if those sets ever change.
+const EASY_RARITIES = new Set([
+  'Rare Ultra',
+  'Ultra Rare',
+  'Rare Secret',
+  'Rare Rainbow',
+  'Special Illustration Rare',
+  'Illustration Rare',
+  'Hyper Rare',
+  'ACE SPEC Rare',
+  'Rare ACE',
+  'Rare Prism Star',
+  'Classic Collection',
+]);
+const HARD_RARITIES = new Set(['Common', 'Uncommon', 'Rare']);
+
 function tierForRarity(rarity: string): Tier {
-  const lower = rarity.toLowerCase();
-  if (!lower || lower === 'common' || lower === 'uncommon') return 'common';
-  const chaseKeywords = [
-    'ultra',
-    'secret',
-    'rainbow',
-    'illustration',
-    'hyper',
-    'vmax',
-    'vstar',
-    'radiant',
-    'shining',
-    'prism',
-    'legend',
-  ];
-  if (chaseKeywords.some((keyword) => lower.includes(keyword))) return 'chase';
+  if (EASY_RARITIES.has(rarity)) return 'chase';
+  if (HARD_RARITIES.has(rarity)) return 'common';
   return 'mid';
 }
 
-function randomTier(): Tier {
-  return TIERS[Math.floor(Math.random() * TIERS.length)];
+// The one tier a quiz's decoys are drawn from, so the reel never shows a
+// color that couldn't actually be the answer at this difficulty — see
+// docs/decisions.md #049. A direct match to tierForRarity's own buckets:
+// Easy's rarities are exactly the 'chase' set, Hard's are exactly the
+// 'common' set, and Medium (everything else, by construction) is exactly
+// 'mid'.
+function tierForDifficulty(difficulty: QuizDifficulty): Tier {
+  if (difficulty === 'easy') return 'chase';
+  if (difficulty === 'hard') return 'common';
+  return 'mid';
 }
 
 // A stylized, original card-back look — a rarity-tinted panel with an
@@ -85,6 +98,7 @@ interface CaseOpeningReelProps {
   rarity: string;
   imageSrc: string;
   alt: string;
+  difficulty: QuizDifficulty;
   onFinish: () => void;
 }
 
@@ -93,24 +107,19 @@ interface CaseOpeningReelProps {
 // past and land on a pointer with neighbors still peeking at either edge,
 // then the winning slot un-docks from the track and grows into a
 // full-size card as it flips to reveal the actual (already-masked) card
-// for this question. See docs/decisions.md #040.
+// for this question. See docs/decisions.md #040. Decoys are all the same
+// tint, matching the current difficulty (docs/decisions.md #049) — every
+// decoy is a color that could actually be the answer, never one that
+// couldn't.
 function CaseOpeningReel({
   rarity,
   imageSrc,
   alt,
+  difficulty,
   onFinish,
 }: CaseOpeningReelProps) {
   const prefersReducedMotion = usePrefersReducedMotion();
-
-  // Randomized once per mount, not on every render.
-  const decoyTiers = useMemo(
-    () => Array.from({ length: DECOY_COUNT }, randomTier),
-    [],
-  );
-  const trailingDecoyTiers = useMemo(
-    () => Array.from({ length: TRAILING_DECOY_COUNT }, randomTier),
-    [],
-  );
+  const decoyTier = tierForDifficulty(difficulty);
 
   const [phase, setPhase] = useState<'spinning' | 'landed' | 'done'>(
     prefersReducedMotion ? 'landed' : 'spinning',
@@ -186,17 +195,17 @@ function CaseOpeningReel({
             transitionDuration: `${SPIN_DURATION_MS}ms`,
           }}
         >
-          {decoyTiers.map((tier, index) => (
+          {Array.from({ length: DECOY_COUNT }, (_, index) => (
             <div key={`leading-${index}`} className="case-opening-item">
-              <CardBack tier={tier} />
+              <CardBack tier={decoyTier} />
             </div>
           ))}
           <div className="case-opening-item">
             <CardBack tier={tierForRarity(rarity)} />
           </div>
-          {trailingDecoyTiers.map((tier, index) => (
+          {Array.from({ length: TRAILING_DECOY_COUNT }, (_, index) => (
             <div key={`trailing-${index}`} className="case-opening-item">
-              <CardBack tier={tier} />
+              <CardBack tier={decoyTier} />
             </div>
           ))}
         </div>
@@ -255,6 +264,7 @@ interface StartingReelProps {
   ready: boolean;
   rarity?: string;
   imageSrc?: string;
+  difficulty: QuizDifficulty;
   onFinish: () => void;
 }
 
@@ -272,17 +282,14 @@ export function StartingReel({
   ready,
   rarity,
   imageSrc,
+  difficulty,
   onFinish,
 }: StartingReelProps) {
   const prefersReducedMotion = usePrefersReducedMotion();
-
-  // Same idle decoy count as the real spin, just for visual density — the
-  // idle loop has no landing math to keep in sync with, unlike DECOY_COUNT
-  // elsewhere in this file.
-  const idleTiers = useMemo(
-    () => Array.from({ length: DECOY_COUNT }, randomTier),
-    [],
-  );
+  // Same tint the real spin's decoys will use once it takes over — see
+  // docs/decisions.md #049 — so the idle loop and the real spin never
+  // visibly change color at the handoff.
+  const decoyTier = tierForDifficulty(difficulty);
 
   // Keeps the idle loop up for at least this long even if the real data
   // arrives instantly, so it always reads as a deliberate "idling, then
@@ -326,9 +333,9 @@ export function StartingReel({
     >
       <div className="case-opening-pointer" />
       <div className="case-opening-idle-track">
-        {[...idleTiers, ...idleTiers].map((tier, index) => (
+        {Array.from({ length: DECOY_COUNT * 2 }, (_, index) => (
           <div key={index} className="case-opening-item">
-            <CardBack tier={tier} />
+            <CardBack tier={decoyTier} />
           </div>
         ))}
       </div>
@@ -345,6 +352,7 @@ export function StartingReel({
           rarity={rarity}
           imageSrc={imageSrc}
           alt="Card to guess"
+          difficulty={difficulty}
           onFinish={onFinish}
         />
       </RevealFadeIn>
