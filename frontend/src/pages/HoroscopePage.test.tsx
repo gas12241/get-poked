@@ -69,11 +69,12 @@ describe('HoroscopePage', () => {
     });
     await userEvent.click(pullButton);
 
-    // Reveal is in progress — the result grid shouldn't be up yet.
-    expect(screen.queryByText('Energy · common')).not.toBeInTheDocument();
+    // Reveal is in progress — the result grid shouldn't be up yet. "Card 6"
+    // (the Energy slot) is unique across the page at this point.
+    expect(screen.queryByText('Card 6')).not.toBeInTheDocument();
 
     await waitFor(
-      () => expect(screen.getByText('Energy · common')).toBeInTheDocument(),
+      () => expect(screen.getByText('Card 6')).toBeInTheDocument(),
       {
         timeout: REEL_TIMEOUT_MS,
       },
@@ -95,13 +96,45 @@ describe('HoroscopePage', () => {
 
     const { container } = renderWithProviders(<HoroscopePage />);
 
-    await screen.findByText('Energy · common');
+    await screen.findByText('Card 6');
     expect(
       screen.queryByRole('button', { name: "Pull today's horoscope" }),
     ).not.toBeInTheDocument();
     // The animated reel never mounts in this state — the explicit
     // no-replay regression check.
     expect(container.querySelector('.horoscope-slot')).toBeNull();
+  });
+
+  it('shows each card name, linked to its detail page, in the result grid', async () => {
+    useAuthStore.setState({ accessToken: 'test-token' });
+    server.use(
+      http.get(`${BASE_URL}/api/v1/horoscope-pulls/`, () => {
+        return HttpResponse.json({
+          count: 1,
+          next: null,
+          previous: null,
+          results: [mockHoroscopePull(todayUtc())],
+        });
+      }),
+    );
+
+    renderWithProviders(<HoroscopePage />);
+
+    const link = await screen.findByRole('link', { name: 'Card 6' });
+    expect(link).toHaveAttribute('href', '/cards/7');
+  });
+
+  it('shows the "here are your cards" line once a pull exists, not before', async () => {
+    useAuthStore.setState({ accessToken: 'test-token' });
+
+    renderWithProviders(<HoroscopePage />);
+
+    await screen.findByRole('button', { name: "Pull today's horoscope" });
+    expect(
+      screen.queryByText(
+        'Here are your 5 Pokémon, 1 Trainer, and 1 Energy for the day!',
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it('lists past pulls in the history section', async () => {

@@ -883,6 +883,22 @@ Why
 
 ---
 
+## Decision 062
+
+Horoscope polish: card names (linked to detail pages), a deliberate two-row layout, and an intro line
+
+Why
+
+- **User feedback on the shipped feature**, three bundled requests: show each card's name instead of its supertype/rarity label, make the cards clickable through to their detail page; fix the layout so the reveal doesn't strand the Energy card alone on its own row; add an intro line above the reset notice.
+- **Name + link replaces the supertype/rarity label** in both `HoroscopeResultGrid`'s cards (now `<Link to="/cards/:id">`, same whole-tile-is-a-link pattern `CardListPage.tsx`'s `.card-tile` already uses) and the history thumbnails (link-wrapped too, for the same click-through, without adding a visible name label there — keeping history's small 64px thumbnails uncluttered was a deliberate scope call, not an oversight; flagged in case the user wants labels there too later).
+- **Two explicit rows (5 Pokémon, then Trainer+Energy), not flex-wrap** — at 7 cards per row and the page's width, flex-wrap was fitting 6 per row and stranding the 7th (Energy) alone on its own line, which read as an accident rather than a deliberate grouping. Fixed by splitting on the fixed slot-order boundary the backend already guarantees (`SLOT_SUPERTYPES` — indices 0-4 are always the 5 Pokémon, 5 is Trainer, 6 is Energy) rather than each card's own `supertype` field, in both `HoroscopeReel.tsx` (the live reveal) and `HoroscopePage.tsx`'s static result grid — a shared `.horoscope-row` CSS class keeps the two in visual sync. The reel's per-slot stagger delay (`index * STAGGER_MS`) still counts up across the row boundary unbroken, so the left-to-right cascade reads as one continuous sequence, not two separate ones.
+- **New intro line ("Here are your 5 Pokémon, 1 Trainer, and 1 Energy for the day!")**, styled identically to the existing reset notice (same `.horoscope-reset-notice` class, reused rather than a new one) and placed above it. Shown only once there's an actual pull to point at (`pullForToday`) — not before pulling, since "here ARE your cards" reads as introducing something already on screen, not as an abstract description of what the page does.
+- **No new backend changes** — purely a frontend presentation change; the API already returned everything needed (`card.name`, `card.id`, and the fixed slot `order`).
+- **2 new tests** (card name rendered as a link with the correct `href`; the intro line's conditional visibility) plus 2 existing tests updated to assert on card names instead of the now-removed supertype/tier label; full 114-test frontend suite passes. Pure-CSS row split not separately unit-tested (jsdom doesn't do real layout — same reasoning as #048/#058).
+- **Verified live** against the real catalog: mid-reveal screenshot shows the 5+2 row split already in place during the animation (not just after), the fully-revealed grid shows real card names in both rows, and clicking a card navigates to its real detail page.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

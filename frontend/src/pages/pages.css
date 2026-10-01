@@ -1025,12 +1025,22 @@
   }
 }
 
-.horoscope-reels {
+/* Two explicit rows (5 Pokémon, then Trainer+Energy) rather than one flex-
+   wrap run — see docs/decisions.md #062. Shared by the live reel
+   (HoroscopeReel.tsx) and the static result grid below. */
+.horoscope-reels,
+.horoscope-result-grid {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
   margin: 24px 0;
+}
+
+.horoscope-row {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
 }
 
 .horoscope-slot {
@@ -1053,16 +1063,11 @@
   transform: rotateY(180deg);
 }
 
-.horoscope-result-grid {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 16px;
-  margin: 24px 0;
-}
-
 .horoscope-result-card {
+  display: block;
   width: var(--horoscope-card-width);
+  text-decoration: none;
+  color: var(--text-h);
 }
 
 .horoscope-result-card img {
