@@ -11,7 +11,7 @@ import {
   HOROSCOPE_SPIN_DURATION_MS,
   HOROSCOPE_STAGGER_MS,
 } from '../components/HoroscopeReel';
-import HoroscopePage from './HoroscopePage';
+import HoroscopePage, { formatHoroscopeDate } from './HoroscopePage';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -153,7 +153,7 @@ describe('HoroscopePage', () => {
     renderWithProviders(<HoroscopePage />);
 
     expect(await screen.findByText('Past horoscopes')).toBeInTheDocument();
-    expect(screen.getByText('2025-12-25')).toBeInTheDocument();
+    expect(screen.getByText('December 25th, 2025')).toBeInTheDocument();
   });
 
   it('disables the Pull button and shows a pending label while the pull is in flight', async () => {
@@ -205,5 +205,36 @@ describe('HoroscopePage', () => {
     expect(
       await screen.findByText(/Resets daily at midnight UTC/),
     ).toBeInTheDocument();
+  });
+});
+
+describe('formatHoroscopeDate', () => {
+  it('formats as "Month Dayth, Year"', () => {
+    expect(formatHoroscopeDate('2026-10-01')).toBe('October 1st, 2026');
+  });
+
+  it.each([
+    ['2026-01-02', '2nd'],
+    ['2026-01-03', '3rd'],
+    ['2026-01-04', '4th'],
+    ['2026-01-11', '11th'],
+    ['2026-01-12', '12th'],
+    ['2026-01-13', '13th'],
+    ['2026-01-21', '21st'],
+    ['2026-01-22', '22nd'],
+    ['2026-01-23', '23rd'],
+    ['2026-01-31', '31st'],
+  ])('gives %s the correct ordinal suffix (%s)', (dateStr, expectedDay) => {
+    expect(formatHoroscopeDate(dateStr)).toContain(expectedDay);
+  });
+
+  it('does not shift to the adjacent day regardless of the runner’s local timezone', () => {
+    // The classic gotcha this guards against: new Date("2026-01-01") parses
+    // as UTC midnight, and reading it back with *local* getters can roll
+    // over to Dec 31 for a timezone west of UTC. formatHoroscopeDate must
+    // never do that, since pull_date has no time-of-day component to begin
+    // with — it should always read as exactly the date the backend sent.
+    expect(formatHoroscopeDate('2026-01-01')).toBe('January 1st, 2026');
+    expect(formatHoroscopeDate('2026-12-31')).toBe('December 31st, 2026');
   });
 });

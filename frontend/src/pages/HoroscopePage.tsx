@@ -21,6 +21,40 @@ function splitIntoRows<T>(items: T[]): [T[], T[]] {
   return [items.slice(0, POKEMON_ROW_SIZE), items.slice(POKEMON_ROW_SIZE)];
 }
 
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+function ordinal(day: number): string {
+  if (day % 10 === 1 && day % 100 !== 11) return `${day}st`;
+  if (day % 10 === 2 && day % 100 !== 12) return `${day}nd`;
+  if (day % 10 === 3 && day % 100 !== 13) return `${day}rd`;
+  return `${day}th`;
+}
+
+// pull_date is a plain "YYYY-MM-DD" UTC calendar-date string with no
+// time-of-day meaning — parsed by splitting the string directly rather
+// than via `new Date(dateStr)` + local getters, which would risk rolling
+// back to the previous day for a viewer west of UTC (the classic
+// UTC-midnight-parsed-then-read-in-local-time gotcha). This is a display
+// format for "which day," not a moment in time to convert to the viewer's
+// own timezone the way the reset countdown above is.
+export function formatHoroscopeDate(dateStr: string): string {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return `${MONTH_NAMES[month - 1]} ${ordinal(day)}, ${year}`;
+}
+
 function toSlots(pull: HoroscopePull): HoroscopeSlotResult[] {
   return pull.cards.map((c) => ({
     supertype: c.supertype,
@@ -43,6 +77,7 @@ function HoroscopeResultGrid({ pull }: { pull: HoroscopePull }) {
             <Link
               key={c.order}
               to={`/cards/${c.card.id}`}
+              state={{ from: 'horoscope' }}
               className="horoscope-result-card"
             >
               <img src={c.card.image_small} alt={c.card.name} />
@@ -62,10 +97,16 @@ function HoroscopeHistory({ pulls }: { pulls: HoroscopePull[] }) {
       <h2>Past horoscopes</h2>
       {pulls.map((pull) => (
         <div key={pull.id} className="horoscope-history-entry">
-          <p className="horoscope-history-entry-date">{pull.pull_date}</p>
+          <p className="horoscope-history-entry-date">
+            {formatHoroscopeDate(pull.pull_date)}
+          </p>
           <div className="horoscope-history-entry-cards">
             {pull.cards.map((c) => (
-              <Link key={c.order} to={`/cards/${c.card.id}`}>
+              <Link
+                key={c.order}
+                to={`/cards/${c.card.id}`}
+                state={{ from: 'horoscope' }}
+              >
                 <img src={c.card.image_small} alt={c.card.name} />
               </Link>
             ))}
