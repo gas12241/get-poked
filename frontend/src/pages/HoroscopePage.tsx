@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getHoroscopeHistory, pullTodayHoroscope } from '../api/horoscope';
 import type { HoroscopePull } from '../api/horoscope';
@@ -6,6 +7,19 @@ import { useAuthStore } from '../store/authStore';
 import HoroscopeReel from '../components/HoroscopeReel';
 import type { HoroscopeSlotResult } from '../components/HoroscopeReel';
 import './pages.css';
+
+// The fixed slot layout backend/horoscope/selection.py always produces:
+// indices 0-4 are the 5 Pokémon, 5 is Trainer, 6 is Energy. Splitting on
+// this fixed boundary (not by each card's own supertype) keeps the
+// Pokémon row and the Trainer+Energy row deliberate regardless of flex-wrap
+// — at 7 cards per row they don't all fit on one line anyway, and letting
+// the browser wrap wherever it happens to fit stranded Energy alone on its
+// own row. See docs/decisions.md #062.
+const POKEMON_ROW_SIZE = 5;
+
+function splitIntoRows<T>(items: T[]): [T[], T[]] {
+  return [items.slice(0, POKEMON_ROW_SIZE), items.slice(POKEMON_ROW_SIZE)];
+}
 
 function toSlots(pull: HoroscopePull): HoroscopeSlotResult[] {
   return pull.cards.map((c) => ({
@@ -20,12 +34,21 @@ function toSlots(pull: HoroscopePull): HoroscopeSlotResult[] {
 }
 
 function HoroscopeResultGrid({ pull }: { pull: HoroscopePull }) {
+  const [pokemonRow, trainerEnergyRow] = splitIntoRows(pull.cards);
   return (
     <div className="horoscope-result-grid">
-      {pull.cards.map((c) => (
-        <div key={c.order} className="horoscope-result-card">
-          <img src={c.card.image_small} alt={c.card.name} />
-          <p className="horoscope-result-card-label">{`${c.supertype} · ${c.rarity_tier}`}</p>
+      {[pokemonRow, trainerEnergyRow].map((row, i) => (
+        <div key={i} className="horoscope-row">
+          {row.map((c) => (
+            <Link
+              key={c.order}
+              to={`/cards/${c.card.id}`}
+              className="horoscope-result-card"
+            >
+              <img src={c.card.image_small} alt={c.card.name} />
+              <p className="horoscope-result-card-label">{c.card.name}</p>
+            </Link>
+          ))}
         </div>
       ))}
     </div>
@@ -42,7 +65,9 @@ function HoroscopeHistory({ pulls }: { pulls: HoroscopePull[] }) {
           <p className="horoscope-history-entry-date">{pull.pull_date}</p>
           <div className="horoscope-history-entry-cards">
             {pull.cards.map((c) => (
-              <img key={c.order} src={c.card.image_small} alt={c.card.name} />
+              <Link key={c.order} to={`/cards/${c.card.id}`}>
+                <img src={c.card.image_small} alt={c.card.name} />
+              </Link>
             ))}
           </div>
         </div>
@@ -108,6 +133,11 @@ function HoroscopePage() {
   return (
     <div className="horoscope-page">
       <h1>Horoscope</h1>
+      {pullForToday && (
+        <p className="horoscope-reset-notice">
+          Here are your 5 Pokémon, 1 Trainer, and 1 Energy for the day!
+        </p>
+      )}
       <p className="horoscope-reset-notice">
         Resets daily at midnight UTC — {resetInfo.localTime} your time, in{' '}
         {resetInfo.hoursRemaining}.

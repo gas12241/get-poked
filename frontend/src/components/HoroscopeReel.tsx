@@ -150,6 +150,13 @@ interface HoroscopeReelProps {
   onFinish: () => void; // fires once, after every reel has finished
 }
 
+// The fixed slot layout backend/horoscope/selection.py always produces:
+// indices 0-4 are the 5 Pokémon, 5 is Trainer, 6 is Energy. Rendered as two
+// explicit rows (not left to flex-wrap, which stranded Energy alone on its
+// own row at typical widths) — see docs/decisions.md #062, and
+// HoroscopePage.tsx's matching split for the static result grid.
+const POKEMON_ROW_SIZE = 5;
+
 // 7 reels side by side, stopping left to right in sequence — the daily
 // horoscope's reveal. Reuses CardBack (rarity-tinted card-back visual) and
 // the flip-reveal mechanic from CaseOpeningReel.tsx, but is otherwise a new
@@ -168,20 +175,26 @@ function HoroscopeReel({ slots, onFinish }: HoroscopeReelProps) {
     if (completedCount === slots.length) onFinishRef.current();
   }, [completedCount, slots.length]);
 
+  // Built once as a flat list (so startDelayMs keeps counting up across the
+  // row boundary, continuing the same left-to-right cascade), then split
+  // for rendering into the two rows.
+  const reels = slots.map((slot, index) => (
+    <HoroscopeSlotReel
+      key={index}
+      supertype={slot.supertype}
+      rarityTier={slot.rarityTier}
+      imageSrc={slot.imageSrc}
+      alt={slot.alt}
+      startDelayMs={index * HOROSCOPE_STAGGER_MS}
+      skipAnimation={prefersReducedMotion}
+      onDone={() => setCompletedCount((c) => c + 1)}
+    />
+  ));
+
   return (
     <div className="horoscope-reels">
-      {slots.map((slot, index) => (
-        <HoroscopeSlotReel
-          key={index}
-          supertype={slot.supertype}
-          rarityTier={slot.rarityTier}
-          imageSrc={slot.imageSrc}
-          alt={slot.alt}
-          startDelayMs={index * HOROSCOPE_STAGGER_MS}
-          skipAnimation={prefersReducedMotion}
-          onDone={() => setCompletedCount((c) => c + 1)}
-        />
-      ))}
+      <div className="horoscope-row">{reels.slice(0, POKEMON_ROW_SIZE)}</div>
+      <div className="horoscope-row">{reels.slice(POKEMON_ROW_SIZE)}</div>
     </div>
   );
 }
