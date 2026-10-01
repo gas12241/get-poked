@@ -917,6 +917,21 @@ Why
 
 ---
 
+## Decision 064
+
+Today's horoscope pull no longer appears in its own "past" list
+
+Why
+
+- **User's own framing**: "it's hard to consider it part of the past if it's still the current one." The day a pull belongs to has to actually finish before it's genuinely history — today's pull is already shown above, as today's horoscope; repeating it in "Past horoscopes" was redundant and, per the user, conceptually wrong.
+- **Filtered client-side on the already-fetched history**, not a new query param — `HoroscopePage.tsx` derives `pastPulls = pulls.filter((p) => p.pull_date !== todayUtc)` from the same `['horoscope-history']` result already used for the "has today been pulled" check, rather than asking the backend to exclude it (the backend has no reason to know "today" from the server's perspective differently than it already does — this is purely a presentation concern).
+- **New empty state ("No past horoscopes yet.") instead of hiding the section** — the user specifically asked for this, correctly identifying that it's the common case, not an edge case: it's true for every user's first-ever pull (today's pull is their only one, and it's excluded from "past" by definition), not just some rare empty-state. `HoroscopeHistory` now always renders its "Past horoscopes" heading and shows either the list or this message, rather than returning `null` when there's nothing to show.
+- **A real, incidental accessibility bug found and fixed while updating the related test**: the result grid's card images carried `alt={card.name}` right next to a `<p>` showing that same name as visible text — redundant for a sighted user, and actually announced twice to a screen reader (the image's alt text and the label concatenate into one accessible name for the whole link). Fixed by setting `alt=""` on that specific image (decorative, since the adjacent label already carries the name as real text) — history thumbnails, which have no nearby visible label, keep their full `alt={card.name}` since it's their only accessible identification.
+- **3 new tests**: today's pull excluded from history while an older pull still appears; the "No past horoscopes yet." message when today's pull is the only one that exists; both confirmed to fail against a version that didn't filter, before restoring the fix. Full 130-test frontend suite passes.
+- **Verified live**: a fresh first-ever pull shows "No past horoscopes yet." directly beneath "Past horoscopes," with today's own 7 cards visible above as expected.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

@@ -156,6 +156,53 @@ describe('HoroscopePage', () => {
     expect(screen.getByText('December 25th, 2025')).toBeInTheDocument();
   });
 
+  it('excludes today’s pull from the past-horoscopes list, showing it only as "today"', async () => {
+    useAuthStore.setState({ accessToken: 'test-token' });
+    server.use(
+      http.get(`${BASE_URL}/api/v1/horoscope-pulls/`, () => {
+        return HttpResponse.json({
+          count: 2,
+          next: null,
+          previous: null,
+          results: [
+            mockHoroscopePull(todayUtc(), 1),
+            mockHoroscopePull('2025-12-25', 7),
+          ],
+        });
+      }),
+    );
+
+    renderWithProviders(<HoroscopePage />);
+
+    await screen.findByText('Past horoscopes');
+    // The older pull shows in history...
+    expect(screen.getByText('December 25th, 2025')).toBeInTheDocument();
+    // ...but today's own date never appears there — it's shown above as
+    // "today's horoscope" (the result grid), not as a line in the past
+    // list.
+    const todayFormatted = formatHoroscopeDate(todayUtc());
+    expect(screen.queryByText(todayFormatted)).not.toBeInTheDocument();
+  });
+
+  it('shows "No past horoscopes yet" when today’s pull is the only one that exists', async () => {
+    useAuthStore.setState({ accessToken: 'test-token' });
+    server.use(
+      http.get(`${BASE_URL}/api/v1/horoscope-pulls/`, () => {
+        return HttpResponse.json({
+          count: 1,
+          next: null,
+          previous: null,
+          results: [mockHoroscopePull(todayUtc())],
+        });
+      }),
+    );
+
+    renderWithProviders(<HoroscopePage />);
+
+    expect(await screen.findByText('Past horoscopes')).toBeInTheDocument();
+    expect(screen.getByText('No past horoscopes yet.')).toBeInTheDocument();
+  });
+
   it('disables the Pull button and shows a pending label while the pull is in flight', async () => {
     useAuthStore.setState({ accessToken: 'test-token' });
     server.use(
