@@ -5,6 +5,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ReadOnlyModelViewSet
+from unidecode import unidecode
 
 from .filters import CardFilter
 from .models import Card, Set, Type
@@ -41,7 +42,12 @@ class CardViewSet(ReadOnlyModelViewSet):
     permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend, SearchFilter, CardOrderingFilter]
     filterset_class = CardFilter
-    search_fields = ["name"]
+    # name_ascii alongside name (OR'd together by SearchFilter) so a search
+    # typed without accents (e.g. "Poke") still matches a name that has them
+    # ("Poké Vital A") — name_ascii has no accents to begin with, so the
+    # typed term matches it directly with no extra normalization needed on
+    # the query side. See docs/decisions.md #060.
+    search_fields = ["name", "name_ascii"]
     ordering_fields = ["name", "number", "rarity", "release_date"]
 
     def get_serializer_class(self):
@@ -151,8 +157,15 @@ class CardNameListView(APIView):
         if len(search) < self.MIN_SEARCH_LENGTH:
             return Response([])
         queryset = scope_cards_by_set_or_series(Card.objects.all(), request)
+        # Matches against name_ascii (diacritic-stripped, kept in sync by
+        # Card.save()), not name — so a search typed without accents (e.g.
+        # "Poke") finds a card whose real name has them ("Poké Vital A").
+        # The search term itself is unidecoded too, so the reverse (a user
+        # who does type an accent) still matches consistently either way.
+        # Returns the real, accented `name` regardless. See docs/decisions.md
+        # #060.
         candidates = (
-            queryset.filter(name__icontains=search)
+            queryset.filter(name_ascii__icontains=unidecode(search))
             .values_list("name", flat=True)
             .distinct()[: self.MAX_CANDIDATES]
         )

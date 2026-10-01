@@ -1,5 +1,6 @@
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
+from unidecode import unidecode
 
 
 class Set(models.Model):
@@ -28,6 +29,12 @@ class Card(models.Model):
     tcg_id = models.CharField(max_length=50, unique=True)
     set = models.ForeignKey(Set, on_delete=models.PROTECT, related_name="cards")
     name = models.CharField(max_length=255)
+    # Diacritic-stripped copy of `name` (e.g. "Poké Vital A" -> "Poke Vital
+    # A"), kept in sync by save() below — lets search match a name typed
+    # without accents against a stored name that has them, without needing
+    # the Postgres unaccent extension (not guaranteed available on every
+    # host) or re-deriving it on every query. See docs/decisions.md #060.
+    name_ascii = models.CharField(max_length=255, blank=True, default="")
     number = models.CharField(max_length=20)
     rarity = models.CharField(max_length=50, blank=True, default="")
     hp = models.CharField(max_length=10, blank=True, default="")
@@ -54,12 +61,17 @@ class Card(models.Model):
         # tcg_id (already unique) is the real identity guarantee. See docs/decisions.md #026.
         indexes = [
             models.Index(fields=["name"]),
+            models.Index(fields=["name_ascii"]),
             models.Index(fields=["rarity"]),
             models.Index(fields=["supertype"]),
         ]
 
     def __str__(self):
         return f"{self.name} ({self.set.name} #{self.number})"
+
+    def save(self, *args, **kwargs):
+        self.name_ascii = unidecode(self.name)
+        super().save(*args, **kwargs)
 
 
 class Attack(models.Model):
