@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getHoroscopeHistory, pullTodayHoroscope } from '../api/horoscope';
-import type { HoroscopePull } from '../api/horoscope';
+import type { HoroscopeCard, HoroscopePull } from '../api/horoscope';
 import { useAuthStore } from '../store/authStore';
 import HoroscopeReel from '../components/HoroscopeReel';
 import type { HoroscopeSlotResult } from '../components/HoroscopeReel';
@@ -67,6 +67,31 @@ function toSlots(pull: HoroscopePull): HoroscopeSlotResult[] {
   }));
 }
 
+// Shared by the "today" result grid and the history list below — same
+// image + clickable, pill-styled name treatment in both places, just at a
+// different size (controlled by `className`, which sets --horoscope-card-width
+// locally). alt="" on the image is deliberate, not an oversight: the label
+// right below already gives the name as real text, both visually and to a
+// screen reader, so a non-empty alt would announce the same name twice.
+function HoroscopeCardTile({
+  card,
+  className,
+}: {
+  card: HoroscopeCard;
+  className: string;
+}) {
+  return (
+    <Link
+      to={`/cards/${card.card.id}`}
+      state={{ from: 'horoscope' }}
+      className={`horoscope-card-tile ${className}`}
+    >
+      <img src={card.card.image_small} alt="" />
+      <p className="horoscope-card-tile-label">{card.card.name}</p>
+    </Link>
+  );
+}
+
 function HoroscopeResultGrid({ pull }: { pull: HoroscopePull }) {
   const [pokemonRow, trainerEnergyRow] = splitIntoRows(pull.cards);
   return (
@@ -74,19 +99,11 @@ function HoroscopeResultGrid({ pull }: { pull: HoroscopePull }) {
       {[pokemonRow, trainerEnergyRow].map((row, i) => (
         <div key={i} className="horoscope-row">
           {row.map((c) => (
-            <Link
+            <HoroscopeCardTile
               key={c.order}
-              to={`/cards/${c.card.id}`}
-              state={{ from: 'horoscope' }}
+              card={c}
               className="horoscope-result-card"
-            >
-              {/* alt="" — decorative here, not redundant-with-itself: the
-                  label right below already gives the name as real text,
-                  both visually and to a screen reader, so a non-empty alt
-                  would just announce the same name twice. */}
-              <img src={c.card.image_small} alt="" />
-              <p className="horoscope-result-card-label">{c.card.name}</p>
-            </Link>
+            />
           ))}
         </div>
       ))}
@@ -106,13 +123,11 @@ function HoroscopeHistory({ pulls }: { pulls: HoroscopePull[] }) {
           </p>
           <div className="horoscope-history-entry-cards">
             {pull.cards.map((c) => (
-              <Link
+              <HoroscopeCardTile
                 key={c.order}
-                to={`/cards/${c.card.id}`}
-                state={{ from: 'horoscope' }}
-              >
-                <img src={c.card.image_small} alt={c.card.name} />
-              </Link>
+                card={c}
+                className="horoscope-history-card"
+              />
             ))}
           </div>
         </div>

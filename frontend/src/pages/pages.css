@@ -1076,14 +1076,16 @@
   transform: rotateY(180deg);
 }
 
-.horoscope-result-card {
+/* Shared by both the "today" result grid (.horoscope-result-card) and the
+   history list (.horoscope-history-card) — same image + clickable-pill-
+   name treatment in both places, just two different sizes. */
+.horoscope-card-tile {
   display: block;
-  width: var(--horoscope-card-width);
   text-decoration: none;
   color: var(--text-h);
 }
 
-.horoscope-result-card img {
+.horoscope-card-tile img {
   width: 100%;
   border-radius: 6px;
 }
@@ -1092,7 +1094,7 @@
    .quiz-picker button's shape) rather than plain text, so it reads as
    clickable — same reasoning as the hover rule below, which borrows the
    app's established button hover treatment. */
-.horoscope-result-card-label {
+.horoscope-card-tile-label {
   display: inline-block;
   margin-top: 8px;
   padding: 4px 14px;
@@ -1104,10 +1106,28 @@
   border-radius: 999px;
 }
 
-.horoscope-result-card:hover .horoscope-result-card-label {
+.horoscope-card-tile:hover .horoscope-card-tile-label {
   background: var(--accent-bg);
   color: var(--accent);
   border-color: var(--accent-border);
+}
+
+.horoscope-result-card {
+  width: var(--horoscope-card-width);
+}
+
+/* Smaller than the main grid's cards — history is a quick glance across
+   potentially many past days, not today's single focal point — but still
+   roomy enough for the name label below to read comfortably rather than
+   wrapping awkwardly. */
+.horoscope-history-card {
+  width: 90px;
+}
+
+.horoscope-history-card .horoscope-card-tile-label {
+  margin-top: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
 }
 
 .horoscope-history {
@@ -1130,10 +1150,6 @@
 .horoscope-history-entry-cards {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-}
-
-.horoscope-history-entry-cards img {
-  width: 64px;
-  border-radius: 4px;
+  align-items: flex-start;
+  gap: 12px;
 }
