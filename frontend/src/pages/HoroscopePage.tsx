@@ -80,7 +80,11 @@ function HoroscopeResultGrid({ pull }: { pull: HoroscopePull }) {
               state={{ from: 'horoscope' }}
               className="horoscope-result-card"
             >
-              <img src={c.card.image_small} alt={c.card.name} />
+              {/* alt="" — decorative here, not redundant-with-itself: the
+                  label right below already gives the name as real text,
+                  both visually and to a screen reader, so a non-empty alt
+                  would just announce the same name twice. */}
+              <img src={c.card.image_small} alt="" />
               <p className="horoscope-result-card-label">{c.card.name}</p>
             </Link>
           ))}
@@ -91,10 +95,10 @@ function HoroscopeResultGrid({ pull }: { pull: HoroscopePull }) {
 }
 
 function HoroscopeHistory({ pulls }: { pulls: HoroscopePull[] }) {
-  if (pulls.length === 0) return null;
   return (
     <div className="horoscope-history">
       <h2>Past horoscopes</h2>
+      {pulls.length === 0 && <p>No past horoscopes yet.</p>}
       {pulls.map((pull) => (
         <div key={pull.id} className="horoscope-history-entry">
           <p className="horoscope-history-entry-date">
@@ -168,6 +172,12 @@ function HoroscopePage() {
   const todaysPullFromHistory = pulls.find((p) => p.pull_date === todayUtc);
   const pullForToday = freshPull ?? todaysPullFromHistory;
   const showReveal = freshPull !== null && !revealDone;
+  // Today's pull is shown above as "today's horoscope," not as history —
+  // it isn't part of the *past* until the day it belongs to has actually
+  // passed. The common case this produces "No past horoscopes yet" for is
+  // exactly the first pull ever, before there's a second day to compare it
+  // to.
+  const pastPulls = pulls.filter((p) => p.pull_date !== todayUtc);
 
   const resetInfo = nextResetInfo();
 
@@ -208,7 +218,7 @@ function HoroscopePage() {
         </>
       )}
 
-      <HoroscopeHistory pulls={pulls} />
+      <HoroscopeHistory pulls={pastPulls} />
     </div>
   );
 }
