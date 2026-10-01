@@ -1,11 +1,25 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getCard } from '../api/cards';
 import './pages.css';
 
+// Where the user navigated here from, so the back link can read "Back to
+// cards" or "Back to Horoscope" rather than always assuming Cards — pages
+// that link to a card's detail page pass this via the Link's `state` prop
+// (see HoroscopePage.tsx, CardListPage.tsx). Defaults to "cards" when
+// absent, preserving the original behavior for any entry point that
+// doesn't pass it.
+const BACK_LABELS: Record<string, string> = {
+  cards: 'Back to cards',
+  horoscope: 'Back to Horoscope',
+};
+
 function CardDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from;
+  const backLabel = BACK_LABELS[from ?? 'cards'] ?? BACK_LABELS.cards;
 
   const cardQuery = useQuery({
     queryKey: ['card', id],
@@ -28,7 +42,7 @@ function CardDetailPage() {
         onClick={() => navigate(-1)}
         className="back-link back-button"
       >
-        &larr; Back to cards
+        &larr; {backLabel}
       </button>
 
       <div className="card-detail">

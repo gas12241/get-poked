@@ -899,6 +899,24 @@ Why
 
 ---
 
+## Decision 063
+
+Horoscope polish round 2: context-aware back link, bigger cards, legibility, real dates
+
+Why
+
+- **Five bundled live-use requests**: a "Back to ___" link on the card detail page that reflects where the user actually came from; bigger cards (explicitly not racing to fit everything on one screen the way Quiz does — the user drew this contrast directly: a horoscope is looked at closely, scrolling is fine); the name labels reading as clickable; more visual weight on the intro/reset text, the name labels, and the history dates; and human-readable dates ("October 1st, 2026") instead of raw ISO strings.
+- **Context-aware back link via router `state`, not a new route param or a second detail page.** `CardDetailPage.tsx` already navigated correctly via `navigate(-1)` — browser history already goes back to wherever the user came from — only the *label text* was hardcoded to "Back to cards". Fixed by having each page that links to a card pass `state={{ from: 'horoscope' }}` (or `'cards'`) on its `<Link>`, and `CardDetailPage` reading `useLocation().state?.from` to pick the label from a small lookup table, defaulting to "cards" when absent — so any future entry point that forgets to pass `state` fails safe to the original behavior rather than breaking. `CardListPage.tsx`'s existing card-tile links were updated to pass `state={{ from: 'cards' }}` explicitly too, for symmetry, even though the default already produced the same result — made explicit rather than relying on absence-of-state as an implicit signal.
+- **`renderWithProviders`'s `route` option widened** (`string | InitialEntry`, react-router's own exported entry type) rather than adding a second test helper — a test that needs to simulate arriving with router `state` passes `{ pathname, state }` instead of a bare string; every existing string usage keeps working unchanged.
+- **Bigger cards, explicitly not under the Quiz page's "must fit on screen" constraint** — `--horoscope-card-width` 120px → 170px, `.horoscope-page` max-width 900px → 980px (recomputed so 5 cards + gaps still fit the row without forcing an early wrap), with a 700px-wide fallback (`flex-wrap` on `.horoscope-row`) so narrow viewports reflow instead of overflowing horizontally — same pattern `.quiz-revealed` already uses at the same breakpoint.
+- **Name labels restyled as a pill matching the app's existing button language** (`border-radius: 999px`, bordered, `.quiz-picker button`'s shape) with a hover state that recolors toward `--accent` — signals "clickable" the same way every other button in the app already does, rather than inventing a new affordance.
+- **More weight via existing tokens, not new ones**: the intro/reset lines dropped their `opacity: 0.75` dimming and moved from `--text` to `--text-h` (the app's existing "stronger" text token) plus `font-weight: 500`; history dates got `font-weight: 600` and the same `--text-h` swap. No new color tokens — reusing what already exists for "more emphasized than caption, less than a heading."
+- **Dates formatted by splitting the `"YYYY-MM-DD"` string directly, not via `new Date(dateStr)` + local getters** — the classic pitfall where a UTC-midnight-parsed date read back with local getters rolls over to the previous day for a viewer west of UTC. `pull_date` has no time-of-day component to begin with, so the fix sidesteps `Date` entirely for this one display purpose (distinct from the reset-time countdown above it, which *is* deliberately converted to local time, since that one really is a moment in time).
+- **New tests**: `CardDetailPage.test.tsx` covers both back-link labels (confirmed the Horoscope-origin test fails against a hardcoded-label version before restoring the fix); `HoroscopePage.test.tsx` adds a dedicated `formatHoroscopeDate` suite (table-driven over the 1st/2nd/3rd/11th/12th/13th/21st ordinal-suffix edge cases, plus the UTC-rollover case) and a card-name-links-to-detail-page test; the existing history-date assertion updated to the new format. Full 128-test frontend suite passes.
+- **Verified live**: bigger, clearer cards in both light and dark mode; pill-styled clickable names; clicking a card from Horoscope shows "Back to Horoscope," clicking one from Cards still shows "Back to cards"; history shows "October 1st, 2026"-style dates.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

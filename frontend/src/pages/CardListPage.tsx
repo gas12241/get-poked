@@ -391,6 +391,7 @@ function CardListPage() {
                 <Link
                   key={card.id}
                   to={`/cards/${card.id}`}
+                  state={{ from: 'cards' }}
                   className="card-tile"
                 >
                   {card.image_small ? (

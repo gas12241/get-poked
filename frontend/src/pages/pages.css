@@ -984,21 +984,25 @@
    sizing root rather than sharing --quiz-card-width, since 7 cards need to
    be much smaller than the quiz's single full-size one. */
 .horoscope-page {
-  max-width: 900px;
+  max-width: 980px;
   margin: 0 auto;
   padding: 24px 20px;
   text-align: center;
 
-  --horoscope-card-width: 120px;
+  /* Larger than the quiz's per-card approach of fitting everything on one
+     screen without scrolling — explicitly not a goal here (discussed with
+     the user): a daily pull is looked at closely, not raced through like a
+     quiz question, so legibility wins over avoiding scroll. */
+  --horoscope-card-width: 170px;
   --horoscope-card-ratio: 63 / 88;
 }
 
 .horoscope-reset-notice {
   margin: 8px auto 0;
-  max-width: 420px;
-  font-size: 13px;
-  color: var(--text);
-  opacity: 0.75;
+  max-width: 460px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-h);
 }
 
 .horoscope-pull-button {
@@ -1041,6 +1045,15 @@
   display: flex;
   justify-content: center;
   gap: 16px;
+
+  /* 5 cards at --horoscope-card-width don't fit on one line below this
+     width — wrap rather than overflow horizontally. The deliberate 5/2
+     row split (not flex-wrap) is still what decides which cards group
+     together; this only governs what happens within an already-too-narrow
+     row. */
+  @media (max-width: 700px) {
+    flex-wrap: wrap;
+  }
 }
 
 .horoscope-slot {
@@ -1075,10 +1088,26 @@
   border-radius: 6px;
 }
 
+/* Styled like a small pill button (border-radius: 999px, matching
+   .quiz-picker button's shape) rather than plain text, so it reads as
+   clickable — same reasoning as the hover rule below, which borrows the
+   app's established button hover treatment. */
 .horoscope-result-card-label {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--text);
+  display: inline-block;
+  margin-top: 8px;
+  padding: 4px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.horoscope-result-card:hover .horoscope-result-card-label {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-color: var(--accent-border);
 }
 
 .horoscope-history {
@@ -1093,8 +1122,9 @@
 
 .horoscope-history-entry-date {
   margin: 0 0 8px;
-  font-size: 13px;
-  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
 }
 
 .horoscope-history-entry-cards {

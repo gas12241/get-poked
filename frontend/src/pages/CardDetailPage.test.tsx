@@ -26,6 +26,32 @@ describe('CardDetailPage', () => {
     expect(screen.getByText(/Water \(×2\)/)).toBeInTheDocument();
   });
 
+  it('defaults to "Back to cards" when arriving with no router state', async () => {
+    renderWithProviders(
+      <Routes>
+        <Route path="/cards/:id" element={<CardDetailPage />} />
+      </Routes>,
+      { route: '/cards/1' },
+    );
+
+    expect(
+      await screen.findByRole('button', { name: /Back to cards/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('says "Back to Horoscope" when arriving from the Horoscope page', async () => {
+    renderWithProviders(
+      <Routes>
+        <Route path="/cards/:id" element={<CardDetailPage />} />
+      </Routes>,
+      { route: { pathname: '/cards/1', state: { from: 'horoscope' } } },
+    );
+
+    expect(
+      await screen.findByRole('button', { name: /Back to Horoscope/ }),
+    ).toBeInTheDocument();
+  });
+
   it('shows a "No image available" placeholder instead of a broken image when image_large is blank', async () => {
     server.use(
       http.get(`${BASE_URL}/api/v1/cards/1/`, () => {
