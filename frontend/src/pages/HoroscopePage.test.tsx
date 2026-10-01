@@ -156,6 +156,34 @@ describe('HoroscopePage', () => {
     expect(screen.getByText('December 25th, 2025')).toBeInTheDocument();
   });
 
+  it('shows each history card’s name as a visible label, not just alt text', async () => {
+    useAuthStore.setState({ accessToken: 'test-token' });
+    server.use(
+      http.get(`${BASE_URL}/api/v1/horoscope-pulls/`, () => {
+        return HttpResponse.json({
+          count: 1,
+          next: null,
+          previous: null,
+          results: [mockHoroscopePull('2025-12-25', 7)],
+        });
+      }),
+    );
+
+    const { container } = renderWithProviders(<HoroscopePage />);
+
+    await screen.findByText('December 25th, 2025');
+    // A visible <p> label within the history card, not merely the image's
+    // alt text — the point is a clickable name a sighted user can actually
+    // read, same as the main grid already has. Scoped to the Energy
+    // card's own link (id 7, per mockHoroscopePull) rather than just the
+    // first match, since every card in the fixture has its own label.
+    const label = container.querySelector(
+      'a[href="/cards/7"] .horoscope-card-tile-label',
+    );
+    expect(label).not.toBeNull();
+    expect(label?.textContent).toBe('Card 6');
+  });
+
   it('excludes today’s pull from the past-horoscopes list, showing it only as "today"', async () => {
     useAuthStore.setState({ accessToken: 'test-token' });
     server.use(

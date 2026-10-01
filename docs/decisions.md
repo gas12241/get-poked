@@ -932,6 +932,21 @@ Why
 
 ---
 
+## Decision 065
+
+History cards now show their name as a clickable label too, matching the main grid
+
+Why
+
+- **Follow-up from the just-shipped "exclude today" change** — once today's pull stopped double-counting as its own history entry, the user noticed the history thumbnails themselves were clickable but had no visible name, unlike the main grid's pill-styled labels added in #062/#063.
+- **Extracted a shared `HoroscopeCardTile` component** (image + pill-styled name label, both inside one `<Link state={{ from: 'horoscope' }}>`) used by both `HoroscopeResultGrid` and `HoroscopeHistory`, parameterized only by a `className` that controls size — `.horoscope-result-card` (today's full `--horoscope-card-width`) vs. a new `.horoscope-history-card` (90px, smaller label font/padding). One component, one definition of "what a clickable horoscope card looks like," rather than the history thumbnails drifting from the main grid's look as a separate markup shape.
+- **History cards sized smaller than today's (90px vs. 170px), deliberately** — history is a quick glance across potentially many past days, not a single day's focal point; 90px is roomy enough for a name label to read without wrapping too awkwardly, while keeping a day's full 7-card row compact.
+- **A test bug caught while writing the regression test, before shipping**: the first version of the new history-label test queried by accessible role/name (`getByRole('link', { name: 'Card 6' })`), which also matched the *old*, unlabeled version (the image's own `alt` text alone already produced that accessible name) — so it didn't actually distinguish "has a visible name label" from "just has alt text," and passed against a deliberately-broken version it should have caught. Rewritten to assert on the actual rendered `.horoscope-card-tile-label` element and its text content directly, confirmed to fail against the broken version afterward.
+- **New tests**: history cards show a visible, correctly-linked name label (the corrected version of the test above). Full 131-test frontend suite passes.
+- **Verified live** against a real seeded 3-day history (not just the empty state) — each past day's 7 cards show their real names as clickable pills at the smaller size, comfortably wrapping where a name is long, with no layout breakage.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).
