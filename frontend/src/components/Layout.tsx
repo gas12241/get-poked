@@ -26,6 +26,7 @@ function Layout() {
   const { pathname } = useLocation();
   const isCardsActive = pathname === '/' || pathname.startsWith('/cards/');
   const isQuizActive = pathname.startsWith('/quiz');
+  const isHoroscopeActive = pathname.startsWith('/horoscope');
 
   return (
     <>
@@ -36,6 +37,12 @@ function Layout() {
           </Link>
           <Link to="/quiz" className={isQuizActive ? 'active' : undefined}>
             Quiz
+          </Link>
+          <Link
+            to="/horoscope"
+            className={isHoroscopeActive ? 'active' : undefined}
+          >
+            Horoscope
           </Link>
         </div>
         <Link to="/" className="main-nav-brand">

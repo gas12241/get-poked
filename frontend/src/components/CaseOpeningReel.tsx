@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { QuizDifficulty } from '../api/quiz';
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
 
 // Real timers, not CSS transitionend — transitionend is unreliable in tests
 // (jsdom) and can double-fire across browsers. CSS just needs to match
@@ -14,15 +15,6 @@ export const FLIP_DURATION_MS = 1000;
 export const MIN_IDLE_DURATION_MS = 700;
 export const CROSSFADE_MS = 250;
 
-function usePrefersReducedMotion(): boolean {
-  return useMemo(
-    () =>
-      typeof window !== 'undefined' &&
-      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true,
-    [],
-  );
-}
-
 // Decoys before the winning slot — enough to feel like a real spinning reel
 // over SPIN_DURATION_MS without an excessive number of DOM nodes.
 const DECOY_COUNT = 20;
@@ -34,7 +26,7 @@ const DECOY_COUNT = 20;
 // at all, since that only cares about what comes before the winner.
 const TRAILING_DECOY_COUNT = 6;
 
-type Tier = 'common' | 'mid' | 'chase';
+export type Tier = 'common' | 'mid' | 'chase';
 
 // Exact rarity sets, mirroring `quiz/eligibility.py`'s EASY_RARITIES (=
 // SPECIAL_TIER_RARITIES) and HARD_RARITIES precisely — not a loose keyword
@@ -90,8 +82,10 @@ function randomTierFrom(tiers: Tier[]): Tier {
 // split, no seam): the app already drew that line for the header icon
 // (docs/decisions.md #018), and this follows the same rule. Shared by
 // every decoy and the winning slot's pre-flip face, so there's exactly
-// one place that defines "what a card back looks like" here.
-function CardBack({ tier }: { tier: Tier }) {
+// one place that defines "what a card back looks like" here. Exported for
+// reuse by HoroscopeReel.tsx, which needs the same rarity-tinted back for
+// its own, differently-shaped reel.
+export function CardBack({ tier }: { tier: Tier }) {
   return (
     <div className={`case-opening-back case-opening-back-${tier}`}>
       <div className="case-opening-back-corner" />

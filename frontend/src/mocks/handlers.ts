@@ -17,6 +17,35 @@ const mockCardListItem = {
   types: [{ id: 1, name: 'Fire' }],
 };
 
+const HOROSCOPE_SLOTS: { supertype: string; rarity_tier: string }[] = [
+  { supertype: 'Pokémon', rarity_tier: 'common' },
+  { supertype: 'Pokémon', rarity_tier: 'mid' },
+  { supertype: 'Pokémon', rarity_tier: 'common' },
+  { supertype: 'Pokémon', rarity_tier: 'chase' },
+  { supertype: 'Pokémon', rarity_tier: 'common' },
+  { supertype: 'Trainer', rarity_tier: 'common' },
+  { supertype: 'Energy', rarity_tier: 'common' },
+];
+
+export function mockHoroscopePull(pullDate: string, id = 1) {
+  return {
+    id,
+    pull_date: pullDate,
+    pulled_at: `${pullDate}T00:00:00Z`,
+    cards: HOROSCOPE_SLOTS.map((slot, order) => ({
+      card: {
+        ...mockCardListItem,
+        id: order + 1,
+        name: `Card ${order}`,
+        supertype: slot.supertype,
+      },
+      supertype: slot.supertype,
+      rarity_tier: slot.rarity_tier,
+      order,
+    })),
+  };
+}
+
 const mockCardDetail = {
   ...mockCardListItem,
   hp: '120',
@@ -120,5 +149,21 @@ export const handlers = [
       total_questions: 1,
       completed_at: '2026-01-01T00:00:00Z',
     });
+  }),
+
+  // Defaults: no pull yet today, and pulling creates a fresh 7-card one —
+  // individual tests override either via server.use() for other states
+  // (already pulled today, error, ...).
+  http.get(`${BASE_URL}/api/v1/horoscope-pulls/`, () => {
+    return HttpResponse.json({
+      count: 0,
+      next: null,
+      previous: null,
+      results: [],
+    });
+  }),
+
+  http.post(`${BASE_URL}/api/v1/horoscope/pull/`, () => {
+    return HttpResponse.json(mockHoroscopePull('2026-01-01'));
   }),
 ];
