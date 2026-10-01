@@ -975,3 +975,130 @@
     animation: none;
   }
 }
+
+/* Horoscope page (docs/decisions.md #061) — 7 cards (5 Pokémon, 1 Trainer,
+   1 Energy), revealed via 7 small flip-reels side by side instead of the
+   quiz's one full-size sliding-track reel. Reuses CardBack's tier-tinted
+   visual and the .case-opening-face flip classes from the quiz reel
+   (HoroscopeReel.tsx imports CardBack directly), but defines its own
+   sizing root rather than sharing --quiz-card-width, since 7 cards need to
+   be much smaller than the quiz's single full-size one. */
+.horoscope-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 20px;
+  text-align: center;
+
+  --horoscope-card-width: 120px;
+  --horoscope-card-ratio: 63 / 88;
+}
+
+.horoscope-reset-notice {
+  margin: 8px auto 0;
+  max-width: 420px;
+  font-size: 13px;
+  color: var(--text);
+  opacity: 0.75;
+}
+
+.horoscope-pull-button {
+  display: block;
+  width: fit-content;
+  margin: 16px auto 0;
+  padding: 14px 32px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--cta);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--cta-hover);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.horoscope-reels {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 24px 0;
+}
+
+.horoscope-slot {
+  position: relative;
+  width: var(--horoscope-card-width);
+  aspect-ratio: var(--horoscope-card-ratio);
+}
+
+/* Same flip mechanic as .case-opening-winner/.flipped in pages.css above,
+   minus the "grown from a small decoy" part — a horoscope slot is always
+   shown at its final size, it only ever flips, never resizes. */
+.horoscope-slot-card {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition-property: transform;
+}
+
+.horoscope-slot-card.flipped {
+  transform: rotateY(180deg);
+}
+
+.horoscope-result-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  margin: 24px 0;
+}
+
+.horoscope-result-card {
+  width: var(--horoscope-card-width);
+}
+
+.horoscope-result-card img {
+  width: 100%;
+  border-radius: 6px;
+}
+
+.horoscope-result-card-label {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.horoscope-history {
+  margin-top: 40px;
+  text-align: left;
+}
+
+.horoscope-history-entry {
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+}
+
+.horoscope-history-entry-date {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.horoscope-history-entry-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.horoscope-history-entry-cards img {
+  width: 64px;
+  border-radius: 4px;
+}

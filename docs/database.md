@@ -244,6 +244,50 @@ See docs/decisions.md #012 for why this tracks per-question detail rather than s
 
 ---
 
+### HoroscopePull
+
+Purpose
+
+Represents one user's daily card pull.
+
+Fields
+
+- id
+- user (required — same reasoning as QuizAttempt)
+- pull_date (the UTC calendar date this pull belongs to — the actual once-per-day guarantee; see Constraints)
+- pulled_at (exact timestamp, for display/ordering)
+
+Relationship
+
+Belongs to one User. Has many HoroscopeCard.
+
+Constraints
+
+Unique together: (user, pull_date) — enforced at the database level (not just in application logic), so a user can never end up with two pulls for the same UTC day. See docs/decisions.md #061.
+
+---
+
+### HoroscopeCard
+
+Purpose
+
+Represents one of the 7 cards in a horoscope pull.
+
+Fields
+
+- id
+- pull
+- card
+- supertype (the slot's role — "Pokémon" / "Trainer" / "Energy")
+- rarity_tier ("common" / "mid" / "chase" — the tier actually rolled for this slot, stored rather than re-derived from the card's live rarity; see docs/decisions.md #061)
+- order (0-4 = the 5 Pokémon slots, 5 = Trainer, 6 = Energy)
+
+Relationship
+
+Belongs to one HoroscopePull, references one Card (PROTECT — a card referenced by a historical pull can't be deleted, same as QuizAttemptAnswer).
+
+---
+
 ## Future Tables
 
 Deck

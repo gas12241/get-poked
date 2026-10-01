@@ -1,7 +1,7 @@
 from django.test import TestCase
 
 from cards.models import Card, Set
-from quiz.eligibility import eligible_card_ids
+from quiz.eligibility import eligible_card_ids, tier_for_rarity
 
 
 class EligibilityTests(TestCase):
@@ -95,3 +95,19 @@ class EligibilityTests(TestCase):
         # mode's baseline, same as the plain rarities param above.
         ids = eligible_card_ids("guess_card", difficulty="hard")
         self.assertNotIn(self.trainer_common.id, ids)
+
+
+class TierForRarityTests(TestCase):
+    def test_chase_tier(self):
+        self.assertEqual(tier_for_rarity("Rare Secret"), "chase")
+
+    def test_common_tier(self):
+        self.assertEqual(tier_for_rarity("Common"), "common")
+        self.assertEqual(tier_for_rarity("Uncommon"), "common")
+        self.assertEqual(tier_for_rarity("Rare"), "common")
+
+    def test_mid_tier_is_the_default(self):
+        # Anything not in the chase or common sets, e.g. Rare Holo, GX, VMAX
+        # — not its own enumerated list, same reasoning as MEDIUM above.
+        self.assertEqual(tier_for_rarity("Rare Holo"), "mid")
+        self.assertEqual(tier_for_rarity("Some Future Rarity String"), "mid")

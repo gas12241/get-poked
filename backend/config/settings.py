@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "core",
     "cards",
     "quiz",
+    "horoscope",
 ]
 
 MIDDLEWARE = [

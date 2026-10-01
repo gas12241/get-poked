@@ -300,6 +300,20 @@ See docs/decisions.md #020.
 
 ---
 
+## Horoscope
+
+A daily, per-user card pull — 5 Pokémon, 1 Trainer, 1 Energy, each drawn independently. Not part of the original roadmap phases; added later alongside the Quiz system's own backend/frontend split (`horoscope` app, mirroring `quiz`'s `QuizAttempt`/`QuizAttemptAnswer` parent/child shape). See docs/decisions.md #061 for the full reasoning.
+
+Once-per-UTC-day is a database constraint, not application logic: `HoroscopePull.pull_date` (a plain `DateField`, set once via `timezone.now().date()`) carries a `UniqueConstraint(user, pull_date)`, so the guarantee holds regardless of what any view does. The pull endpoint is accordingly idempotent — the first `POST` of a day creates, every later one that day just returns the existing row.
+
+Each of the 7 slots rolls a rarity tier (common/mid/chase) independently against fixed, deliberately-designed odds (70/25/5 — not derived from the real catalog's own proportions, which skew common-heavy as an accident of 25 years of reprints rather than a designed scarcity), then picks a random eligible card of that supertype+tier, falling back through the other two tiers if the rolled one has no eligible cards for that supertype. Reuses `quiz/eligibility.py`'s rarity-tier constants rather than redefining them.
+
+The frontend reveal (`HoroscopeReel.tsx`) is a new component, not a reuse of the quiz's single-card `CaseOpeningReel` — 7 small flip-reels, each starting its own spin on a fixed stagger so they land left to right. `CardBack` and the flip CSS are shared with the quiz reel; `usePrefersReducedMotion` was extracted out to `hooks/` so both components read it from one place.
+
+Like quiz-attempt saving, pulling a horoscope requires authentication (`IsAuthenticated`) — there is no guest/anonymous path. Whether Quiz and Horoscope should eventually support anonymous use with activity "claimed" onto an account created afterward is an open, deliberately deferred question (see docs/decisions.md #061) — it depends on a registration flow that doesn't exist yet in any form, and should be revisited once Phase 4 (Authentication) is actually being designed, not decided in isolation for one feature.
+
+---
+
 ## Future Features
 
 Deck builder

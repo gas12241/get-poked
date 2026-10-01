@@ -367,3 +367,37 @@ Requires authentication (see docs/decisions.md #011).
 Status
 
 Implemented
+
+---
+
+## Horoscope
+
+### Pull Today's Horoscope
+
+POST /api/v1/horoscope/pull/
+
+Description
+
+Idempotent: the first call of a UTC calendar day creates a 7-card pull (5 Pokémon, 1 Trainer, 1 Energy, each drawn independently with weighted rarity odds — see docs/decisions.md #061) and returns `201`; any later call that same UTC day returns the existing pull unchanged, `200`. Response: `{"id": <int>, "pull_date": "YYYY-MM-DD", "pulled_at": "<ISO datetime>", "cards": [{"card": <CardListItem>, "supertype": "...", "rarity_tier": "common"|"mid"|"chase", "order": <int>}, ...]}`.
+
+Requires authentication.
+
+Status
+
+Implemented
+
+---
+
+### Horoscope History
+
+GET /api/v1/horoscope-pulls/
+
+Description
+
+Returns only the requesting user's own past pulls (paginated, per the project-wide default, newest first), same shape as a single pull from the endpoint above.
+
+Requires authentication.
+
+Status
+
+Implemented

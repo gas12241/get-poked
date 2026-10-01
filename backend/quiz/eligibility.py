@@ -43,6 +43,20 @@ HARD_RARITIES = {"Common", "Uncommon", "Rare"}
 # add it somewhere.
 
 
+def tier_for_rarity(rarity):
+    """Classify a single rarity string into "chase"/"common"/"mid" using the
+    same three buckets as the difficulty picker above (EASY_RARITIES is a
+    "chase" tier, HARD_RARITIES a "common" tier, everything else "mid") —
+    reused by the horoscope's weighted rarity odds. See docs/decisions.md
+    #061.
+    """
+    if rarity in EASY_RARITIES:
+        return "chase"
+    if rarity in HARD_RARITIES:
+        return "common"
+    return "mid"
+
+
 def eligible_card_ids(mode, rarities=None, difficulty=None):
     """Return eligible Card ids for a quiz mode, per ARCHITECTURE.md's
     "Quiz Eligibility & Rarity Filtering". `rarities` and `difficulty` each
