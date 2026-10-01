@@ -847,6 +847,22 @@ Why
 
 ---
 
+## Decision 060
+
+Card-name search is now accent-insensitive
+
+Why
+
+- **User-reported, exact card named**: "Poké Vital A" never showed up searching "Poke" (no accent available on their keyboard) — only "Vital" (a substring with no accent in it at all) worked, by accident, since the underlying match was a plain `icontains` with no diacritic handling at all
+- **New `name_ascii` field on `Card`** — a diacritic-stripped copy of `name` (via the `unidecode` library: "Poké" -> "Poke"), kept in sync by a new `Card.save()` override, rather than normalizing at query time on every search. `update_or_create()` (what `cards/sync.py` actually uses) calls `.save()` under the hood, so this stays correct automatically on every future sync with no extra step; a data migration backfills all ~20,670 already-synced cards immediately rather than waiting on the next full re-sync
+- **App-level (`unidecode`), not the Postgres `unaccent` extension** — this app always runs on Postgres, even locally (docs/decisions.md #019), and Postgres does ship an `unaccent` extension, but enabling it needs `CREATE EXTENSION` privileges that aren't guaranteed on every hosting provider (some managed Postgres plans restrict it to an allowlist), and Django doesn't ship a ready-made ORM lookup for it anyway — you'd still need to hand-write a custom `Transform` subclass. A plain Python library and a plain indexed `CharField`, matching every other field on this model, has no such portability risk and no new ORM machinery to introduce
+- **Both search entry points fixed, not just the one reported** — `CardNameListView` (the typeahead dropdown, shared by the Cards page and the Quiz "Guess the Card" autocomplete per #036) now filters on `name_ascii__icontains=unidecode(search)`; `CardViewSet`'s `search_fields` (the Cards page's actual results list) gained `"name_ascii"` alongside `"name"`. Fixing only the dropdown would have left a gap: a user who types a full search and hits Enter without picking a suggestion would still get zero accent-insensitive matches on the actual results
+- **The search term is unidecoded too** (in `CardNameListView`), not just the stored side — makes the match symmetric: a user who *does* manage to type an accented character still matches consistently either way, not just the unaccented-typing direction the bug report described
+- **New tests, not just reliance on incidental coverage**: two `Card` model tests (diacritics stripped on create, and re-stripped if `name` changes later) plus two view-level regression tests reproducing the user's exact card and search term, one for each of the two fixed endpoints — both confirmed to fail against the un-fixed `icontains`/`search_fields` before the fix was restored
+- **Verified live** against the real synced catalog (not just the test fixtures): confirmed "Poké Vital A" is genuinely unreachable before this fix for any "Poke"-containing search, confirmed the full candidate set now includes it (51 matches for "Poke" alone — it just doesn't make the existing top-8 ranking cap for that generic a prefix, same as any other crowded name would, *not* a limitation of this fix), and confirmed "Poke V" surfaces it directly in both the Cards page search and the Quiz guess-the-card autocomplete in a real browser
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

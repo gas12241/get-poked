@@ -7,3 +7,4 @@ psycopg[binary]==3.3.4
 django-environ==0.14.0
 requests==2.34.2
 Pillow==12.3.0
+Unidecode==1.4.0

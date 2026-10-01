@@ -103,6 +103,23 @@ class CardListTests(CardsSetsTypesTestBase):
         names = [c["name"] for c in response.data["results"]]
         self.assertEqual(names, ["Charizard"])
 
+    def test_search_matches_an_accented_name_typed_without_the_accent(self):
+        # Same fix as CardNameListView (docs/decisions.md #060) — the main
+        # list's own ?search= should behave the same way as the typeahead
+        # it sits behind.
+        Card.objects.create(
+            tcg_id="poke-vital-a",
+            set=self.set_a,
+            name="Poké Vital A",
+            number="99",
+            supertype="Trainer",
+            image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        response = self.client.get(reverse("card-list"), {"search": "Poke Vital"})
+        names = [c["name"] for c in response.data["results"]]
+        self.assertEqual(names, ["Poké Vital A"])
+
     def test_ordering_by_name(self):
         response = self.client.get(reverse("card-list"), {"ordering": "name"})
         names = [c["name"] for c in response.data["results"]]
@@ -632,6 +649,23 @@ class CardNameListViewTests(APITestCase):
         )
         response = self.client.get(reverse("card-name-list"), {"search": "jigglypuff"})
         self.assertIn("Mega Lopunny & Jigglypuff GX", response.data)
+
+    def test_finds_an_accented_name_from_a_search_typed_without_the_accent(self):
+        # The exact real-world case reported: "Poké Vital A" didn't show up
+        # searching "Poke" (no accent) — only a workaround substring
+        # elsewhere in the name ("Vital") found it. See docs/decisions.md
+        # #060.
+        Card.objects.create(
+            tcg_id="poke-vital-a",
+            set=self.set_c,
+            name="Poké Vital A",
+            number="301",
+            supertype="Trainer",
+            image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        response = self.client.get(reverse("card-name-list"), {"search": "Poke Vital"})
+        self.assertEqual(response.data, ["Poké Vital A"])
 
     def test_empty_search_returns_no_suggestions(self):
         response = self.client.get(reverse("card-name-list"))

@@ -21,6 +21,7 @@ Fields
 - id
 - tcg_id
 - name
+- name_ascii (diacritic-stripped copy of `name`, e.g. "Poké Vital A" -> "Poke Vital A" — kept in sync by `Card.save()`, read-only in practice. Lets search match a name typed without accents against a stored name that has them; see docs/decisions.md #060)
 - number
 - rarity
 - hp
@@ -46,7 +47,7 @@ No (set, number, language) uniqueness — an earlier assumption, disproven by re
 
 Indexes
 
-`name`, `rarity`, `supertype` — all three are stated search/filter/quiz requirements.
+`name`, `name_ascii`, `rarity`, `supertype` — all four are stated search/filter/quiz requirements.
 
 ---
 

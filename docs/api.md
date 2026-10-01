@@ -144,7 +144,7 @@ Returns a paginated list of cards. Uses the List serializer (see Conventions).
 
 Supports
 
-- search — `?search=` (partial, case-insensitive match on `name`)
+- search — `?search=` (partial, case-insensitive match on `name`; also accent-insensitive — e.g. `search=Poke` matches "Poké Vital A" — via a diacritic-stripped `name_ascii` field, see docs/decisions.md #060)
 - filtering — `?rarity=`, `?supertype=`, `?set=` (Set id), `?type=` (elemental type name, case-insensitive, e.g. `Fire`), `?series=` (Set.series, case-insensitive, e.g. `Mega Evolution` — matches every card across every set in that series, see docs/decisions.md #035); any combination applies as AND
 - pagination — `?page=`, `?page_size=` (default 24, max 100)
 - sorting — `?ordering=` (`name`, `number`, `rarity`, `release_date`; prefix `-` to reverse). `number` sorts numerically (1, 2, ... 10, 11), not lexicographically as a plain string sort would (1, 10, 11, ... 2) — see docs/decisions.md #032. `release_date` is an alias for the card's set's `release_date` (e.g. every variant of a searched name in the order it was actually printed); cards sharing a release date (i.e. the same set) get a numeric `number` tiebreak, same as above — see docs/decisions.md #037. Conversely, `name`/`number` sorts tiebreak by `release_date` (e.g. every "Abra" print, or every "#1" across sets) — oldest print first by default, or newest first with `?newest_first=true` — see docs/decisions.md #038
@@ -246,7 +246,7 @@ GET /api/v1/card-names/
 
 Params
 
-- `search` — required; matched anywhere in the name, not just as a prefix (case-insensitive), and rejected outright below 2 characters. Shorter or omitted: `[]`.
+- `search` — required; matched anywhere in the name, not just as a prefix (case-insensitive and accent-insensitive — e.g. `search=Poke` matches "Poké Vital A", see docs/decisions.md #060), and rejected outright below 2 characters. Shorter or omitted: `[]`.
 - `set` / `series` — optional, same semantics as on Types/Rarities/Supertypes above. The frontend omits both when calling this for the Quiz page's guess-the-card input — see Description.
 
 Description
