@@ -151,16 +151,15 @@ export const handlers = [
     });
   }),
 
-  // Defaults: no pull yet today, and pulling creates a fresh 7-card one —
-  // individual tests override either via server.use() for other states
-  // (already pulled today, error, ...).
-  http.get(`${BASE_URL}/api/v1/horoscope-pulls/`, () => {
-    return HttpResponse.json({
-      count: 0,
-      next: null,
-      previous: null,
-      results: [],
-    });
+  // Defaults: no pulls anywhere, and pulling today creates a fresh 7-card
+  // one — individual tests override via server.use() for other states
+  // (a specific day already has a pull, an error, ...).
+  http.get(`${BASE_URL}/api/v1/horoscope-pull-dates/`, () => {
+    return HttpResponse.json({ dates: [] });
+  }),
+
+  http.get(`${BASE_URL}/api/v1/horoscope-pulls/:date/`, () => {
+    return new HttpResponse(null, { status: 404 });
   }),
 
   http.post(`${BASE_URL}/api/v1/horoscope/pull/`, () => {

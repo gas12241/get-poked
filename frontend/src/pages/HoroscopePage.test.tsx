@@ -11,6 +11,7 @@ import {
   HOROSCOPE_SPIN_DURATION_MS,
   HOROSCOPE_STAGGER_MS,
 } from '../components/HoroscopeReel';
+import { addMonths, currentUtcMonth } from '../components/HoroscopeCalendar';
 import HoroscopePage, { formatHoroscopeDate } from './HoroscopePage';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -34,14 +35,13 @@ describe('HoroscopePage', () => {
   it('shows a log-in message when logged out, and fires no requests', async () => {
     let requested = false;
     server.use(
-      http.get(`${BASE_URL}/api/v1/horoscope-pulls/`, () => {
+      http.get(`${BASE_URL}/api/v1/horoscope-pull-dates/`, () => {
         requested = true;
-        return HttpResponse.json({
-          count: 0,
-          next: null,
-          previous: null,
-          results: [],
-        });
+        return HttpResponse.json({ dates: [] });
+      }),
+      http.get(`${BASE_URL}/api/v1/horoscope-pulls/:date/`, () => {
+        requested = true;
+        return new HttpResponse(null, { status: 404 });
       }),
     );
 
@@ -84,13 +84,8 @@ describe('HoroscopePage', () => {
   it('shows the static result grid directly when already pulled today, with no reel animation', async () => {
     useAuthStore.setState({ accessToken: 'test-token' });
     server.use(
-      http.get(`${BASE_URL}/api/v1/horoscope-pulls/`, () => {
-        return HttpResponse.json({
-          count: 1,
-          next: null,
-          previous: null,
-          results: [mockHoroscopePull(todayUtc())],
-        });
+      http.get(`${BASE_URL}/api/v1/horoscope-pulls/${todayUtc()}/`, () => {
+        return HttpResponse.json(mockHoroscopePull(todayUtc()));
       }),
     );
 
@@ -108,13 +103,8 @@ describe('HoroscopePage', () => {
   it('shows each card name, linked to its detail page, in the result grid', async () => {
     useAuthStore.setState({ accessToken: 'test-token' });
     server.use(
-      http.get(`${BASE_URL}/api/v1/horoscope-pulls/`, () => {
-        return HttpResponse.json({
-          count: 1,
-          next: null,
-          previous: null,
-          results: [mockHoroscopePull(todayUtc())],
-        });
+      http.get(`${BASE_URL}/api/v1/horoscope-pulls/${todayUtc()}/`, () => {
+        return HttpResponse.json(mockHoroscopePull(todayUtc()));
       }),
     );
 
@@ -137,98 +127,72 @@ describe('HoroscopePage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('lists past pulls in the history section', async () => {
+  it('shows the calendar heading and grid, with only dates that have a pull as clickable', async () => {
     useAuthStore.setState({ accessToken: 'test-token' });
+    const month = currentUtcMonth();
     server.use(
-      http.get(`${BASE_URL}/api/v1/horoscope-pulls/`, () => {
-        return HttpResponse.json({
-          count: 1,
-          next: null,
-          previous: null,
-          results: [mockHoroscopePull('2025-12-25', 7)],
-        });
+      http.get(`${BASE_URL}/api/v1/horoscope-pull-dates/`, () => {
+        return HttpResponse.json({ dates: [`${month}-01`] });
       }),
     );
 
     renderWithProviders(<HoroscopePage />);
 
     expect(await screen.findByText('Past horoscopes')).toBeInTheDocument();
-    expect(screen.getByText('December 25th, 2025')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: '1' }),
+    ).toBeInTheDocument();
+    // Day 2 has no pull this month — plain text, not a button.
+    expect(screen.queryByRole('button', { name: '2' })).not.toBeInTheDocument();
   });
 
-  it('shows each history card’s name as a visible label, not just alt text', async () => {
+  it('shows the selected day’s cards when an enabled calendar day is clicked', async () => {
     useAuthStore.setState({ accessToken: 'test-token' });
+    const month = currentUtcMonth();
+    const dateStr = `${month}-01`;
     server.use(
-      http.get(`${BASE_URL}/api/v1/horoscope-pulls/`, () => {
-        return HttpResponse.json({
-          count: 1,
-          next: null,
-          previous: null,
-          results: [mockHoroscopePull('2025-12-25', 7)],
-        });
+      http.get(`${BASE_URL}/api/v1/horoscope-pull-dates/`, () => {
+        return HttpResponse.json({ dates: [dateStr] });
       }),
-    );
-
-    const { container } = renderWithProviders(<HoroscopePage />);
-
-    await screen.findByText('December 25th, 2025');
-    // A visible <p> label within the history card, not merely the image's
-    // alt text — the point is a clickable name a sighted user can actually
-    // read, same as the main grid already has. Scoped to the Energy
-    // card's own link (id 7, per mockHoroscopePull) rather than just the
-    // first match, since every card in the fixture has its own label.
-    const label = container.querySelector(
-      'a[href="/cards/7"] .horoscope-card-tile-label',
-    );
-    expect(label).not.toBeNull();
-    expect(label?.textContent).toBe('Card 6');
-  });
-
-  it('excludes today’s pull from the past-horoscopes list, showing it only as "today"', async () => {
-    useAuthStore.setState({ accessToken: 'test-token' });
-    server.use(
-      http.get(`${BASE_URL}/api/v1/horoscope-pulls/`, () => {
-        return HttpResponse.json({
-          count: 2,
-          next: null,
-          previous: null,
-          results: [
-            mockHoroscopePull(todayUtc(), 1),
-            mockHoroscopePull('2025-12-25', 7),
-          ],
-        });
+      http.get(`${BASE_URL}/api/v1/horoscope-pulls/${dateStr}/`, () => {
+        return HttpResponse.json(mockHoroscopePull(dateStr));
       }),
     );
 
     renderWithProviders(<HoroscopePage />);
 
+    const dayButton = await screen.findByRole('button', { name: '1' });
+    await userEvent.click(dayButton);
+
+    expect(
+      await screen.findByText(formatHoroscopeDate(dateStr)),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Card 6')).toBeInTheDocument();
+  });
+
+  it('navigating to the next month refetches dates for that month', async () => {
+    useAuthStore.setState({ accessToken: 'test-token' });
+    const requestedMonths: string[] = [];
+    server.use(
+      http.get(`${BASE_URL}/api/v1/horoscope-pull-dates/`, ({ request }) => {
+        requestedMonths.push(
+          new URL(request.url).searchParams.get('month') ?? '',
+        );
+        return HttpResponse.json({ dates: [] });
+      }),
+    );
+
+    renderWithProviders(<HoroscopePage />);
     await screen.findByText('Past horoscopes');
-    // The older pull shows in history...
-    expect(screen.getByText('December 25th, 2025')).toBeInTheDocument();
-    // ...but today's own date never appears there — it's shown above as
-    // "today's horoscope" (the result grid), not as a line in the past
-    // list.
-    const todayFormatted = formatHoroscopeDate(todayUtc());
-    expect(screen.queryByText(todayFormatted)).not.toBeInTheDocument();
-  });
 
-  it('shows "No past horoscopes yet" when today’s pull is the only one that exists', async () => {
-    useAuthStore.setState({ accessToken: 'test-token' });
-    server.use(
-      http.get(`${BASE_URL}/api/v1/horoscope-pulls/`, () => {
-        return HttpResponse.json({
-          count: 1,
-          next: null,
-          previous: null,
-          results: [mockHoroscopePull(todayUtc())],
-        });
-      }),
+    await userEvent.click(screen.getByRole('button', { name: 'Next month' }));
+
+    const expectedNextMonth = addMonths(currentUtcMonth(), 1);
+    await waitFor(() =>
+      expect(requestedMonths[requestedMonths.length - 1]).toBe(
+        expectedNextMonth,
+      ),
     );
-
-    renderWithProviders(<HoroscopePage />);
-
-    expect(await screen.findByText('Past horoscopes')).toBeInTheDocument();
-    expect(screen.getByText('No past horoscopes yet.')).toBeInTheDocument();
   });
 
   it('disables the Pull button and shows a pending label while the pull is in flight', async () => {

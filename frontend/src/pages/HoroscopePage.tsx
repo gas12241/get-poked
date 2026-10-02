@@ -1,11 +1,18 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getHoroscopeHistory, pullTodayHoroscope } from '../api/horoscope';
+import {
+  getHoroscopePullDates,
+  getHoroscopePullForDate,
+  pullTodayHoroscope,
+} from '../api/horoscope';
 import type { HoroscopeCard, HoroscopePull } from '../api/horoscope';
 import { useAuthStore } from '../store/authStore';
 import HoroscopeReel from '../components/HoroscopeReel';
 import type { HoroscopeSlotResult } from '../components/HoroscopeReel';
+import HoroscopeCalendar, {
+  currentUtcMonth,
+} from '../components/HoroscopeCalendar';
 import './pages.css';
 
 // The fixed slot layout backend/horoscope/selection.py always produces:
@@ -67,10 +74,9 @@ function toSlots(pull: HoroscopePull): HoroscopeSlotResult[] {
   }));
 }
 
-// Shared by the "today" result grid and the history list below — same
-// image + clickable, pill-styled name treatment in both places, just at a
-// different size (controlled by `className`, which sets --horoscope-card-width
-// locally). alt="" on the image is deliberate, not an oversight: the label
+// Shared by the "today" result grid and the selected-calendar-day panel
+// below — same image + clickable, pill-styled name treatment in both
+// places. alt="" on the image is deliberate, not an oversight: the label
 // right below already gives the name as real text, both visually and to a
 // screen reader, so a non-empty alt would announce the same name twice.
 function HoroscopeCardTile({
@@ -111,31 +117,6 @@ function HoroscopeResultGrid({ pull }: { pull: HoroscopePull }) {
   );
 }
 
-function HoroscopeHistory({ pulls }: { pulls: HoroscopePull[] }) {
-  return (
-    <div className="horoscope-history">
-      <h2>Past horoscopes</h2>
-      {pulls.length === 0 && <p>No past horoscopes yet.</p>}
-      {pulls.map((pull) => (
-        <div key={pull.id} className="horoscope-history-entry">
-          <p className="horoscope-history-entry-date">
-            {formatHoroscopeDate(pull.pull_date)}
-          </p>
-          <div className="horoscope-history-entry-cards">
-            {pull.cards.map((c) => (
-              <HoroscopeCardTile
-                key={c.order}
-                card={c}
-                className="horoscope-history-card"
-              />
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function HoroscopePage() {
   const isAuthenticated = useAuthStore((s) => s.accessToken !== null);
   const queryClient = useQueryClient();
@@ -145,17 +126,49 @@ function HoroscopePage() {
   // assigned here, so it never replays.
   const [freshPull, setFreshPull] = useState<HoroscopePull | null>(null);
   const [revealDone, setRevealDone] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const historyQuery = useQuery({
-    queryKey: ['horoscope-history'],
-    queryFn: getHoroscopeHistory,
+  // A UTC calendar-date string ("YYYY-MM-DD") — toISOString() always
+  // returns UTC regardless of the viewer's local timezone, so this matches
+  // the backend's own pull_date exactly with no conversion needed.
+  const todayUtc = new Date().toISOString().slice(0, 10);
+  // The calendar's visible month lives in the URL (?month=YYYY-MM), same
+  // reasoning as CardListPage's own filters: navigating away and back (or
+  // reloading) restores the month you were looking at, instead of always
+  // resetting to the current one.
+  const month = searchParams.get('month') ?? currentUtcMonth();
+
+  // Checked read-only via the detail-by-date endpoint, not the idempotent
+  // POST — that one must stay reserved for the deliberate "Pull" button
+  // click (see docs/decisions.md #061), not fired as a side effect of just
+  // loading the page.
+  const todayPullQuery = useQuery({
+    queryKey: ['horoscope-pull', todayUtc],
+    queryFn: () => getHoroscopePullForDate(todayUtc),
     enabled: isAuthenticated,
+  });
+
+  const datesQuery = useQuery({
+    queryKey: ['horoscope-pull-dates', month],
+    queryFn: () => getHoroscopePullDates(month),
+    enabled: isAuthenticated,
+  });
+
+  const selectedPullQuery = useQuery({
+    queryKey: ['horoscope-pull', selectedDate],
+    queryFn: () => getHoroscopePullForDate(selectedDate as string),
+    enabled: selectedDate !== null,
   });
 
   const pullMutation = useMutation({
     mutationFn: pullTodayHoroscope,
     onSuccess: (pull) => {
-      queryClient.invalidateQueries({ queryKey: ['horoscope-history'] });
+      // Broad invalidation (every cached month, not just the current one)
+      // — simpler than figuring out which month today belongs to, and
+      // harmless: an invalidated query just refetches next time it's shown.
+      queryClient.invalidateQueries({ queryKey: ['horoscope-pull-dates'] });
+      queryClient.setQueryData(['horoscope-pull', todayUtc], pull);
       setFreshPull(pull);
       setRevealDone(false);
     },
@@ -170,7 +183,7 @@ function HoroscopePage() {
     );
   }
 
-  if (historyQuery.isLoading) {
+  if (todayPullQuery.isLoading) {
     return (
       <div className="horoscope-page">
         <h1>Horoscope</h1>
@@ -179,20 +192,9 @@ function HoroscopePage() {
     );
   }
 
-  // A UTC calendar-date string ("YYYY-MM-DD") — toISOString() always
-  // returns UTC regardless of the viewer's local timezone, so this matches
-  // the backend's own pull_date exactly with no conversion needed.
-  const todayUtc = new Date().toISOString().slice(0, 10);
-  const pulls = historyQuery.data?.results ?? [];
-  const todaysPullFromHistory = pulls.find((p) => p.pull_date === todayUtc);
-  const pullForToday = freshPull ?? todaysPullFromHistory;
+  const pullForToday = freshPull ?? todayPullQuery.data ?? null;
   const showReveal = freshPull !== null && !revealDone;
-  // Today's pull is shown above as "today's horoscope," not as history —
-  // it isn't part of the *past* until the day it belongs to has actually
-  // passed. The common case this produces "No past horoscopes yet" for is
-  // exactly the first pull ever, before there's a second day to compare it
-  // to.
-  const pastPulls = pulls.filter((p) => p.pull_date !== todayUtc);
+  const datesWithPulls = new Set(datesQuery.data?.dates ?? []);
 
   const resetInfo = nextResetInfo();
 
@@ -233,7 +235,25 @@ function HoroscopePage() {
         </>
       )}
 
-      <HoroscopeHistory pulls={pastPulls} />
+      <h2 className="horoscope-calendar-heading">Past horoscopes</h2>
+      <HoroscopeCalendar
+        month={month}
+        onMonthChange={(newMonth) =>
+          setSearchParams({ month: newMonth }, { replace: true })
+        }
+        datesWithPulls={datesWithPulls}
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
+      />
+      {selectedDate && selectedPullQuery.isLoading && <p>Loading...</p>}
+      {selectedDate && selectedPullQuery.data && (
+        <>
+          <p className="horoscope-selected-date">
+            {formatHoroscopeDate(selectedDate)}
+          </p>
+          <HoroscopeResultGrid pull={selectedPullQuery.data} />
+        </>
+      )}
     </div>
   );
 }
