@@ -7,6 +7,7 @@ from rest_framework.test import APITestCase
 
 from cards.models import Card, Set
 from horoscope.models import HoroscopePull
+from horoscope.selection import build_daily_pull
 
 User = get_user_model()
 
@@ -81,19 +82,85 @@ class HoroscopeTodayViewTests(HoroscopeTestBase):
         self.assertEqual(first_card["order"], 0)
 
 
-class HoroscopePullListViewTests(HoroscopeTestBase):
+class HoroscopePullDatesViewTests(HoroscopeTestBase):
     def test_requires_authentication(self):
-        response = self.client.get(reverse("horoscope-pull-list"))
+        response = self.client.get(reverse("horoscope-pull-dates"), {"month": "2026-09"})
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_only_returns_the_requesting_users_pulls(self):
-        HoroscopePull.objects.create(user=self.user, pull_date=datetime.date.today())
-        HoroscopePull.objects.create(
-            user=self.other_user, pull_date=datetime.date.today() - datetime.timedelta(days=1)
-        )
-
+    def test_missing_month_returns_400(self):
         self.client.force_authenticate(self.user)
-        response = self.client.get(reverse("horoscope-pull-list"))
+        response = self.client.get(reverse("horoscope-pull-dates"))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-        self.assertEqual(response.data["count"], 1)
-        self.assertEqual(len(response.data["results"]), 1)
+    def test_malformed_month_returns_400(self):
+        self.client.force_authenticate(self.user)
+        response = self.client.get(reverse("horoscope-pull-dates"), {"month": "not-a-month"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_out_of_range_month_returns_400(self):
+        self.client.force_authenticate(self.user)
+        response = self.client.get(reverse("horoscope-pull-dates"), {"month": "2026-13"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_returns_only_dates_within_the_requested_month(self):
+        HoroscopePull.objects.create(user=self.user, pull_date=datetime.date(2026, 9, 5))
+        HoroscopePull.objects.create(user=self.user, pull_date=datetime.date(2026, 9, 20))
+        # A different month, and a different year sharing the same month
+        # number — both must be excluded.
+        HoroscopePull.objects.create(user=self.user, pull_date=datetime.date(2026, 10, 1))
+        HoroscopePull.objects.create(user=self.user, pull_date=datetime.date(2025, 9, 5))
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(reverse("horoscope-pull-dates"), {"month": "2026-09"})
+
+        self.assertEqual(response.data["dates"], ["2026-09-05", "2026-09-20"])
+
+    def test_scoped_to_the_requesting_user_only(self):
+        HoroscopePull.objects.create(user=self.user, pull_date=datetime.date(2026, 9, 5))
+        HoroscopePull.objects.create(user=self.other_user, pull_date=datetime.date(2026, 9, 6))
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(reverse("horoscope-pull-dates"), {"month": "2026-09"})
+
+        self.assertEqual(response.data["dates"], ["2026-09-05"])
+
+
+class HoroscopePullDetailViewTests(HoroscopeTestBase):
+    def test_requires_authentication(self):
+        response = self.client.get(reverse("horoscope-pull-detail", kwargs={"date": "2026-09-05"}))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_returns_the_pull_for_that_date_with_nested_cards(self):
+        self.client.force_authenticate(self.user)
+        build_daily_pull(self.user, datetime.date(2026, 9, 5))
+
+        response = self.client.get(reverse("horoscope-pull-detail", kwargs={"date": "2026-09-05"}))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["pull_date"], "2026-09-05")
+        self.assertEqual(len(response.data["cards"]), 7)
+
+    def test_returns_404_for_a_date_with_no_pull(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(reverse("horoscope-pull-detail", kwargs={"date": "2026-09-05"}))
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_returns_404_rather_than_another_users_pull_for_the_same_date(self):
+        # The security-relevant case: a date can't be probed across
+        # accounts just by guessing it, even though this endpoint has no
+        # other per-user secret in its URL.
+        build_daily_pull(self.other_user, datetime.date(2026, 9, 5))
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(reverse("horoscope-pull-detail", kwargs={"date": "2026-09-05"}))
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_malformed_date_returns_404(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(reverse("horoscope-pull-detail", kwargs={"date": "not-a-date"}))
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
-import { apiClient } from './apiClient';
+import { ApiError, apiClient } from './apiClient';
 import { useAuthStore } from '../store/authStore';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -52,5 +52,18 @@ describe('apiClient', () => {
     );
 
     await expect(apiClient('/api/v1/broken/')).rejects.toThrow('API error 500');
+  });
+
+  it('throws an ApiError carrying the numeric status', async () => {
+    server.use(
+      http.get(`${BASE_URL}/api/v1/missing/`, () => {
+        return new HttpResponse(null, { status: 404 });
+      }),
+    );
+
+    const error = await apiClient('/api/v1/missing/').catch((e) => e);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).status).toBe(404);
   });
 });
