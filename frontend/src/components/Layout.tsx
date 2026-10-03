@@ -1,12 +1,7 @@
-import {
-  Link,
-  Outlet,
-  ScrollRestoration,
-  useLocation,
-  useNavigate,
-} from 'react-router-dom';
-import { logoutRequest } from '../api/auth';
-import { useAuthStore, useIsAuthenticated } from '../store/authStore';
+import { Link, Outlet, ScrollRestoration, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { getProfile } from '../api/auth';
+import { useIsAuthenticated } from '../store/authStore';
 import Footer from './Footer';
 import ThemeToggle from './ThemeToggle';
 
@@ -32,7 +27,6 @@ function Layout() {
   // ("/cards/:id"), which NavLink's own matching can't express without
   // also matching "/quiz".
   const { pathname } = useLocation();
-  const navigate = useNavigate();
   const isCardsActive = pathname === '/' || pathname.startsWith('/cards/');
   const isQuizActive = pathname.startsWith('/quiz');
   const isHoroscopeActive = pathname.startsWith('/horoscope');
@@ -41,15 +35,14 @@ function Layout() {
   const isProfileActive = pathname.startsWith('/profile');
   const isAuthenticated = useIsAuthenticated();
 
-  const handleLogout = () => {
-    // Best-effort — the access token is cleared client-side either way, so a
-    // failed request (already-expired cookie, network hiccup) doesn't leave
-    // the user stuck looking logged in.
-    logoutRequest().finally(() => {
-      useAuthStore.getState().clearAccessToken();
-      navigate('/');
-    });
-  };
+  // Same query key ProfilePage.tsx uses for its own `getProfile` call, so
+  // React Query serves both from one shared cache entry instead of fetching
+  // twice — whichever mounts first fetches it, the other reads the cache.
+  const profileQuery = useQuery({
+    queryKey: ['profile'],
+    queryFn: getProfile,
+    enabled: isAuthenticated,
+  });
 
   return (
     <>
@@ -73,25 +66,16 @@ function Layout() {
         </Link>
         <div className="main-nav-right">
           {isAuthenticated ? (
-            <>
-              <Link
-                to="/profile"
-                className={
-                  isProfileActive
-                    ? 'main-nav-auth-link active'
-                    : 'main-nav-auth-link'
-                }
-              >
-                Profile
-              </Link>
-              <button
-                type="button"
-                className="main-nav-auth-button"
-                onClick={handleLogout}
-              >
-                Log out
-              </button>
-            </>
+            <Link
+              to="/profile"
+              className={
+                isProfileActive
+                  ? 'main-nav-auth-link active'
+                  : 'main-nav-auth-link'
+              }
+            >
+              {profileQuery.data?.username ?? 'Profile'}
+            </Link>
           ) : (
             <>
               <Link

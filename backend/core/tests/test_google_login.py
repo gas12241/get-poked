@@ -31,6 +31,9 @@ class GoogleLoginViewTests(APITestCase):
         self.assertFalse(user.has_usable_password())
         self.assertEqual(user.first_name, "Ash")
         self.assertEqual(user.last_name, "Ketchum")
+        # No username comes from Google — one is auto-generated so the
+        # account isn't left without one (decisions.md, username slice).
+        self.assertEqual(user.username, "new")
 
     @patch("core.views.id_token.verify_oauth2_token")
     def test_existing_unverified_account_becomes_verified_and_logs_in(self, mock_verify):

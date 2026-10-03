@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { Route, Routes } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
@@ -51,9 +50,6 @@ describe('Layout', () => {
       'href',
       '/signup',
     );
-    expect(
-      screen.queryByRole('button', { name: 'Log out' }),
-    ).not.toBeInTheDocument();
   });
 
   it('hides the Profile link when logged out', () => {
@@ -64,35 +60,27 @@ describe('Layout', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows a Profile link when logged in', () => {
-    useAuthStore.getState().setAccessToken('test-token');
-
-    renderLayoutAt('/');
-
-    expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute(
-      'href',
-      '/profile',
-    );
-  });
-
-  it('shows a Log out button when logged in, which clears the token on click', async () => {
+  it("shows the user's username as the nav link once their profile loads", async () => {
     useAuthStore.getState().setAccessToken('test-token');
     server.use(
-      http.post(`${BASE_URL}/api/v1/token/logout/`, () => {
-        return new HttpResponse(null, { status: 205 });
+      http.get(`${BASE_URL}/api/v1/me/`, () => {
+        return HttpResponse.json({
+          email: 'tester@example.com',
+          username: 'pikachu',
+          first_name: '',
+          last_name: '',
+          is_verified: true,
+          date_joined: '2026-01-15T00:00:00Z',
+          has_usable_password: true,
+        });
       }),
     );
 
     renderLayoutAt('/');
 
     expect(
-      screen.queryByRole('link', { name: 'Log in' }),
-    ).not.toBeInTheDocument();
-    const logoutButton = screen.getByRole('button', { name: 'Log out' });
-
-    await userEvent.click(logoutButton);
-
-    expect(useAuthStore.getState().accessToken).toBeNull();
+      await screen.findByRole('link', { name: 'pikachu' }),
+    ).toHaveAttribute('href', '/profile');
   });
 
   it('renders the matched child route alongside the disclaimer footer', () => {

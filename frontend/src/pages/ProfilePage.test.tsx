@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { screen } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
@@ -9,8 +9,15 @@ import ProfilePage from './ProfilePage';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>();
+  return { ...actual, useNavigate: () => mockNavigate };
+});
+
 beforeEach(() => {
   useAuthStore.getState().clearAccessToken();
+  mockNavigate.mockClear();
 });
 
 describe('ProfilePage', () => {
@@ -31,20 +38,23 @@ describe('ProfilePage', () => {
 
     expect(await screen.findByText('tester@example.com')).toBeInTheDocument();
     expect(screen.getByText('Member since January 2026')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('ash')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Ash')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Ketchum')).toBeInTheDocument();
   });
 
-  it('saves an edited name', async () => {
+  it('saves an edited username and name', async () => {
     useAuthStore.getState().setAccessToken('test-token');
     server.use(
       http.patch(`${BASE_URL}/api/v1/me/`, async ({ request }) => {
         const body = (await request.json()) as {
+          username: string;
           first_name: string;
           last_name: string;
         };
         return HttpResponse.json({
           email: 'tester@example.com',
+          username: body.username,
           first_name: body.first_name,
           last_name: body.last_name,
           is_verified: true,
@@ -55,15 +65,39 @@ describe('ProfilePage', () => {
     );
 
     renderWithProviders(<ProfilePage />);
-    await screen.findByDisplayValue('Ash');
+    await screen.findByDisplayValue('ash');
 
+    const usernameInput = screen.getByLabelText('Username');
+    await userEvent.clear(usernameInput);
+    await userEvent.type(usernameInput, 'red');
     const firstNameInput = screen.getByLabelText('First name');
     await userEvent.clear(firstNameInput);
     await userEvent.type(firstNameInput, 'Red');
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByText('Saved.')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('red')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Red')).toBeInTheDocument();
+  });
+
+  it('shows a backend error for a username already taken', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    server.use(
+      http.patch(`${BASE_URL}/api/v1/me/`, () => {
+        return HttpResponse.json(
+          { username: ['This field must be unique.'] },
+          { status: 400 },
+        );
+      }),
+    );
+
+    renderWithProviders(<ProfilePage />);
+    await screen.findByDisplayValue('ash');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText('This field must be unique.'),
+    ).toBeInTheDocument();
   });
 
   it('shows the change-password form for an account with a usable password', async () => {
@@ -175,6 +209,7 @@ describe('ProfilePage', () => {
       http.get(`${BASE_URL}/api/v1/me/`, () => {
         return HttpResponse.json({
           email: 'google-user@example.com',
+          username: 'redgoogle',
           first_name: 'Red',
           last_name: '',
           is_verified: true,
@@ -193,5 +228,57 @@ describe('ProfilePage', () => {
       screen.getByRole('link', { name: 'Set a password' }),
     ).toHaveAttribute('href', '/forgot-password');
     expect(screen.queryByLabelText('Current password')).not.toBeInTheDocument();
+  });
+
+  it('opens a confirm dialog before logging out', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+
+    renderWithProviders(<ProfilePage />);
+    await screen.findByDisplayValue('ash');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Log out' }));
+
+    expect(
+      await screen.findByText('Log out of your account?'),
+    ).toBeInTheDocument();
+    // Logging out hasn't actually happened yet.
+    expect(useAuthStore.getState().accessToken).toBe('test-token');
+  });
+
+  it('cancelling the confirm dialog keeps the session', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+
+    renderWithProviders(<ProfilePage />);
+    await screen.findByDisplayValue('ash');
+    await userEvent.click(screen.getByRole('button', { name: 'Log out' }));
+    await screen.findByText('Log out of your account?');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(
+      screen.queryByText('Log out of your account?'),
+    ).not.toBeInTheDocument();
+    expect(useAuthStore.getState().accessToken).toBe('test-token');
+  });
+
+  it('confirming logs out, clears the token, and navigates home', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    server.use(
+      http.post(`${BASE_URL}/api/v1/token/logout/`, () => {
+        return new HttpResponse(null, { status: 205 });
+      }),
+    );
+
+    renderWithProviders(<ProfilePage />);
+    await screen.findByDisplayValue('ash');
+    await userEvent.click(screen.getByRole('button', { name: 'Log out' }));
+    await screen.findByText('Log out of your account?');
+
+    await userEvent.click(
+      screen.getAllByRole('button', { name: 'Log out' })[1],
+    );
+
+    await waitFor(() => expect(useAuthStore.getState().accessToken).toBeNull());
+    expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 });

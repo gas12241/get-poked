@@ -24,10 +24,12 @@ vi.mock('../components/GoogleSignInButton', () => ({
 
 async function fillForm(
   email: string,
+  username: string,
   password: string,
   confirmPassword: string,
 ) {
   await userEvent.type(screen.getByLabelText('Email'), email);
+  await userEvent.type(screen.getByLabelText('Username'), username);
   await userEvent.type(screen.getByLabelText('Password'), password);
   await userEvent.type(
     screen.getByLabelText('Confirm password'),
@@ -45,6 +47,7 @@ describe('SignupPage', () => {
     renderWithProviders(<SignupPage />);
     await fillForm(
       'new@example.com',
+      'newuser',
       'a-strong-passw0rd!',
       'a-strong-passw0rd!',
     );
@@ -63,7 +66,12 @@ describe('SignupPage', () => {
     );
 
     renderWithProviders(<SignupPage />);
-    await fillForm('new@example.com', 'a-strong-passw0rd!', 'different!');
+    await fillForm(
+      'new@example.com',
+      'newuser',
+      'a-strong-passw0rd!',
+      'different!',
+    );
 
     expect(
       await screen.findByText("Passwords don't match."),
@@ -84,6 +92,30 @@ describe('SignupPage', () => {
     renderWithProviders(<SignupPage />);
     await fillForm(
       'existing@example.com',
+      'newuser',
+      'a-strong-passw0rd!',
+      'a-strong-passw0rd!',
+    );
+
+    expect(
+      await screen.findByText('This field must be unique.'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows a backend error for a username already taken', async () => {
+    server.use(
+      http.post(`${BASE_URL}/api/v1/register/`, () => {
+        return HttpResponse.json(
+          { username: ['This field must be unique.'] },
+          { status: 400 },
+        );
+      }),
+    );
+
+    renderWithProviders(<SignupPage />);
+    await fillForm(
+      'new@example.com',
+      'taken',
       'a-strong-passw0rd!',
       'a-strong-passw0rd!',
     );

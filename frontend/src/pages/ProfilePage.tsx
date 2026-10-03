@@ -1,14 +1,16 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useId, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   changePassword,
   getProfile,
+  logoutRequest,
   updateProfile,
   type Profile,
 } from '../api/auth';
 import { errorMessage } from '../lib/apiClient';
-import { useIsAuthenticated } from '../store/authStore';
+import { useAuthStore, useIsAuthenticated } from '../store/authStore';
+import ConfirmDialog from '../components/ConfirmDialog';
 import './pages.css';
 
 function formatMemberSince(dateJoined: string): string {
@@ -18,14 +20,20 @@ function formatMemberSince(dateJoined: string): string {
   });
 }
 
-function NameForm({ profile }: { profile: Profile }) {
+function ProfileForm({ profile }: { profile: Profile }) {
+  const [username, setUsername] = useState(profile.username);
   const [firstName, setFirstName] = useState(profile.first_name);
   const [lastName, setLastName] = useState(profile.last_name);
   const queryClient = useQueryClient();
+  const usernameHintId = useId();
 
   const updateMutation = useMutation({
     mutationFn: () =>
-      updateProfile({ first_name: firstName, last_name: lastName }),
+      updateProfile({
+        username,
+        first_name: firstName,
+        last_name: lastName,
+      }),
     onSuccess: (data) => {
       queryClient.setQueryData(['profile'], data);
     },
@@ -39,6 +47,21 @@ function NameForm({ profile }: { profile: Profile }) {
         updateMutation.mutate();
       }}
     >
+      <div className="auth-field">
+        <label>
+          Username
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            aria-describedby={usernameHintId}
+            required
+          />
+        </label>
+        <span id={usernameHintId} className="auth-hint">
+          Letters, numbers, and . + - _ only.
+        </span>
+      </div>
       <label>
         First name
         <input
@@ -143,12 +166,24 @@ function ChangePasswordForm() {
 
 function ProfilePage() {
   const isAuthenticated = useIsAuthenticated();
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
+  const navigate = useNavigate();
 
   const profileQuery = useQuery({
     queryKey: ['profile'],
     queryFn: getProfile,
     enabled: isAuthenticated,
   });
+
+  const handleLogout = () => {
+    // Best-effort — the access token is cleared client-side either way, so a
+    // failed request (already-expired cookie, network hiccup) doesn't leave
+    // the user stuck looking logged in.
+    logoutRequest().finally(() => {
+      useAuthStore.getState().clearAccessToken();
+      navigate('/');
+    });
+  };
 
   if (!isAuthenticated) {
     return (
@@ -184,8 +219,8 @@ function ProfilePage() {
         Member since {formatMemberSince(profile.date_joined)}
       </p>
 
-      <h2>Name</h2>
-      <NameForm profile={profile} />
+      <h2>Profile</h2>
+      <ProfileForm profile={profile} />
 
       <h2>Password</h2>
       {profile.has_usable_password ? (
@@ -196,6 +231,23 @@ function ProfilePage() {
           yet. <Link to="/forgot-password">Set a password</Link> to also enable
           email/password login.
         </p>
+      )}
+
+      <h2>Session</h2>
+      <button
+        type="button"
+        className="profile-logout-button"
+        onClick={() => setConfirmingLogout(true)}
+      >
+        Log out
+      </button>
+      {confirmingLogout && (
+        <ConfirmDialog
+          message="Log out of your account?"
+          confirmLabel="Log out"
+          onConfirm={handleLogout}
+          onCancel={() => setConfirmingLogout(false)}
+        />
       )}
     </div>
   );

@@ -14,12 +14,17 @@ class RegisterViewTests(APITestCase):
     def test_register_creates_unverified_user_and_sends_email(self):
         response = self.client.post(
             reverse("register"),
-            {"email": "new@example.com", "password": "a-strong-passw0rd!"},
+            {
+                "email": "new@example.com",
+                "username": "newuser",
+                "password": "a-strong-passw0rd!",
+            },
         )
 
         self.assertEqual(response.status_code, 201)
         user = User.objects.get(email="new@example.com")
         self.assertFalse(user.is_verified)
+        self.assertEqual(user.username, "newuser")
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("new@example.com", mail.outbox[0].to)
         self.assertIn("verify-email?token=", mail.outbox[0].body)
@@ -29,14 +34,49 @@ class RegisterViewTests(APITestCase):
 
         response = self.client.post(
             reverse("register"),
-            {"email": "existing@example.com", "password": "a-strong-passw0rd!"},
+            {
+                "email": "existing@example.com",
+                "username": "newuser",
+                "password": "a-strong-passw0rd!",
+            },
         )
 
         self.assertEqual(response.status_code, 400)
 
+    def test_register_rejects_duplicate_username(self):
+        User.objects.create_user(
+            email="existing@example.com", password="s3cret-pass!", username="taken"
+        )
+
+        response = self.client.post(
+            reverse("register"),
+            {
+                "email": "new@example.com",
+                "username": "taken",
+                "password": "a-strong-passw0rd!",
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(User.objects.filter(email="new@example.com").exists())
+
+    def test_register_rejects_invalid_username_format(self):
+        response = self.client.post(
+            reverse("register"),
+            {
+                "email": "new@example.com",
+                "username": "has a space",
+                "password": "a-strong-passw0rd!",
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(User.objects.filter(email="new@example.com").exists())
+
     def test_register_rejects_weak_password(self):
         response = self.client.post(
-            reverse("register"), {"email": "new@example.com", "password": "password"}
+            reverse("register"),
+            {"email": "new@example.com", "username": "newuser", "password": "password"},
         )
 
         self.assertEqual(response.status_code, 400)
@@ -49,13 +89,21 @@ class RegisterViewTests(APITestCase):
         for i in range(10):
             response = self.client.post(
                 reverse("register"),
-                {"email": f"user{i}@example.com", "password": "a-strong-passw0rd!"},
+                {
+                    "email": f"user{i}@example.com",
+                    "username": f"user{i}",
+                    "password": "a-strong-passw0rd!",
+                },
             )
             self.assertEqual(response.status_code, 201)
 
         throttled_response = self.client.post(
             reverse("register"),
-            {"email": "one-too-many@example.com", "password": "a-strong-passw0rd!"},
+            {
+                "email": "one-too-many@example.com",
+                "username": "onetoomany",
+                "password": "a-strong-passw0rd!",
+            },
         )
         self.assertEqual(throttled_response.status_code, 429)
 
