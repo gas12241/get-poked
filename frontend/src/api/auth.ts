@@ -37,3 +37,17 @@ export const logoutRequest = () =>
     method: 'POST',
     skipAuth: true,
   });
+
+export const requestPasswordReset = (email: string) =>
+  apiClient<{ detail: string }>('/api/v1/password-reset/', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+    skipAuth: true,
+  });
+
+export const confirmPasswordReset = (token: string, password: string) =>
+  apiClient<AuthResponse>('/api/v1/password-reset/confirm/', {
+    method: 'POST',
+    body: JSON.stringify({ token, password }),
+    skipAuth: true,
+  });

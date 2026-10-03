@@ -132,6 +132,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "registration": "10/hour",
         "email-verification": "3/hour",
+        "password-reset": "3/hour",
     },
 }
 
@@ -170,6 +171,10 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@getpoked.local")
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173")
 
 EMAIL_VERIFICATION_TOKEN_MAX_AGE = 60 * 60 * 24  # 24 hours
+
+# Shorter than email verification — a leaked password-reset link is a more
+# immediate account-takeover risk than a leaked verification link.
+PASSWORD_RESET_TOKEN_MAX_AGE = 60 * 60  # 1 hour
 
 
 # Pokémon TCG API (see docs/decisions.md #022)

@@ -134,11 +134,11 @@ POST /api/v1/password-reset/
 
 Description
 
-Always returns the same generic response regardless of whether the email is registered, to avoid revealing which emails have accounts. Throttled.
+`{email}`. Always returns the same generic response regardless of whether the email is registered (or verified), to avoid revealing which emails have accounts. Throttled (3/hour).
 
 Status
 
-Planned
+Implemented
 
 ---
 
@@ -148,11 +148,11 @@ POST /api/v1/password-reset/confirm/
 
 Description
 
-Validates the reset token and sets the new password.
+`{token, password}`. Validates the reset token (signed, 1h expiry — shorter than email verification's, since a leaked reset link is a more immediate takeover risk) and sets the new password. Also blacklists every outstanding refresh token for the account (ends any other active session) and logs the user in — same response shape as Login (`{access}` in the body, refresh token set as an httpOnly cookie).
 
 Status
 
-Planned
+Implemented
 
 ---
 

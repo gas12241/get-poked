@@ -5,6 +5,8 @@ from .views import (
     CookieTokenRefreshView,
     HealthCheckView,
     LogoutView,
+    PasswordResetConfirmView,
+    PasswordResetRequestView,
     RegisterView,
     ResendVerificationView,
     VerifyEmailView,
@@ -21,5 +23,15 @@ urlpatterns = [
         "verify-email/resend/",
         ResendVerificationView.as_view(),
         name="verify-email-resend",
+    ),
+    path(
+        "password-reset/",
+        PasswordResetRequestView.as_view(),
+        name="password-reset",
+    ),
+    path(
+        "password-reset/confirm/",
+        PasswordResetConfirmView.as_view(),
+        name="password-reset-confirm",
     ),
 ]
