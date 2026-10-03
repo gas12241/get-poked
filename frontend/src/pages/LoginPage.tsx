@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { login, resendVerification } from '../api/auth';
+import { googleLogin, login, resendVerification } from '../api/auth';
 import { errorMessage } from '../lib/apiClient';
 import { useAuthStore } from '../store/authStore';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 import './pages.css';
 
 function LoginPage() {
@@ -19,13 +20,23 @@ function LoginPage() {
     },
   });
 
+  const googleLoginMutation = useMutation({
+    mutationFn: (credential: string) => googleLogin(credential),
+    onSuccess: (data) => {
+      useAuthStore.getState().setAccessToken(data.access);
+      navigate('/');
+    },
+  });
+
   const resendMutation = useMutation({
     mutationFn: () => resendVerification(email),
   });
 
   const message = loginMutation.isError
     ? errorMessage(loginMutation.error)
-    : null;
+    : googleLoginMutation.isError
+      ? errorMessage(googleLoginMutation.error)
+      : null;
   const isUnverified = message?.toLowerCase().includes('verify') ?? false;
 
   return (
@@ -60,6 +71,10 @@ function LoginPage() {
           {loginMutation.isPending ? 'Logging in...' : 'Log in'}
         </button>
       </form>
+
+      <GoogleSignInButton
+        onCredential={(credential) => googleLoginMutation.mutate(credential)}
+      />
 
       {message && (
         <div className="auth-error">

@@ -51,3 +51,10 @@ export const confirmPasswordReset = (token: string, password: string) =>
     body: JSON.stringify({ token, password }),
     skipAuth: true,
   });
+
+export const googleLogin = (credential: string) =>
+  apiClient<AuthResponse>('/api/v1/google/', {
+    method: 'POST',
+    body: JSON.stringify({ credential }),
+    skipAuth: true,
+  });

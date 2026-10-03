@@ -204,4 +204,8 @@ export const handlers = [
   http.post(`${BASE_URL}/api/v1/password-reset/confirm/`, () => {
     return HttpResponse.json({ access: 'reset-token' });
   }),
+
+  http.post(`${BASE_URL}/api/v1/google/`, () => {
+    return HttpResponse.json({ access: 'google-access-token' });
+  }),
 ];

@@ -172,6 +172,11 @@ FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173")
 
 EMAIL_VERIFICATION_TOKEN_MAX_AGE = 60 * 60 * 24  # 24 hours
 
+# Google OAuth (see docs/decisions.md #069) — not a secret, safe to be
+# public (it's already embedded in the frontend bundle). Empty by default;
+# a real credential will just fail the audience check until it's set.
+GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID", default="")
+
 # Shorter than email verification — a leaked password-reset link is a more
 # immediate account-takeover risk than a leaked verification link.
 PASSWORD_RESET_TOKEN_MAX_AGE = 60 * 60  # 1 hour

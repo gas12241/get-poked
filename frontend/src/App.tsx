@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import Layout from './components/Layout';
 import CardListPage from './pages/CardListPage';
 import CardDetailPage from './pages/CardDetailPage';
@@ -37,7 +38,11 @@ function App() {
     refreshAccessToken();
   }, []);
 
-  return <RouterProvider router={router} />;
+  return (
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+      <RouterProvider router={router} />
+    </GoogleOAuthProvider>
+  );
 }
 
 export default App;
