@@ -36,6 +36,8 @@ function Layout() {
   const isCardsActive = pathname === '/' || pathname.startsWith('/cards/');
   const isQuizActive = pathname.startsWith('/quiz');
   const isHoroscopeActive = pathname.startsWith('/horoscope');
+  const isLoginActive = pathname.startsWith('/login');
+  const isSignupActive = pathname.startsWith('/signup');
   const isAuthenticated = useIsAuthenticated();
 
   const handleLogout = () => {
@@ -79,8 +81,26 @@ function Layout() {
             </button>
           ) : (
             <>
-              <Link to="/login">Log in</Link>
-              <Link to="/signup">Sign up</Link>
+              <Link
+                to="/login"
+                className={
+                  isLoginActive
+                    ? 'main-nav-auth-link active'
+                    : 'main-nav-auth-link'
+                }
+              >
+                Log in
+              </Link>
+              <Link
+                to="/signup"
+                className={
+                  isSignupActive
+                    ? 'main-nav-auth-link active'
+                    : 'main-nav-auth-link'
+                }
+              >
+                Sign up
+              </Link>
             </>
           )}
           <ThemeToggle />
