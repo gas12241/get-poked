@@ -28,6 +28,7 @@ function renderLayoutAt(route: string) {
         <Route path="/quiz" element={<p>Quiz page content</p>} />
         <Route path="/login" element={<p>Login page content</p>} />
         <Route path="/signup" element={<p>Signup page content</p>} />
+        <Route path="/profile" element={<p>Profile page content</p>} />
       </Route>
     </Routes>,
     { route },
@@ -53,6 +54,25 @@ describe('Layout', () => {
     expect(
       screen.queryByRole('button', { name: 'Log out' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('hides the Profile link when logged out', () => {
+    renderLayoutAt('/');
+
+    expect(
+      screen.queryByRole('link', { name: 'Profile' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows a Profile link when logged in', () => {
+    useAuthStore.getState().setAccessToken('test-token');
+
+    renderLayoutAt('/');
+
+    expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute(
+      'href',
+      '/profile',
+    );
   });
 
   it('shows a Log out button when logged in, which clears the token on click', async () => {

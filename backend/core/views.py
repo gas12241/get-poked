@@ -17,10 +17,12 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .emails import send_password_reset_email, send_verification_email
 from .serializers import (
+    ChangePasswordSerializer,
     CookieTokenRefreshSerializer,
     EmailTokenObtainPairSerializer,
     PasswordResetConfirmSerializer,
     RegisterSerializer,
+    UserSerializer,
 )
 from .tokens import read_password_reset_token, read_verification_token
 
@@ -35,6 +37,11 @@ def _set_refresh_cookie(response, refresh_token):
         secure=settings.REFRESH_TOKEN_COOKIE_SECURE,
         samesite=settings.REFRESH_TOKEN_COOKIE_SAMESITE,
     )
+
+
+def _blacklist_outstanding_tokens(user):
+    for outstanding in OutstandingToken.objects.filter(user=user):
+        BlacklistedToken.objects.get_or_create(token=outstanding)
 
 
 class CookieTokenObtainPairView(TokenObtainPairView):
@@ -188,11 +195,42 @@ class PasswordResetConfirmView(APIView):
 
         # A password reset should end any session someone else might be
         # holding on this account, not just the one completing the reset.
-        for outstanding in OutstandingToken.objects.filter(user=user):
-            BlacklistedToken.objects.get_or_create(token=outstanding)
+        _blacklist_outstanding_tokens(user)
 
         refresh = RefreshToken.for_user(user)
         response = Response({"access": str(refresh.access_token)})
+        _set_refresh_cookie(response, refresh)
+        return response
+
+
+class MeView(generics.RetrieveUpdateAPIView):
+    serializer_class = UserSerializer
+
+    def get_object(self):
+        return self.request.user
+
+
+class ChangePasswordView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        if not request.user.check_password(serializer.validated_data["current_password"]):
+            return Response(
+                {"detail": "Current password is incorrect."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        request.user.set_password(serializer.validated_data["new_password"])
+        request.user.save(update_fields=["password"])
+
+        # Ends every other session (same reasoning as PasswordResetConfirmView
+        # above) — but re-issues a fresh refresh cookie for *this* one, so the
+        # person who just changed their password isn't logged out of their
+        # own request for doing it.
+        _blacklist_outstanding_tokens(request.user)
+        refresh = RefreshToken.for_user(request.user)
+        response = Response({"detail": "Password changed."})
         _set_refresh_cookie(response, refresh)
         return response
 

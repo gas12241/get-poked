@@ -51,6 +51,8 @@ Frontend tests
 
 Independent — can be built in parallel with Phase 2/3.
 
+Status: Complete — see TODO.md and docs/decisions.md #067/#068/#069/#070.
+
 Authentication
 
 Google OAuth
