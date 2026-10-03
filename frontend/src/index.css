@@ -198,7 +198,8 @@ p {
   gap: 12px;
 }
 
-.main-nav-auth-button {
+.main-nav-auth-button,
+.main-nav-auth-link {
   font: inherit;
   font-weight: 500;
   color: var(--text-h);
@@ -209,6 +210,11 @@ p {
   cursor: pointer;
 
   &:hover {
+    background: var(--accent-bg);
+    color: var(--accent);
+  }
+
+  &.active {
     background: var(--accent-bg);
     color: var(--accent);
   }

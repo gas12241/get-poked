@@ -26,6 +26,8 @@ function renderLayoutAt(route: string) {
         <Route path="/" element={<p>Cards page content</p>} />
         <Route path="/cards/:id" element={<p>Card detail content</p>} />
         <Route path="/quiz" element={<p>Quiz page content</p>} />
+        <Route path="/login" element={<p>Login page content</p>} />
+        <Route path="/signup" element={<p>Signup page content</p>} />
       </Route>
     </Routes>,
     { route },
@@ -112,6 +114,24 @@ describe('Layout', () => {
 
     expect(screen.getByRole('link', { name: 'Quiz' })).toHaveClass('active');
     expect(screen.getByRole('link', { name: 'Cards' })).not.toHaveClass(
+      'active',
+    );
+  });
+
+  it('highlights Log in while on the login page', () => {
+    renderLayoutAt('/login');
+
+    expect(screen.getByRole('link', { name: 'Log in' })).toHaveClass('active');
+    expect(screen.getByRole('link', { name: 'Sign up' })).not.toHaveClass(
+      'active',
+    );
+  });
+
+  it('highlights Sign up while on the signup page', () => {
+    renderLayoutAt('/signup');
+
+    expect(screen.getByRole('link', { name: 'Sign up' })).toHaveClass('active');
+    expect(screen.getByRole('link', { name: 'Log in' })).not.toHaveClass(
       'active',
     );
   });
