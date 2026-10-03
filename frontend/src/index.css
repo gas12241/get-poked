@@ -193,6 +193,25 @@ p {
 
 .main-nav-right {
   justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.main-nav-auth-button {
+  font: inherit;
+  font-weight: 500;
+  color: var(--text-h);
+  background: none;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--accent-bg);
+    color: var(--accent);
+  }
 }
 
 .theme-toggle {

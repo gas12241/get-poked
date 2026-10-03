@@ -10,7 +10,7 @@ import type { QuizAnswerInput, QuizDifficulty, QuizMode } from '../api/quiz';
 import { filterSetNameSuggestions, getCardNames, getSets } from '../api/cards';
 import type { QuizSession } from '../store/quizStore';
 import { useQuizStore } from '../store/quizStore';
-import { useAuthStore } from '../store/authStore';
+import { useIsAuthenticated } from '../store/authStore';
 import NameAutocomplete from '../components/NameAutocomplete';
 import { StartingReel } from '../components/CaseOpeningReel';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -417,7 +417,7 @@ function QuizPage() {
   const revealCurrent = useQuizStore((s) => s.revealCurrent);
   const markSubmitted = useQuizStore((s) => s.markSubmitted);
   const abandonSession = useQuizStore((s) => s.abandonSession);
-  const isAuthenticated = useAuthStore((s) => s.accessToken !== null);
+  const isAuthenticated = useIsAuthenticated();
   const [mode, setMode] = useState<QuizMode>(MODES[0].value);
   const [questionCount, setQuestionCount] = useState(5);
   const [difficulty, setDifficulty] = useState<QuizDifficulty>('medium');

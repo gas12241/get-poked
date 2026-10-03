@@ -112,7 +112,7 @@ class PickSlotDistributionTests(SelectionTestBase):
 class BuildDailyPullTests(SelectionTestBase):
     def setUp(self):
         super().setUp()
-        self.user = User.objects.create_user(username="tester", password="s3cret-pass!")
+        self.user = User.objects.create_user(email="tester@example.com", password="s3cret-pass!")
         # At least one eligible card per supertype so every slot resolves.
         self.make_card(POKEMON, "Common")
         self.make_card(TRAINER, "Common")

@@ -28,9 +28,95 @@ All endpoints are prefixed with `/api/v1/`. Adding the prefix now costs nothing;
 
 ## Authentication
 
+Paths below are flat (`/api/v1/register/`, not `/api/v1/auth/register/`) — this section originally planned an `/api/v1/auth/...` prefix, but the JWT/cookie mechanics (decisions.md #010) were actually built as `/api/v1/token/...`, and everything added since follows that same flat convention rather than mixing two styles. See docs/decisions.md #067.
+
+### Register
+
+POST /api/v1/register/
+
+Description
+
+Creates an email/password account (`{email, password}`). The account cannot log in until the email is verified (see docs/decisions.md #014, #067). Sends a verification email containing a signed, time-limited link. Throttled (10/hour).
+
+Status
+
+Implemented
+
+---
+
+### Verify Email
+
+POST /api/v1/verify-email/
+
+Description
+
+Confirms a verification token (`{token}`) and marks the account verified. On success, also logs the account in — same response shape as Login below (`{access}` in the body, refresh token set as an httpOnly cookie).
+
+Status
+
+Implemented
+
+---
+
+### Resend Verification Email
+
+POST /api/v1/verify-email/resend/
+
+Description
+
+`{email}`. Always returns the same generic response regardless of whether a matching unverified account exists, to avoid revealing which emails have accounts. Throttled (3/hour).
+
+Status
+
+Implemented
+
+---
+
+### Login
+
+POST /api/v1/token/
+
+Description
+
+`{email, password}`. Returns `{access}` in the body; the refresh token is set as an httpOnly cookie (see docs/decisions.md #010). Rejects an unverified account with a clear, specific message (not genericized — the caller already proved they know the password, so there's no enumeration risk here, unlike Register/Resend above).
+
+Status
+
+Implemented
+
+---
+
+### Refresh
+
+POST /api/v1/token/refresh/
+
+Description
+
+Reads the refresh token from the httpOnly cookie (not the request body). Returns a new `{access}` and re-sets the rotated refresh cookie.
+
+Status
+
+Implemented
+
+---
+
+### Logout
+
+POST /api/v1/token/logout/
+
+Description
+
+Blacklists the refresh token (read from the cookie) and clears it.
+
+Status
+
+Implemented
+
+---
+
 ### Google OAuth
 
-POST /api/v1/auth/google/
+POST /api/v1/google/
 
 Description
 
@@ -42,71 +128,9 @@ Planned
 
 ---
 
-### Login
-
-POST /api/v1/auth/login/
-
-Status
-
-Planned
-
----
-
-### Logout
-
-POST /api/v1/auth/logout/
-
-Status
-
-Planned
-
----
-
-### Register
-
-POST /api/v1/auth/register/
-
-Description
-
-Creates an email/password account. Account cannot log in until email is verified (see docs/decisions.md #014).
-
-Status
-
-Planned
-
----
-
-### Verify Email
-
-POST /api/v1/auth/verify-email/
-
-Description
-
-Confirms a verification token and activates the account.
-
-Status
-
-Planned
-
----
-
-### Resend Verification Email
-
-POST /api/v1/auth/verify-email/resend/
-
-Description
-
-Throttled to prevent spamming a mailbox.
-
-Status
-
-Planned
-
----
-
 ### Request Password Reset
 
-POST /api/v1/auth/password-reset/
+POST /api/v1/password-reset/
 
 Description
 
@@ -120,7 +144,7 @@ Planned
 
 ### Confirm Password Reset
 
-POST /api/v1/auth/password-reset/confirm/
+POST /api/v1/password-reset/confirm/
 
 Description
 

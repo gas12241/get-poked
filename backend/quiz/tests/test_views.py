@@ -268,8 +268,10 @@ class QuizCheckViewTests(QuizTestBase):
 class QuizAttemptViewTests(QuizTestBase):
     def setUp(self):
         super().setUp()
-        self.user = User.objects.create_user(username="tester", password="s3cret-pass!")
-        self.other_user = User.objects.create_user(username="other", password="s3cret-pass!")
+        self.user = User.objects.create_user(email="tester@example.com", password="s3cret-pass!")
+        self.other_user = User.objects.create_user(
+            email="other@example.com", password="s3cret-pass!"
+        )
 
     def test_requires_authentication(self):
         response = self.client.get(reverse("quiz-attempt-list"))

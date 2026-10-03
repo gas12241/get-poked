@@ -104,6 +104,8 @@ cp .env.example .env
 - `SECRET_KEY` — any long random string for local dev
 - `DB_PASSWORD` — the password for the Postgres user you created
 - `POKEMON_TCG_API_KEY` — get one at https://dev.pokemontcg.io/ (needed to run the card sync; the app itself works without it)
+- `FRONTEND_URL` — defaults to `http://localhost:5173`; only matters for links sent by email (e.g. account verification)
+- `DEFAULT_FROM_EMAIL` — the "from" address on those emails; in dev they print to the console instead of sending (`EMAIL_BACKEND` defaults to the console backend)
 
 Apply migrations:
 

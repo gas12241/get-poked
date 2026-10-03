@@ -1219,3 +1219,90 @@
   background: var(--accent);
   color: #fff;
 }
+
+/* Login/Signup/Verify Email pages (Phase 4, decisions.md #067) — share one
+   narrow centered layout and form style, same .filters-input-style border
+   treatment used on the Cards page's own search box. */
+.auth-page {
+  max-width: 360px;
+  margin: 0 auto;
+  padding: 24px 20px;
+  text-align: center;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+  margin-top: 16px;
+}
+
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.auth-form input {
+  font: inherit;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.auth-form button {
+  font: inherit;
+  font-weight: 700;
+  padding: 10px 20px;
+  color: #fff;
+  background: var(--cta);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--cta-hover);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.auth-error {
+  margin-top: 12px;
+  color: var(--danger);
+
+  button {
+    font: inherit;
+    margin-top: 8px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-h);
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background: var(--accent-bg);
+      color: var(--accent);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+  }
+}
+
+.auth-switch {
+  margin-top: 16px;
+  font-size: 14px;
+}

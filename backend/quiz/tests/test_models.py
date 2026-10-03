@@ -11,7 +11,7 @@ User = get_user_model()
 
 class QuizAttemptModelTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="tester", password="s3cret-pass!")
+        self.user = User.objects.create_user(email="tester@example.com", password="s3cret-pass!")
 
     def test_create_attempt(self):
         attempt = QuizAttempt.objects.create(
@@ -33,7 +33,7 @@ class QuizAttemptModelTests(TestCase):
 
 class QuizAttemptAnswerModelTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="tester", password="s3cret-pass!")
+        self.user = User.objects.create_user(email="tester@example.com", password="s3cret-pass!")
         self.set_obj = Set.objects.create(tcg_id="base1", name="Base", series="Base")
         self.card = Card.objects.create(
             tcg_id="base1-4",

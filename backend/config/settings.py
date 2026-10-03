@@ -21,6 +21,8 @@ DEBUG = env.bool("DEBUG", default=False)
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
+AUTH_USER_MODEL = "core.User"
+
 
 # Application definition
 
@@ -126,6 +128,11 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_PAGINATION_CLASS": "cards.pagination.StandardPagination",
     "PAGE_SIZE": 24,
+    "DEFAULT_THROTTLE_CLASSES": ("rest_framework.throttling.ScopedRateThrottle",),
+    "DEFAULT_THROTTLE_RATES": {
+        "registration": "10/hour",
+        "email-verification": "3/hour",
+    },
 }
 
 SIMPLE_JWT = {
@@ -147,6 +154,22 @@ REFRESH_TOKEN_COOKIE_SAMESITE = "None" if not DEBUG else "Lax"
 
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=["http://localhost:5173"])
 CORS_ALLOW_CREDENTIALS = True
+
+
+# Email — registration/password-reset links (see docs/decisions.md #014, #067).
+# Console backend in dev prints the email instead of sending it; Django's test
+# runner always uses its own in-memory backend regardless of this setting, so
+# `django.core.mail.outbox` works in tests either way. Production SMTP is
+# deferred to Phase 7 deployment, same as other deployment-only config.
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@getpoked.local")
+
+# The frontend's own origin, used to build links sent by email (e.g. the
+# email-verification link) — distinct from CORS_ALLOWED_ORIGINS, which is a
+# list of origins allowed to call the API, not a single canonical frontend URL.
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173")
+
+EMAIL_VERIFICATION_TOKEN_MAX_AGE = 60 * 60 * 24  # 24 hours
 
 
 # Pokémon TCG API (see docs/decisions.md #022)

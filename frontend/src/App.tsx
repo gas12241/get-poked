@@ -1,9 +1,14 @@
+import { useEffect } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import Layout from './components/Layout';
 import CardListPage from './pages/CardListPage';
 import CardDetailPage from './pages/CardDetailPage';
 import QuizPage from './pages/QuizPage';
 import HoroscopePage from './pages/HoroscopePage';
+import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
+import { refreshAccessToken } from './lib/apiClient';
 
 const router = createBrowserRouter([
   {
@@ -13,11 +18,21 @@ const router = createBrowserRouter([
       { path: '/cards/:id', element: <CardDetailPage /> },
       { path: '/quiz', element: <QuizPage /> },
       { path: '/horoscope', element: <HoroscopePage /> },
+      { path: '/login', element: <LoginPage /> },
+      { path: '/signup', element: <SignupPage /> },
+      { path: '/verify-email', element: <VerifyEmailPage /> },
     ],
   },
 ]);
 
 function App() {
+  // The access token is deliberately never persisted (see authStore.ts), so
+  // every page load starts logged out until this silently restores a session
+  // from the httpOnly refresh cookie, if one is still valid.
+  useEffect(() => {
+    refreshAccessToken();
+  }, []);
+
   return <RouterProvider router={router} />;
 }
 
