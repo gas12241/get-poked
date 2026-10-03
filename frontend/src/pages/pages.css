@@ -1245,6 +1245,28 @@
   margin-top: 16px;
 }
 
+/* Separates the email/password submit button above from the Google button
+   below — same "or" divider pattern as most sign-in pages, so it reads as
+   two distinct ways to log in rather than one button stacked on another. */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0;
+  color: var(--text);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+}
+
 .auth-form label {
   display: flex;
   flex-direction: column;

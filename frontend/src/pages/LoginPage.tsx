@@ -72,6 +72,8 @@ function LoginPage() {
         </button>
       </form>
 
+      <div className="auth-divider">or</div>
+
       <GoogleSignInButton
         onCredential={(credential) => googleLoginMutation.mutate(credential)}
       />
