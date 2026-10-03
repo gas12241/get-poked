@@ -170,7 +170,10 @@ export const handlers = [
   // states (duplicate email, unverified login, expired token, ...). Refresh
   // defaults to "no valid cookie" (401), matching a fresh, logged-out start.
   http.post(`${BASE_URL}/api/v1/register/`, () => {
-    return HttpResponse.json({ email: 'new@example.com' }, { status: 201 });
+    return HttpResponse.json(
+      { email: 'new@example.com', username: 'newuser' },
+      { status: 201 },
+    );
   }),
 
   http.post(`${BASE_URL}/api/v1/verify-email/`, () => {
@@ -212,6 +215,7 @@ export const handlers = [
   http.get(`${BASE_URL}/api/v1/me/`, () => {
     return HttpResponse.json({
       email: 'tester@example.com',
+      username: 'ash',
       first_name: 'Ash',
       last_name: 'Ketchum',
       is_verified: true,
@@ -223,6 +227,7 @@ export const handlers = [
   http.patch(`${BASE_URL}/api/v1/me/`, () => {
     return HttpResponse.json({
       email: 'tester@example.com',
+      username: 'ash',
       first_name: 'Ash',
       last_name: 'Ketchum',
       is_verified: true,

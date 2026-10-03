@@ -210,7 +210,7 @@ Status: Phase 4 is complete. The JWT/cookie mechanics, the custom
 email-identified `User` model, email/password registration/verification/
 login/logout, password reset, Google OAuth, and a profile page are all
 implemented and tested (`core` app). See docs/decisions.md #005, #014,
-#067, #068, #069, #070.
+#067, #068, #069, #070, #071.
 
 Preferred
 
@@ -227,7 +227,9 @@ Future providers may include:
 
 ### User model
 
-Custom `core.User` (`AbstractUser` subclass), not Django's default — `email` is the unique login identifier (`USERNAME_FIELD`), not `username` (removed). An `is_verified` boolean gates login, checked explicitly in a custom `TokenObtainPairSerializer` subclass rather than overloading Django's broader `is_active`. See docs/decisions.md #067 for why this was done as an early, one-time migration-history reset rather than bolted onto the default model.
+Custom `core.User` (`AbstractUser` subclass), not Django's default — `email` is the unique login identifier (`USERNAME_FIELD`). An `is_verified` boolean gates login, checked explicitly in a custom `TokenObtainPairSerializer` subclass rather than overloading Django's broader `is_active`. See docs/decisions.md #067 for why this was done as an early, one-time migration-history reset rather than bolted onto the default model.
+
+`username` is also a real field — required, chosen at signup, and unique *independently* of `email` — but it's a display identifier, not a credential: `USERNAME_FIELD` stays `email`, nothing about login/account-linking/password-reset changed when it was added. Any account created without a human typing one in (Google sign-in, `createsuperuser`, a direct `create_user()` call) gets one auto-generated from the email's local part (`UserManager._generate_username`, collision-suffixed: `ash`, `ash1`, `ash2`, ...), so the field is never left to a per-caller default and the dozens of existing test call sites that don't care about username needed no changes. See docs/decisions.md #071.
 
 ### Email Verification & Password Reset
 
@@ -235,7 +237,7 @@ Email/password accounts must verify their email before logging in; Google OAuth 
 
 ### Profile Page
 
-`GET`/`PATCH /api/v1/me/` (view/edit your own `first_name`/`last_name` — email and verification status are read-only through this endpoint) and `POST /api/v1/me/change-password/` (requires the current password; blacklists every other outstanding refresh token the same way a password reset does, but re-issues a fresh one for the request that made the change, so you aren't logged out of your own session for changing your own password). A Google-only account (no usable password) sees a "Set a password" prompt instead of the change-password form, linking to the same password-reset flow above — setting your first password and resetting a forgotten one are the same operation from the backend's perspective. Changing your own email and account deletion are deliberately not supported yet. See docs/decisions.md #070.
+`GET`/`PATCH /api/v1/me/` (view/edit your own `username`/`first_name`/`last_name` — email and verification status are read-only through this endpoint) and `POST /api/v1/me/change-password/` (requires the current password; blacklists every other outstanding refresh token the same way a password reset does, but re-issues a fresh one for the request that made the change, so you aren't logged out of your own session for changing your own password). A Google-only account (no usable password) sees a "Set a password" prompt instead of the change-password form, linking to the same password-reset flow above — setting your first password and resetting a forgotten one are the same operation from the backend's perspective. Changing your own email and account deletion are deliberately not supported yet. See docs/decisions.md #070.
 
 ### Google OAuth
 

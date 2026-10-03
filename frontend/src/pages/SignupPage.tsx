@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { googleLogin, registerAccount } from '../api/auth';
@@ -9,13 +9,15 @@ import './pages.css';
 
 function SignupPage() {
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [mismatchError, setMismatchError] = useState(false);
   const navigate = useNavigate();
+  const usernameHintId = useId();
 
   const registerMutation = useMutation({
-    mutationFn: () => registerAccount(email, password),
+    mutationFn: () => registerAccount(email, username, password),
   });
 
   const googleLoginMutation = useMutation({
@@ -62,6 +64,21 @@ function SignupPage() {
             required
           />
         </label>
+        <div className="auth-field">
+          <label>
+            Username
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              aria-describedby={usernameHintId}
+              required
+            />
+          </label>
+          <span id={usernameHintId} className="auth-hint">
+            Letters, numbers, and . + - _ only.
+          </span>
+        </div>
         <label>
           Password
           <input

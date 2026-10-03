@@ -1276,6 +1276,22 @@
   color: var(--text-h);
 }
 
+.auth-hint {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text);
+}
+
+/* Groups a label+input with its hint text as one .auth-form flex item —
+   the hint deliberately sits outside <label> (aria-describedby instead)
+   so it's announced as the input's description, not concatenated into its
+   accessible name. */
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .auth-form input {
   font: inherit;
   padding: 8px 10px;
@@ -1334,4 +1350,23 @@
 .auth-switch {
   margin-top: 16px;
   font-size: 14px;
+}
+
+/* Same danger-bordered pill treatment as .quiz-abandon — both are
+   confirm-gated (ConfirmDialog) actions that end the current session/flow. */
+.profile-logout-button {
+  display: block;
+  margin: 16px auto 0;
+  padding: 10px 24px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--danger);
+  background: var(--bg);
+  border: 1px solid var(--danger-border);
+  border-radius: 999px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--danger-bg);
+  }
 }

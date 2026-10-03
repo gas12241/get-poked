@@ -160,7 +160,8 @@ Custom `core.User` model (`AbstractUser` subclass, `AUTH_USER_MODEL`), not Djang
 Fields
 
 - id
-- email (unique, the login identifier — `username` does not exist on this model)
+- email (unique) — the login identifier (`USERNAME_FIELD`)
+- username (unique, independently of email) — re-added (see docs/decisions.md #071) as a required, separately-unique *display* identifier, not a credential; chosen at signup, auto-generated from the email local-part for any account created without one (Google sign-in, `createsuperuser`, direct `create_user()` calls)
 - password (hashed, inherited from `AbstractUser`) — a Google-only account (see docs/decisions.md #069) has an *unusable* password (`set_password(None)`, Django's own convention), not a null one; `has_usable_password()` is how that's checked, not a stored field, so it doesn't appear in this list
 - is_verified — gates login for email/password accounts; auto-true for Google OAuth accounts
 - is_staff / is_superuser / is_active — inherited, Django admin/permissions as usual

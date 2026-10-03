@@ -31,3 +31,25 @@ class UserManagerTests(TestCase):
     def test_str_is_email(self):
         user = User.objects.create_user(email="tester@example.com", password="s3cret-pass!")
         self.assertEqual(str(user), "tester@example.com")
+
+    def test_create_user_without_username_generates_one_from_email(self):
+        user = User.objects.create_user(email="ash.ketchum@example.com", password="s3cret-pass!")
+        self.assertEqual(user.username, "ash.ketchum")
+
+    def test_create_user_username_collision_gets_numeric_suffix(self):
+        User.objects.create_user(email="tester@example.com", password="s3cret-pass!")
+        other = User.objects.create_user(email="tester@other.com", password="s3cret-pass!")
+        self.assertEqual(other.username, "tester1")
+
+    def test_create_user_explicit_username_is_respected(self):
+        user = User.objects.create_user(
+            email="tester@example.com", password="s3cret-pass!", username="pikachu"
+        )
+        self.assertEqual(user.username, "pikachu")
+
+    def test_generated_username_is_unique(self):
+        User.objects.create_user(email="tester@example.com", password="s3cret-pass!")
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            User.objects.create_user(
+                email="other@example.com", password="s3cret-pass!", username="tester"
+            )

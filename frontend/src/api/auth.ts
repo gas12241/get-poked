@@ -4,10 +4,14 @@ export interface AuthResponse {
   access: string;
 }
 
-export const registerAccount = (email: string, password: string) =>
+export const registerAccount = (
+  email: string,
+  username: string,
+  password: string,
+) =>
   apiClient<{ email: string }>('/api/v1/register/', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, username, password }),
     skipAuth: true,
   });
 
@@ -61,6 +65,7 @@ export const googleLogin = (credential: string) =>
 
 export interface Profile {
   email: string;
+  username: string;
   first_name: string;
   last_name: string;
   is_verified: boolean;
@@ -71,6 +76,7 @@ export interface Profile {
 export const getProfile = () => apiClient<Profile>('/api/v1/me/');
 
 export const updateProfile = (data: {
+  username: string;
   first_name: string;
   last_name: string;
 }) =>

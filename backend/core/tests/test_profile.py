@@ -12,6 +12,7 @@ class MeViewTests(APITestCase):
         self.user = User.objects.create_user(
             email="tester@example.com",
             password="s3cret-pass!",
+            username="ash",
             is_verified=True,
             first_name="Ash",
             last_name="Ketchum",
@@ -28,6 +29,7 @@ class MeViewTests(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["email"], "tester@example.com")
+        self.assertEqual(response.data["username"], "ash")
         self.assertEqual(response.data["first_name"], "Ash")
         self.assertEqual(response.data["last_name"], "Ketchum")
         self.assertTrue(response.data["is_verified"])
@@ -44,6 +46,34 @@ class MeViewTests(APITestCase):
         self.user.refresh_from_db()
         self.assertEqual(self.user.first_name, "Misty")
         self.assertEqual(self.user.last_name, "Waterflower")
+
+    def test_patch_updates_username(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.patch(reverse("me"), {"username": "ketchum"})
+
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, "ketchum")
+
+    def test_patch_rejects_username_already_taken_by_another_account(self):
+        User.objects.create_user(
+            email="other@example.com", password="s3cret-pass!", username="misty"
+        )
+        self.client.force_authenticate(self.user)
+
+        response = self.client.patch(reverse("me"), {"username": "misty"})
+
+        self.assertEqual(response.status_code, 400)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, "ash")
+
+    def test_patch_with_own_unchanged_username_succeeds(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.patch(reverse("me"), {"username": "ash", "first_name": "Ash"})
+
+        self.assertEqual(response.status_code, 200)
 
     def test_patch_cannot_change_email_or_verification(self):
         self.client.force_authenticate(self.user)

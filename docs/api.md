@@ -36,7 +36,7 @@ POST /api/v1/register/
 
 Description
 
-Creates an email/password account (`{email, password}`). The account cannot log in until the email is verified (see docs/decisions.md #014, #067). Sends a verification email containing a signed, time-limited link. Throttled (10/hour).
+Creates an email/password account (`{email, username, password}`). `username` is required and unique independently of `email` (see docs/decisions.md #071). The account cannot log in until the email is verified (see docs/decisions.md #014, #067). Sends a verification email containing a signed, time-limited link. Throttled (10/hour).
 
 Status
 
@@ -120,7 +120,7 @@ POST /api/v1/google/
 
 Description
 
-`{credential}` — the signed ID token from Google Identity Services' frontend button, not an authorization code (no redirect flow). Verified server-side against Google's public keys and our own Client ID (the `audience` check). Finds or creates a `User` by the token's email, auto-verified; an existing unverified email/password account becomes verified and resolves to the same row (account linking by email, see docs/decisions.md #069). Same response shape as Login (`{access}` in the body, refresh token set as an httpOnly cookie).
+`{credential}` — the signed ID token from Google Identity Services' frontend button, not an authorization code (no redirect flow). Verified server-side against Google's public keys and our own Client ID (the `audience` check). Finds or creates a `User` by the token's email, auto-verified; an existing unverified email/password account becomes verified and resolves to the same row (account linking by email, see docs/decisions.md #069). Google never supplies a username, so a new account gets one auto-generated from the email (see docs/decisions.md #071) — editable afterward from the profile page. Same response shape as Login (`{access}` in the body, refresh token set as an httpOnly cookie).
 
 Status
 
@@ -166,7 +166,7 @@ GET or PATCH /api/v1/me/
 
 Description
 
-`email`, `first_name`, `last_name`, `is_verified`, `date_joined`, `has_usable_password` (computed, not a stored field — `false` for a Google-only account that's never set a password). PATCH only accepts `first_name`/`last_name`; the rest are read-only regardless of what's in the request body — changing your own email isn't supported yet (deliberately out of scope, see docs/decisions.md #070).
+`email`, `username`, `first_name`, `last_name`, `is_verified`, `date_joined`, `has_usable_password` (computed, not a stored field — `false` for a Google-only account that's never set a password). PATCH accepts `username`/`first_name`/`last_name`; the rest are read-only regardless of what's in the request body — changing your own email isn't supported yet (deliberately out of scope, see docs/decisions.md #070). `username` is unique independently of `email`, same validator/format as at registration (see docs/decisions.md #071).
 
 Status
 
