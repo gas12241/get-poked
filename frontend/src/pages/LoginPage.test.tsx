@@ -86,4 +86,12 @@ describe('LoginPage', () => {
       '/signup',
     );
   });
+
+  it('links to the forgot-password page', () => {
+    renderWithProviders(<LoginPage />);
+
+    expect(
+      screen.getByRole('link', { name: 'Forgot your password?' }),
+    ).toHaveAttribute('href', '/forgot-password');
+  });
 });

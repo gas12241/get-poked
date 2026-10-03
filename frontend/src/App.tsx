@@ -8,6 +8,8 @@ import HoroscopePage from './pages/HoroscopePage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import { refreshAccessToken } from './lib/apiClient';
 
 const router = createBrowserRouter([
@@ -21,6 +23,8 @@ const router = createBrowserRouter([
       { path: '/login', element: <LoginPage /> },
       { path: '/signup', element: <SignupPage /> },
       { path: '/verify-email', element: <VerifyEmailPage /> },
+      { path: '/forgot-password', element: <ForgotPasswordPage /> },
+      { path: '/reset-password', element: <ResetPasswordPage /> },
     ],
   },
 ]);

@@ -49,3 +49,12 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         return User.objects.create_user(**validated_data)
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    token = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value

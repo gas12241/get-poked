@@ -194,4 +194,14 @@ export const handlers = [
   http.post(`${BASE_URL}/api/v1/token/logout/`, () => {
     return new HttpResponse(null, { status: 205 });
   }),
+
+  http.post(`${BASE_URL}/api/v1/password-reset/`, () => {
+    return HttpResponse.json({
+      detail: 'If that account exists, a password reset email has been sent.',
+    });
+  }),
+
+  http.post(`${BASE_URL}/api/v1/password-reset/confirm/`, () => {
+    return HttpResponse.json({ access: 'reset-token' });
+  }),
 ];

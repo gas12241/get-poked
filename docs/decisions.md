@@ -988,6 +988,24 @@ Why
 
 ---
 
+## Decision 068
+
+Phase 4, slice 2: password reset
+
+Why
+
+- **Closes the gap slice 1 (#067) explicitly named.** Email/password registration/verification/login shipped without any account-recovery path — this slice is exactly that, following the request/confirm design `docs/api.md` and ARCHITECTURE.md already sketched (Decision 014) before any of it was built.
+- **`core/tokens.py` generalized rather than duplicated.** The email-verification token helpers were hardcoded to one salt; password reset needed its own token type with its own expiry, so the signing/loading logic was pulled into a shared `_make_token`/`_read_token` pair with the existing `make_verification_token`/`read_verification_token` re-implemented on top (same names, same behavior, their own tests untouched). Using a **different salt** per token type isn't just code organization — `django.core.signing` rejects a token signed under one salt when read under another, so a verification link can never double as a reset link or vice versa. Confirmed with its own test (`test_verification_token_cannot_be_used_as_a_reset_token`), verified to fail (200 instead of 400) when the two salts were deliberately collapsed to one.
+- **1-hour expiry, not 24.** Shorter than email verification's `EMAIL_VERIFICATION_TOKEN_MAX_AGE` on purpose — a leaked password-reset link is a more immediate account-takeover risk than a leaked verification link, so the window it's exploitable in is deliberately smaller. New `PASSWORD_RESET_TOKEN_MAX_AGE` setting, same pattern as the existing one.
+- **Completing a reset blacklists every outstanding refresh token for the account**, beyond the minimum of just changing the password — using the `rest_framework_simplejwt.token_blacklist` models already installed for logout. Without this, resetting a password because it leaked wouldn't actually lock out whoever has it: their existing refresh token (7-day lifetime) would keep working for up to a week regardless. Verified with a regression test mirroring the existing logout-blacklist test: obtain a refresh token, complete a reset, confirm the old token is rejected — confirmed to fail (200 instead of 401) with the blacklisting loop removed.
+- **Request step mirrors `ResendVerificationView` exactly**: always the same generic response regardless of whether the email exists, throttled (3/hour, matching `email-verification`'s rate). Deliberately **not** scoped to verified accounts the way resend-verification is — branching on `is_verified` here would leak that status through a response difference, something resend-verification doesn't need to worry about since it only ever targets unverified accounts in the first place.
+- **Confirm step isn't throttled**, same reasoning as `VerifyEmailView`: a signed token is cryptographically random, not brute-forceable, so rate-limiting the confirm endpoint protects nothing the invalid-token check doesn't already.
+- **A successful reset logs the user in immediately** (access token + refresh cookie), same UX as a successful email verification — no need to re-enter the password you just set.
+- New `ForgotPasswordPage`/`ResetPasswordPage` at `/forgot-password`/`/reset-password`, named for what a user would type or click rather than mirroring the backend's `/api/v1/password-reset/...` paths exactly (same divergence already exists elsewhere — `/signup` vs. `/register/`). `LoginPage` gained a "Forgot your password?" link.
+- 10 new backend tests (full 192-test suite, 99% coverage), 6 new frontend tests (full 173-test suite, 94%+ coverage). Verified live: requested a reset for the real dev account, read the email from the backend console log, followed the link, set a new password, confirmed auto-login and that the old password no longer works; confirmed a refresh token obtained before the reset is rejected afterward; confirmed a reset request for a nonexistent email returns the same message as a real one; both light and dark mode.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).
