@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import signing
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -45,6 +47,51 @@ class CookieTokenObtainPairView(TokenObtainPairView):
         refresh = response.data.pop("refresh", None)
         if refresh is not None:
             _set_refresh_cookie(response, refresh)
+        return response
+
+
+class GoogleLoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        credential = request.data.get("credential", "")
+        try:
+            payload = id_token.verify_oauth2_token(
+                credential, google_requests.Request(), settings.GOOGLE_CLIENT_ID
+            )
+        except ValueError:
+            return Response(
+                {"detail": "Google sign-in failed. Please try again."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not payload.get("email_verified"):
+            return Response(
+                {"detail": "Google sign-in failed. Please try again."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        email = payload["email"]
+        user = User.objects.filter(email__iexact=email).first()
+        if user is None:
+            # password=None -> set_password(None) -> an unusable password
+            # (Django's own convention), not a special case we handle
+            # ourselves. check_password() always fails against it, so this
+            # account can't log in via email/password until a real one is
+            # set — e.g. through the password-reset flow (decisions.md #068).
+            user = User.objects.create_user(
+                email=email,
+                password=None,
+                first_name=payload.get("given_name", ""),
+                last_name=payload.get("family_name", ""),
+                is_verified=True,
+            )
+        elif not user.is_verified:
+            user.is_verified = True
+            user.save(update_fields=["is_verified"])
+
+        refresh = RefreshToken.for_user(user)
+        response = Response({"access": str(refresh.access_token)})
+        _set_refresh_cookie(response, refresh)
         return response
 
 

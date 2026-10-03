@@ -1,12 +1,26 @@
-import { describe, it, expect } from 'vitest';
-import { screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
 import { renderWithProviders } from '../test/renderWithProviders';
+import { useAuthStore } from '../store/authStore';
 import SignupPage from './SignupPage';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+// See LoginPage.test.tsx for why this is stubbed rather than using the real
+// GoogleSignInButton/@react-oauth/google.
+vi.mock('../components/GoogleSignInButton', () => ({
+  default: ({ onCredential }: { onCredential: (c: string) => void }) => (
+    <button
+      type="button"
+      onClick={() => onCredential('fake-google-credential')}
+    >
+      Sign in with Google
+    </button>
+  ),
+}));
 
 async function fillForm(
   email: string,
@@ -23,6 +37,10 @@ async function fillForm(
 }
 
 describe('SignupPage', () => {
+  beforeEach(() => {
+    useAuthStore.getState().clearAccessToken();
+  });
+
   it('shows a check-your-email message on success, with no auto-login', async () => {
     renderWithProviders(<SignupPage />);
     await fillForm(
@@ -81,6 +99,23 @@ describe('SignupPage', () => {
     expect(screen.getByRole('link', { name: 'Log in' })).toHaveAttribute(
       'href',
       '/login',
+    );
+  });
+
+  it('signs up via Google and stores the access token', async () => {
+    server.use(
+      http.post(`${BASE_URL}/api/v1/google/`, () => {
+        return HttpResponse.json({ access: 'google-access-token' });
+      }),
+    );
+
+    renderWithProviders(<SignupPage />);
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Sign in with Google' }),
+    );
+
+    await waitFor(() =>
+      expect(useAuthStore.getState().accessToken).toBe('google-access-token'),
     );
   });
 });

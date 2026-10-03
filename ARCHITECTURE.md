@@ -207,14 +207,14 @@ A card can be owned, favorited, both, or neither — the two tables are queried 
 ## Authentication
 
 Status: the JWT/cookie mechanics, the custom email-identified `User` model,
-email/password registration/verification/login/logout, and password reset
-are implemented and tested (`core` app). Google OAuth integration and a
-dedicated profile-editing page are designed but not yet built — see
-docs/decisions.md #005, #014, #067, #068.
+email/password registration/verification/login/logout, password reset, and
+Google OAuth are all implemented and tested (`core` app). A dedicated
+profile-editing page is designed but not yet built — see docs/decisions.md
+#005, #014, #067, #068, #069.
 
 Preferred
 
-Google OAuth (not yet built)
+Google OAuth
 
 Also support
 
@@ -232,6 +232,10 @@ Custom `core.User` (`AbstractUser` subclass), not Django's default — `email` i
 ### Email Verification & Password Reset
 
 Email/password accounts must verify their email before logging in; Google OAuth accounts skip this, since Google has already verified the address. Verification uses a signed, time-limited token (`django.core.signing`, 24h, no new dependency) emailed as a link to the frontend, which POSTs it back to confirm — a successful verification also logs the user in immediately. Password reset works the same way, on a separate salt so a verification link and a reset link can never be used interchangeably, with a shorter 1h expiry (a leaked reset link is a more immediate takeover risk than a leaked verification link). The reset-request endpoint always returns the same generic response regardless of whether the email is registered (or verified); both it and verification-resend are throttled (DRF's `ScopedRateThrottle`). Completing a reset also blacklists every outstanding refresh token for the account, ending any other active session, then logs the user in. See docs/decisions.md #014, #067, #068 and docs/api.md.
+
+### Google OAuth
+
+Frontend uses Google Identity Services' own button (`@react-oauth/google`) to get a signed ID token directly from Google, client-side — no authorization-code/redirect exchange to implement. The backend verifies that token's signature against Google's public keys and its `audience` claim against our own Client ID (`google-auth`), then resolves a `User` **by email**, the same identity email/password and Google sign-in both key off (see "User model" above) — signing in with Google using an email that already has a password account logs into that same account and marks it verified if it wasn't already, rather than creating a second, disconnected one. A brand-new Google-only account gets `set_unusable_password()` (Django's own mechanism — `check_password` always fails against it), so it can't be logged into via email/password until a real one is set through the password-reset flow above. See docs/decisions.md #069.
 
 ### Session Strategy
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -8,6 +8,22 @@ import { useAuthStore } from '../store/authStore';
 import LoginPage from './LoginPage';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+// The real GoogleSignInButton renders nothing without a configured Client
+// ID and needs a real browser either way — stubbed as a plain button that
+// fires a fake credential, so these tests exercise LoginPage's own handling
+// of a successful/failed Google sign-in, not the Google widget itself
+// (covered separately by GoogleSignInButton.test.tsx).
+vi.mock('../components/GoogleSignInButton', () => ({
+  default: ({ onCredential }: { onCredential: (c: string) => void }) => (
+    <button
+      type="button"
+      onClick={() => onCredential('fake-google-credential')}
+    >
+      Sign in with Google
+    </button>
+  ),
+}));
 
 async function fillAndSubmit(email: string, password: string) {
   await userEvent.type(screen.getByLabelText('Email'), email);
@@ -93,5 +109,22 @@ describe('LoginPage', () => {
     expect(
       screen.getByRole('link', { name: 'Forgot your password?' }),
     ).toHaveAttribute('href', '/forgot-password');
+  });
+
+  it('logs in via Google and stores the access token', async () => {
+    server.use(
+      http.post(`${BASE_URL}/api/v1/google/`, () => {
+        return HttpResponse.json({ access: 'google-access-token' });
+      }),
+    );
+
+    renderWithProviders(<LoginPage />);
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Sign in with Google' }),
+    );
+
+    await waitFor(() =>
+      expect(useAuthStore.getState().accessToken).toBe('google-access-token'),
+    );
   });
 });

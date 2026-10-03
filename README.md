@@ -106,6 +106,7 @@ cp .env.example .env
 - `POKEMON_TCG_API_KEY` — get one at https://dev.pokemontcg.io/ (needed to run the card sync; the app itself works without it)
 - `FRONTEND_URL` — defaults to `http://localhost:5173`; only matters for links sent by email (e.g. account verification)
 - `DEFAULT_FROM_EMAIL` — the "from" address on those emails; in dev they print to the console instead of sending (`EMAIL_BACKEND` defaults to the console backend)
+- `GOOGLE_CLIENT_ID` — needed for "Sign in with Google"; see below. Not a secret — safe to leave blank for email/password-only local dev
 
 Apply migrations:
 
@@ -120,6 +121,8 @@ cd frontend
 cp .env.example .env
 npm install
 ```
+
+`VITE_GOOGLE_CLIENT_ID` must match the backend's `GOOGLE_CLIENT_ID` above. The "Sign in with Google" button simply doesn't render until it's set, so it's fine to leave both blank for email/password-only local dev. To get one: [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials), create an OAuth 2.0 Client ID of type "Web application", add `http://localhost:5173` as an Authorized JavaScript origin.
 
 ---
 

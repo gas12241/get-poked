@@ -120,11 +120,11 @@ POST /api/v1/google/
 
 Description
 
-Authenticates a user using Google OAuth.
+`{credential}` — the signed ID token from Google Identity Services' frontend button, not an authorization code (no redirect flow). Verified server-side against Google's public keys and our own Client ID (the `audience` check). Finds or creates a `User` by the token's email, auto-verified; an existing unverified email/password account becomes verified and resolves to the same row (account linking by email, see docs/decisions.md #069). Same response shape as Login (`{access}` in the body, refresh token set as an httpOnly cookie).
 
 Status
 
-Planned
+Implemented
 
 ---
 

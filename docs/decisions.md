@@ -1006,6 +1006,24 @@ Why
 
 ---
 
+## Decision 069
+
+Phase 4, slice 3: Google OAuth
+
+Why
+
+- **The preferred onboarding path, finally built.** CLAUDE.md has stated Google OAuth as preferred since before Phase 4 started; `docs/api.md` named it "Planned" since before slice 1. This is the slice that actually builds it, on top of the custom `core.User` model slice 1 (#067) built specifically so this slice would have one identity to resolve to by email.
+- **Google Identity Services' button, not a hand-rolled redirect flow.** `@react-oauth/google` (frontend) wraps Google's own Identity Services script and hands back a signed ID token client-side — no authorization-code exchange, no redirect callback route to build and secure ourselves. `google-auth` (backend) is Google's own library for verifying that token's signature against Google's public keys. Both are the standard, actively-maintained libraries for exactly this — reimplementing either by hand would just reproduce what they already do correctly, with more surface area to get wrong.
+- **The `audience` check is the actual security boundary.** `id_token.verify_oauth2_token(credential, request, settings.GOOGLE_CLIENT_ID)` confirms the token was issued *for our Client ID specifically* — without it, a valid Google ID token minted for some unrelated app could be replayed against this backend. Also checks Google's own `email_verified` claim before trusting the email at all (Google does allow unverified-email accounts in some edge cases).
+- **Account linking by email is automatic, not optional.** Signing in with Google using an email that already has a password account resolves to that same `core.User` row, not a second disconnected one — this was the explicit point of doing the custom-User-model work in slice 1 rather than later. A free side effect: if that existing account was never verified via our own email-verification flow, Google's confirmation marks it verified, same trust level as if they'd clicked our own link.
+- **A brand-new Google-only account gets `set_unusable_password()`** (Django's own mechanism, not a workaround) — `password=None` passed through the existing `UserManager.create_user`, which already calls `set_password(None)` → an unusable hash, no special-casing needed. `check_password()` always fails against it, so the account can't be logged into via email/password *until* a real one is set — which slice 2's password-reset flow (#068) already provides, making this a dead end nowhere rather than a half-finished account type.
+- **Not throttled**, same reasoning already established for `VerifyEmailView`/`PasswordResetConfirmView`: the credential is a cryptographically signed, short-lived, single-use Google token, not something brute-forceable — a rate limit here would protect nothing the signature/audience check doesn't already.
+- **Backend verification is mocked in tests** (`unittest.mock.patch` on `id_token.verify_oauth2_token`), not calling the real Google service — same reasoning `docs/testing.md` already states for the card-sync tests (fast, deterministic, independent of an external service's availability). **Frontend tests mock a new `GoogleSignInButton` wrapper component**, not `@react-oauth/google` itself — its real button needs an actual browser, which jsdom can't provide; the wrapper is small specifically so there's one place to mock instead of reaching into the third-party library in every test file that needs it.
+- Live verification of the real OAuth flow needed something only the user could provide: a Google Cloud OAuth Client ID tied to their own Google account. Everything else (code, both test suites) was built and verified without waiting on it.
+- 6 new backend tests (full 198-test suite, 99% coverage) — account-linking and unusable-password behavior each confirmed via a deliberately-broken version first (linking: removing the existing-user lookup produced a duplicate-email `IntegrityError`; unusable-password: passing a real password instead of `None` made `has_usable_password()` true). 5 new frontend tests (full 177-test suite, 94%+ coverage).
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

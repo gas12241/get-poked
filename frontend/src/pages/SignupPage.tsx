@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { registerAccount } from '../api/auth';
+import { googleLogin, registerAccount } from '../api/auth';
 import { errorMessage } from '../lib/apiClient';
+import { useAuthStore } from '../store/authStore';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 import './pages.css';
 
 function SignupPage() {
@@ -10,9 +12,18 @@ function SignupPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [mismatchError, setMismatchError] = useState(false);
+  const navigate = useNavigate();
 
   const registerMutation = useMutation({
     mutationFn: () => registerAccount(email, password),
+  });
+
+  const googleLoginMutation = useMutation({
+    mutationFn: (credential: string) => googleLogin(credential),
+    onSuccess: (data) => {
+      useAuthStore.getState().setAccessToken(data.access);
+      navigate('/');
+    },
   });
 
   if (registerMutation.isSuccess) {
@@ -74,6 +85,10 @@ function SignupPage() {
         </button>
       </form>
 
+      <GoogleSignInButton
+        onCredential={(credential) => googleLoginMutation.mutate(credential)}
+      />
+
       {mismatchError && (
         <div className="auth-error">
           <p>Passwords don&apos;t match.</p>
@@ -82,6 +97,11 @@ function SignupPage() {
       {registerMutation.isError && (
         <div className="auth-error">
           <p>{errorMessage(registerMutation.error)}</p>
+        </div>
+      )}
+      {googleLoginMutation.isError && (
+        <div className="auth-error">
+          <p>{errorMessage(googleLoginMutation.error)}</p>
         </div>
       )}
 
