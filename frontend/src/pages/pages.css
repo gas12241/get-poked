@@ -1230,6 +1230,13 @@
   text-align: center;
 }
 
+/* ProfilePage's "Name"/"Password" section headings — the generic h2 margin
+   (8px below, 0 above) is fine for a single form, but reads as cramped
+   against the form above it once there's more than one section. */
+.auth-page h2 {
+  margin-top: 28px;
+}
+
 .auth-form {
   display: flex;
   flex-direction: column;

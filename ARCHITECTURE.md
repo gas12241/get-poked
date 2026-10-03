@@ -206,11 +206,11 @@ A card can be owned, favorited, both, or neither — the two tables are queried 
 
 ## Authentication
 
-Status: the JWT/cookie mechanics, the custom email-identified `User` model,
-email/password registration/verification/login/logout, password reset, and
-Google OAuth are all implemented and tested (`core` app). A dedicated
-profile-editing page is designed but not yet built — see docs/decisions.md
-#005, #014, #067, #068, #069.
+Status: Phase 4 is complete. The JWT/cookie mechanics, the custom
+email-identified `User` model, email/password registration/verification/
+login/logout, password reset, Google OAuth, and a profile page are all
+implemented and tested (`core` app). See docs/decisions.md #005, #014,
+#067, #068, #069, #070.
 
 Preferred
 
@@ -232,6 +232,10 @@ Custom `core.User` (`AbstractUser` subclass), not Django's default — `email` i
 ### Email Verification & Password Reset
 
 Email/password accounts must verify their email before logging in; Google OAuth accounts skip this, since Google has already verified the address. Verification uses a signed, time-limited token (`django.core.signing`, 24h, no new dependency) emailed as a link to the frontend, which POSTs it back to confirm — a successful verification also logs the user in immediately. Password reset works the same way, on a separate salt so a verification link and a reset link can never be used interchangeably, with a shorter 1h expiry (a leaked reset link is a more immediate takeover risk than a leaked verification link). The reset-request endpoint always returns the same generic response regardless of whether the email is registered (or verified); both it and verification-resend are throttled (DRF's `ScopedRateThrottle`). Completing a reset also blacklists every outstanding refresh token for the account, ending any other active session, then logs the user in. See docs/decisions.md #014, #067, #068 and docs/api.md.
+
+### Profile Page
+
+`GET`/`PATCH /api/v1/me/` (view/edit your own `first_name`/`last_name` — email and verification status are read-only through this endpoint) and `POST /api/v1/me/change-password/` (requires the current password; blacklists every other outstanding refresh token the same way a password reset does, but re-issues a fresh one for the request that made the change, so you aren't logged out of your own session for changing your own password). A Google-only account (no usable password) sees a "Set a password" prompt instead of the change-password form, linking to the same password-reset flow above — setting your first password and resetting a forgotten one are the same operation from the backend's perspective. Changing your own email and account deletion are deliberately not supported yet. See docs/decisions.md #070.
 
 ### Google OAuth
 

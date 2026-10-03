@@ -58,3 +58,32 @@ export const googleLogin = (credential: string) =>
     body: JSON.stringify({ credential }),
     skipAuth: true,
   });
+
+export interface Profile {
+  email: string;
+  first_name: string;
+  last_name: string;
+  is_verified: boolean;
+  date_joined: string;
+  has_usable_password: boolean;
+}
+
+export const getProfile = () => apiClient<Profile>('/api/v1/me/');
+
+export const updateProfile = (data: {
+  first_name: string;
+  last_name: string;
+}) =>
+  apiClient<Profile>('/api/v1/me/', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+
+export const changePassword = (currentPassword: string, newPassword: string) =>
+  apiClient<{ detail: string }>('/api/v1/me/change-password/', {
+    method: 'POST',
+    body: JSON.stringify({
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
+  });

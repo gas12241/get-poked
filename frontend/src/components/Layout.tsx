@@ -38,6 +38,7 @@ function Layout() {
   const isHoroscopeActive = pathname.startsWith('/horoscope');
   const isLoginActive = pathname.startsWith('/login');
   const isSignupActive = pathname.startsWith('/signup');
+  const isProfileActive = pathname.startsWith('/profile');
   const isAuthenticated = useIsAuthenticated();
 
   const handleLogout = () => {
@@ -72,13 +73,25 @@ function Layout() {
         </Link>
         <div className="main-nav-right">
           {isAuthenticated ? (
-            <button
-              type="button"
-              className="main-nav-auth-button"
-              onClick={handleLogout}
-            >
-              Log out
-            </button>
+            <>
+              <Link
+                to="/profile"
+                className={
+                  isProfileActive
+                    ? 'main-nav-auth-link active'
+                    : 'main-nav-auth-link'
+                }
+              >
+                Profile
+              </Link>
+              <button
+                type="button"
+                className="main-nav-auth-button"
+                onClick={handleLogout}
+              >
+                Log out
+              </button>
+            </>
           ) : (
             <>
               <Link

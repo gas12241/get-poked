@@ -208,4 +208,30 @@ export const handlers = [
   http.post(`${BASE_URL}/api/v1/google/`, () => {
     return HttpResponse.json({ access: 'google-access-token' });
   }),
+
+  http.get(`${BASE_URL}/api/v1/me/`, () => {
+    return HttpResponse.json({
+      email: 'tester@example.com',
+      first_name: 'Ash',
+      last_name: 'Ketchum',
+      is_verified: true,
+      date_joined: '2026-01-15T00:00:00Z',
+      has_usable_password: true,
+    });
+  }),
+
+  http.patch(`${BASE_URL}/api/v1/me/`, () => {
+    return HttpResponse.json({
+      email: 'tester@example.com',
+      first_name: 'Ash',
+      last_name: 'Ketchum',
+      is_verified: true,
+      date_joined: '2026-01-15T00:00:00Z',
+      has_usable_password: true,
+    });
+  }),
+
+  http.post(`${BASE_URL}/api/v1/me/change-password/`, () => {
+    return HttpResponse.json({ detail: 'Password changed.' });
+  }),
 ];

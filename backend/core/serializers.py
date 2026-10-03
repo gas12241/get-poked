@@ -58,3 +58,31 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     def validate_password(self, value):
         validate_password(value)
         return value
+
+
+class UserSerializer(serializers.ModelSerializer):
+    has_usable_password = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            "email",
+            "first_name",
+            "last_name",
+            "is_verified",
+            "date_joined",
+            "has_usable_password",
+        ]
+        read_only_fields = ["email", "is_verified", "date_joined"]
+
+    def get_has_usable_password(self, obj):
+        return obj.has_usable_password()
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+
+    def validate_new_password(self, value):
+        validate_password(value)
+        return value

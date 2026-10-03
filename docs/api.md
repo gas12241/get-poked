@@ -156,6 +156,38 @@ Implemented
 
 ---
 
+## Profile
+
+Requires authentication (`IsAuthenticated` — the project-wide default, not an explicit override; see docs/decisions.md #070).
+
+### Get/Update Profile
+
+GET or PATCH /api/v1/me/
+
+Description
+
+`email`, `first_name`, `last_name`, `is_verified`, `date_joined`, `has_usable_password` (computed, not a stored field — `false` for a Google-only account that's never set a password). PATCH only accepts `first_name`/`last_name`; the rest are read-only regardless of what's in the request body — changing your own email isn't supported yet (deliberately out of scope, see docs/decisions.md #070).
+
+Status
+
+Implemented
+
+---
+
+### Change Password
+
+POST /api/v1/me/change-password/
+
+Description
+
+`{current_password, new_password}`. Rejects with the generic-sounding but specific "Current password is incorrect." if the current password doesn't match (no enumeration risk here — the caller is already authenticated as this account). On success, blacklists every other outstanding refresh token for the account (same as Password Reset above) but re-issues a fresh one for the request that made the change, so changing your own password doesn't log out the session you did it from.
+
+Status
+
+Implemented
+
+---
+
 ## Cards
 
 ### Get Cards

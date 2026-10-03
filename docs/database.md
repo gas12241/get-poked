@@ -161,10 +161,11 @@ Fields
 
 - id
 - email (unique, the login identifier — `username` does not exist on this model)
-- password (hashed, inherited from `AbstractUser`)
-- is_verified — gates login for email/password accounts; Google OAuth accounts (not yet built) will be auto-verified
+- password (hashed, inherited from `AbstractUser`) — a Google-only account (see docs/decisions.md #069) has an *unusable* password (`set_password(None)`, Django's own convention), not a null one; `has_usable_password()` is how that's checked, not a stored field, so it doesn't appear in this list
+- is_verified — gates login for email/password accounts; auto-true for Google OAuth accounts
 - is_staff / is_superuser / is_active — inherited, Django admin/permissions as usual
-- first_name / last_name, date_joined, last_login — inherited, unused by the app today
+- first_name / last_name — inherited; editable via the profile page (`GET`/`PATCH /api/v1/me/`, docs/decisions.md #070), populated from Google's own profile data on a Google sign-up
+- date_joined, last_login — inherited; `date_joined` is shown on the profile page as "Member since ..."
 
 ---
 
