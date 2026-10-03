@@ -11,5 +11,5 @@ class HoroscopeCardInline(admin.TabularInline):
 @admin.register(HoroscopePull)
 class HoroscopePullAdmin(admin.ModelAdmin):
     list_display = ("user", "pull_date", "pulled_at")
-    search_fields = ("user__username",)
+    search_fields = ("user__email",)
     inlines = [HoroscopeCardInline]

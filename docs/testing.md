@@ -28,6 +28,8 @@ External API mocking: import command tests mock the Pokémon TCG API's HTTP resp
 
 Quiz image generation tests: assert structural properties (correct dimensions/format, no exception raised, masked region differs from the original) rather than exact pixel output, which would be brittle against any minor rendering change.
 
+Registration/verification email tests: assert against `django.core.mail.outbox`, not the real `EMAIL_BACKEND` setting — Django's test runner always swaps in its own in-memory backend regardless of what's configured, so these tests work the same whether `EMAIL_BACKEND` is the dev console backend or (eventually) real SMTP. Expired-token behavior is tested via `override_settings(EMAIL_VERIFICATION_TOKEN_MAX_AGE=-1)` rather than a real sleep. Throttle-limit tests (`ScopedRateThrottle`) clear Django's cache in `setUp`/at the start of the test, since throttle counters persist across test methods in the same run otherwise (same client "IP").
+
 ---
 
 ## Frontend

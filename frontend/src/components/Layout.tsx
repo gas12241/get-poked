@@ -1,4 +1,12 @@
-import { Link, Outlet, ScrollRestoration, useLocation } from 'react-router-dom';
+import {
+  Link,
+  Outlet,
+  ScrollRestoration,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
+import { logoutRequest } from '../api/auth';
+import { useAuthStore, useIsAuthenticated } from '../store/authStore';
 import Footer from './Footer';
 import ThemeToggle from './ThemeToggle';
 
@@ -24,9 +32,21 @@ function Layout() {
   // ("/cards/:id"), which NavLink's own matching can't express without
   // also matching "/quiz".
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const isCardsActive = pathname === '/' || pathname.startsWith('/cards/');
   const isQuizActive = pathname.startsWith('/quiz');
   const isHoroscopeActive = pathname.startsWith('/horoscope');
+  const isAuthenticated = useIsAuthenticated();
+
+  const handleLogout = () => {
+    // Best-effort — the access token is cleared client-side either way, so a
+    // failed request (already-expired cookie, network hiccup) doesn't leave
+    // the user stuck looking logged in.
+    logoutRequest().finally(() => {
+      useAuthStore.getState().clearAccessToken();
+      navigate('/');
+    });
+  };
 
   return (
     <>
@@ -49,6 +69,20 @@ function Layout() {
           Get Poked
         </Link>
         <div className="main-nav-right">
+          {isAuthenticated ? (
+            <button
+              type="button"
+              className="main-nav-auth-button"
+              onClick={handleLogout}
+            >
+              Log out
+            </button>
+          ) : (
+            <>
+              <Link to="/login">Log in</Link>
+              <Link to="/signup">Sign up</Link>
+            </>
+          )}
           <ThemeToggle />
         </div>
       </nav>

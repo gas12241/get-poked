@@ -12,5 +12,5 @@ class QuizAttemptAnswerInline(admin.TabularInline):
 class QuizAttemptAdmin(admin.ModelAdmin):
     list_display = ("user", "quiz_mode", "score", "total_questions", "completed_at")
     list_filter = ("quiz_mode",)
-    search_fields = ("user__username",)
+    search_fields = ("user__email",)
     inlines = [QuizAttemptAnswerInline]

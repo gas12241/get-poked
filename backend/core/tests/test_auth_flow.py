@@ -15,12 +15,14 @@ class HealthCheckTests(APITestCase):
 
 class CookieJWTAuthFlowTests(APITestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="tester", password="s3cret-pass!")
+        self.user = User.objects.create_user(
+            email="tester@example.com", password="s3cret-pass!", is_verified=True
+        )
 
     def test_obtain_token_returns_only_access_and_sets_refresh_cookie(self):
         response = self.client.post(
             reverse("token_obtain_pair"),
-            {"username": "tester", "password": "s3cret-pass!"},
+            {"email": "tester@example.com", "password": "s3cret-pass!"},
         )
 
         self.assertEqual(response.status_code, 200)
@@ -34,7 +36,7 @@ class CookieJWTAuthFlowTests(APITestCase):
     def test_refresh_uses_cookie_not_body(self):
         obtain_response = self.client.post(
             reverse("token_obtain_pair"),
-            {"username": "tester", "password": "s3cret-pass!"},
+            {"email": "tester@example.com", "password": "s3cret-pass!"},
         )
         refresh_cookie = obtain_response.cookies[settings.REFRESH_TOKEN_COOKIE_NAME].value
         self.client.cookies[settings.REFRESH_TOKEN_COOKIE_NAME] = refresh_cookie
@@ -54,7 +56,7 @@ class CookieJWTAuthFlowTests(APITestCase):
     def test_logout_blacklists_refresh_token_and_clears_cookie(self):
         obtain_response = self.client.post(
             reverse("token_obtain_pair"),
-            {"username": "tester", "password": "s3cret-pass!"},
+            {"email": "tester@example.com", "password": "s3cret-pass!"},
         )
         refresh_cookie = obtain_response.cookies[settings.REFRESH_TOKEN_COOKIE_NAME].value
         self.client.cookies[settings.REFRESH_TOKEN_COOKIE_NAME] = refresh_cookie
@@ -66,3 +68,14 @@ class CookieJWTAuthFlowTests(APITestCase):
         self.client.cookies[settings.REFRESH_TOKEN_COOKIE_NAME] = refresh_cookie
         refresh_after_logout = self.client.post(reverse("token_refresh"), {})
         self.assertEqual(refresh_after_logout.status_code, 401)
+
+    def test_login_rejects_unverified_account(self):
+        User.objects.create_user(email="unverified@example.com", password="s3cret-pass!")
+
+        response = self.client.post(
+            reverse("token_obtain_pair"),
+            {"email": "unverified@example.com", "password": "s3cret-pass!"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertNotIn("access", response.data)

@@ -206,13 +206,15 @@ A card can be owned, favorited, both, or neither — the two tables are queried 
 
 ## Authentication
 
-Status: the JWT/cookie mechanics described below are implemented and tested
-(`core` app). Google OAuth integration and the frontend sign-up/sign-in UI
-are designed but not yet built — see docs/decisions.md #005, #014.
+Status: the JWT/cookie mechanics, the custom email-identified `User` model,
+and email/password registration/verification/login/logout are implemented
+and tested (`core` app). Google OAuth integration and a dedicated
+profile-editing page are designed but not yet built — see docs/decisions.md
+#005, #014, #067.
 
 Preferred
 
-Google OAuth
+Google OAuth (not yet built)
 
 Also support
 
@@ -223,9 +225,13 @@ Future providers may include:
 - GitHub
 - Discord
 
+### User model
+
+Custom `core.User` (`AbstractUser` subclass), not Django's default — `email` is the unique login identifier (`USERNAME_FIELD`), not `username` (removed). An `is_verified` boolean gates login, checked explicitly in a custom `TokenObtainPairSerializer` subclass rather than overloading Django's broader `is_active`. See docs/decisions.md #067 for why this was done as an early, one-time migration-history reset rather than bolted onto the default model.
+
 ### Email Verification & Password Reset
 
-Email/password accounts must verify their email before logging in; Google OAuth accounts skip this, since Google has already verified the address. Password reset uses a time-limited signed token sent by email. The reset-request endpoint always returns the same generic response regardless of whether the email is registered, and both the reset-request and verification-resend endpoints are throttled. See docs/decisions.md #014 and docs/api.md.
+Email/password accounts must verify their email before logging in; Google OAuth accounts skip this, since Google has already verified the address. Verification uses a signed, time-limited token (`django.core.signing`, 24h, no new dependency) emailed as a link to the frontend, which POSTs it back to confirm — a successful verification also logs the user in immediately. Password reset (not yet built — see docs/decisions.md #067) is designed to work the same way: a time-limited signed token sent by email, the reset-request endpoint always returning the same generic response regardless of whether the email is registered, and both the reset-request and verification-resend endpoints throttled (DRF's `ScopedRateThrottle`, already in use for registration and verification-resend). See docs/decisions.md #014 and docs/api.md.
 
 ### Session Strategy
 

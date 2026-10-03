@@ -1,4 +1,7 @@
 from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.core import signing
+from rest_framework import generics, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -6,7 +9,15 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from .serializers import CookieTokenRefreshSerializer
+from .emails import send_verification_email
+from .serializers import (
+    CookieTokenRefreshSerializer,
+    EmailTokenObtainPairSerializer,
+    RegisterSerializer,
+)
+from .tokens import read_verification_token
+
+User = get_user_model()
 
 
 def _set_refresh_cookie(response, refresh_token):
@@ -22,12 +33,65 @@ def _set_refresh_cookie(response, refresh_token):
 class CookieTokenObtainPairView(TokenObtainPairView):
     """Returns only the access token in the body; the refresh token goes in an httpOnly cookie."""
 
+    serializer_class = EmailTokenObtainPairSerializer
+
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         refresh = response.data.pop("refresh", None)
         if refresh is not None:
             _set_refresh_cookie(response, refresh)
         return response
+
+
+class RegisterView(generics.CreateAPIView):
+    serializer_class = RegisterSerializer
+    permission_classes = [AllowAny]
+    throttle_scope = "registration"
+
+    def perform_create(self, serializer):
+        user = serializer.save()
+        send_verification_email(user)
+
+
+class VerifyEmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        token = request.data.get("token", "")
+        try:
+            payload = read_verification_token(token)
+        except signing.BadSignature:
+            return Response(
+                {"detail": "This verification link is invalid or has expired."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            user = User.objects.get(pk=payload["user_id"])
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "This verification link is invalid or has expired."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.is_verified = True
+        user.save(update_fields=["is_verified"])
+
+        refresh = RefreshToken.for_user(user)
+        response = Response({"access": str(refresh.access_token)})
+        _set_refresh_cookie(response, refresh)
+        return response
+
+
+class ResendVerificationView(APIView):
+    permission_classes = [AllowAny]
+    throttle_scope = "email-verification"
+
+    def post(self, request, *args, **kwargs):
+        email = request.data.get("email", "")
+        user = User.objects.filter(email__iexact=email, is_verified=False).first()
+        if user:
+            send_verification_email(user)
+        return Response({"detail": "If that account exists, a verification email has been sent."})
 
 
 class CookieTokenRefreshView(TokenRefreshView):

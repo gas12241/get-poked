@@ -13,7 +13,7 @@ User = get_user_model()
 
 class HoroscopePullModelTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="tester", password="s3cret-pass!")
+        self.user = User.objects.create_user(email="tester@example.com", password="s3cret-pass!")
         self.today = datetime.date(2026, 1, 1)
 
     def test_create_pull(self):
@@ -33,7 +33,7 @@ class HoroscopePullModelTests(TestCase):
 
     def test_different_user_same_day_is_allowed(self):
         HoroscopePull.objects.create(user=self.user, pull_date=self.today)
-        other_user = User.objects.create_user(username="other", password="s3cret-pass!")
+        other_user = User.objects.create_user(email="other@example.com", password="s3cret-pass!")
         HoroscopePull.objects.create(user=other_user, pull_date=self.today)
         self.assertEqual(HoroscopePull.objects.filter(pull_date=self.today).count(), 2)
 
@@ -45,7 +45,7 @@ class HoroscopePullModelTests(TestCase):
 
 class HoroscopeCardModelTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="tester", password="s3cret-pass!")
+        self.user = User.objects.create_user(email="tester@example.com", password="s3cret-pass!")
         self.set_obj = Set.objects.create(tcg_id="base1", name="Base", series="Base")
         self.card = Card.objects.create(
             tcg_id="base1-4",

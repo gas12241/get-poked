@@ -155,7 +155,16 @@ One Set has many Cards.
 
 ### User
 
-Django User model.
+Custom `core.User` model (`AbstractUser` subclass, `AUTH_USER_MODEL`), not Django's default — see docs/decisions.md #067.
+
+Fields
+
+- id
+- email (unique, the login identifier — `username` does not exist on this model)
+- password (hashed, inherited from `AbstractUser`)
+- is_verified — gates login for email/password accounts; Google OAuth accounts (not yet built) will be auto-verified
+- is_staff / is_superuser / is_active — inherited, Django admin/permissions as usual
+- first_name / last_name, date_joined, last_login — inherited, unused by the app today
 
 ---
 

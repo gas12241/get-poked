@@ -1,8 +1,14 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Route, Routes } from 'react-router-dom';
+import { http, HttpResponse } from 'msw';
+import { server } from '../mocks/server';
 import { renderWithProviders } from '../test/renderWithProviders';
+import { useAuthStore } from '../store/authStore';
 import Layout from './Layout';
+
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // ScrollRestoration requires a data router (useMatches), which this test's
 // plain MemoryRouter/<Routes> setup doesn't provide — and jsdom has no real
@@ -27,6 +33,46 @@ function renderLayoutAt(route: string) {
 }
 
 describe('Layout', () => {
+  beforeEach(() => {
+    useAuthStore.getState().clearAccessToken();
+  });
+
+  it('shows Log in/Sign up links when logged out', () => {
+    renderLayoutAt('/');
+
+    expect(screen.getByRole('link', { name: 'Log in' })).toHaveAttribute(
+      'href',
+      '/login',
+    );
+    expect(screen.getByRole('link', { name: 'Sign up' })).toHaveAttribute(
+      'href',
+      '/signup',
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Log out' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows a Log out button when logged in, which clears the token on click', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    server.use(
+      http.post(`${BASE_URL}/api/v1/token/logout/`, () => {
+        return new HttpResponse(null, { status: 205 });
+      }),
+    );
+
+    renderLayoutAt('/');
+
+    expect(
+      screen.queryByRole('link', { name: 'Log in' }),
+    ).not.toBeInTheDocument();
+    const logoutButton = screen.getByRole('button', { name: 'Log out' });
+
+    await userEvent.click(logoutButton);
+
+    expect(useAuthStore.getState().accessToken).toBeNull();
+  });
+
   it('renders the matched child route alongside the disclaimer footer', () => {
     renderLayoutAt('/');
 

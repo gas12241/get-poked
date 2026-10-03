@@ -165,4 +165,33 @@ export const handlers = [
   http.post(`${BASE_URL}/api/v1/horoscope/pull/`, () => {
     return HttpResponse.json(mockHoroscopePull('2026-01-01'));
   }),
+
+  // Auth defaults — happy paths; tests override via server.use() for error
+  // states (duplicate email, unverified login, expired token, ...). Refresh
+  // defaults to "no valid cookie" (401), matching a fresh, logged-out start.
+  http.post(`${BASE_URL}/api/v1/register/`, () => {
+    return HttpResponse.json({ email: 'new@example.com' }, { status: 201 });
+  }),
+
+  http.post(`${BASE_URL}/api/v1/verify-email/`, () => {
+    return HttpResponse.json({ access: 'verified-token' });
+  }),
+
+  http.post(`${BASE_URL}/api/v1/verify-email/resend/`, () => {
+    return HttpResponse.json({
+      detail: 'If that account exists, a verification email has been sent.',
+    });
+  }),
+
+  http.post(`${BASE_URL}/api/v1/token/`, () => {
+    return HttpResponse.json({ access: 'test-access-token' });
+  }),
+
+  http.post(`${BASE_URL}/api/v1/token/refresh/`, () => {
+    return new HttpResponse(null, { status: 401 });
+  }),
+
+  http.post(`${BASE_URL}/api/v1/token/logout/`, () => {
+    return new HttpResponse(null, { status: 205 });
+  }),
 ];

@@ -7,7 +7,7 @@ import {
   pullTodayHoroscope,
 } from '../api/horoscope';
 import type { HoroscopeCard, HoroscopePull } from '../api/horoscope';
-import { useAuthStore } from '../store/authStore';
+import { useIsAuthenticated } from '../store/authStore';
 import HoroscopeReel from '../components/HoroscopeReel';
 import type { HoroscopeSlotResult } from '../components/HoroscopeReel';
 import HoroscopeCalendar, {
@@ -118,7 +118,7 @@ function HoroscopeResultGrid({ pull }: { pull: HoroscopePull }) {
 }
 
 function HoroscopePage() {
-  const isAuthenticated = useAuthStore((s) => s.accessToken !== null);
+  const isAuthenticated = useIsAuthenticated();
   const queryClient = useQueryClient();
   // Only ever set by a successful pull in *this* page session — the signal
   // that the reveal animation should play. A pull already on the server
