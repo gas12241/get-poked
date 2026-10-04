@@ -233,7 +233,6 @@ function ProfilePage() {
         </p>
       )}
 
-      <h2>Session</h2>
       <button
         type="button"
         className="profile-logout-button"
