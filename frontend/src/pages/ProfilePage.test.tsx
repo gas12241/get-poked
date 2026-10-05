@@ -31,7 +31,7 @@ describe('ProfilePage', () => {
     );
   });
 
-  it('shows the fetched profile when logged in', async () => {
+  it('shows the fetched profile when logged in, fields read-only until Edit is clicked', async () => {
     useAuthStore.getState().setAccessToken('test-token');
 
     renderWithProviders(<ProfilePage />);
@@ -52,9 +52,13 @@ describe('ProfilePage', () => {
     expect(
       screen.getByText(`Member since ${expectedDate}`),
     ).toBeInTheDocument();
-    expect(screen.getByDisplayValue('ash')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Ash')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Ketchum')).toBeInTheDocument();
+
+    // Plain text, not inputs — nothing is editable until Edit is clicked.
+    expect(screen.getByText('ash')).toBeInTheDocument();
+    expect(screen.getByText('Ash')).toBeInTheDocument();
+    expect(screen.getByText('Ketchum')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Edit' })).toHaveLength(3);
   });
 
   it('falls back to the username in the welcome heading when no first name is set', async () => {
@@ -80,20 +84,17 @@ describe('ProfilePage', () => {
     ).toBeInTheDocument();
   });
 
-  it('saves an edited username and name', async () => {
+  it('edits and saves the username independently', async () => {
     useAuthStore.getState().setAccessToken('test-token');
     server.use(
       http.patch(`${BASE_URL}/api/v1/me/`, async ({ request }) => {
-        const body = (await request.json()) as {
-          username: string;
-          first_name: string;
-          last_name: string;
-        };
+        const body = (await request.json()) as { username?: string };
+        expect(body).toEqual({ username: 'red' });
         return HttpResponse.json({
           email: 'tester@example.com',
-          username: body.username,
-          first_name: body.first_name,
-          last_name: body.last_name,
+          username: 'red',
+          first_name: 'Ash',
+          last_name: 'Ketchum',
           is_verified: true,
           date_joined: '2026-01-15T00:00:00Z',
           has_usable_password: true,
@@ -102,19 +103,55 @@ describe('ProfilePage', () => {
     );
 
     renderWithProviders(<ProfilePage />);
-    await screen.findByDisplayValue('ash');
+    await screen.findByText('ash');
 
-    const usernameInput = screen.getByLabelText('Username');
-    await userEvent.clear(usernameInput);
-    await userEvent.type(usernameInput, 'red');
-    const firstNameInput = screen.getByLabelText('First name');
-    await userEvent.clear(firstNameInput);
-    await userEvent.type(firstNameInput, 'Red');
+    const editButtons = screen.getAllByRole('button', { name: 'Edit' });
+    await userEvent.click(editButtons[0]); // Username is the first row.
+
+    const input = screen.getByLabelText('Username');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'red');
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-    expect(await screen.findByText('Saved.')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('red')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Red')).toBeInTheDocument();
+    // Back to read-only, showing the new value.
+    expect(await screen.findByText('red')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Username')).not.toBeInTheDocument();
+  });
+
+  it('only one field is editable at a time', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+
+    renderWithProviders(<ProfilePage />);
+    await screen.findByText('ash');
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]);
+    expect(screen.getByLabelText('Username')).toBeInTheDocument();
+    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+
+    // Username's row is now a Save/Cancel form with no Edit button, leaving
+    // First name's and Last name's — click whichever is first. Opening it
+    // must close Username's edit instead of leaving both open together.
+    await userEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]);
+
+    expect(screen.queryByLabelText('Username')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+  });
+
+  it('cancelling an edit discards the change and leaves the field read-only', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+
+    renderWithProviders(<ProfilePage />);
+    await screen.findByText('ash');
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]);
+    const input = screen.getByLabelText('Username');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'somethingelse');
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByLabelText('Username')).not.toBeInTheDocument();
+    expect(screen.getByText('ash')).toBeInTheDocument();
+    expect(screen.queryByText('somethingelse')).not.toBeInTheDocument();
   });
 
   it('shows a backend error for a username already taken', async () => {
@@ -129,7 +166,9 @@ describe('ProfilePage', () => {
     );
 
     renderWithProviders(<ProfilePage />);
-    await screen.findByDisplayValue('ash');
+    await screen.findByText('ash');
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]);
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(
@@ -271,7 +310,7 @@ describe('ProfilePage', () => {
     useAuthStore.getState().setAccessToken('test-token');
 
     renderWithProviders(<ProfilePage />);
-    await screen.findByDisplayValue('ash');
+    await screen.findByText('ash');
 
     await userEvent.click(screen.getByRole('button', { name: 'Log out' }));
 
@@ -286,7 +325,7 @@ describe('ProfilePage', () => {
     useAuthStore.getState().setAccessToken('test-token');
 
     renderWithProviders(<ProfilePage />);
-    await screen.findByDisplayValue('ash');
+    await screen.findByText('ash');
     await userEvent.click(screen.getByRole('button', { name: 'Log out' }));
     await screen.findByText('Log out of your account?');
 
@@ -307,7 +346,7 @@ describe('ProfilePage', () => {
     );
 
     renderWithProviders(<ProfilePage />);
-    await screen.findByDisplayValue('ash');
+    await screen.findByText('ash');
     await userEvent.click(screen.getByRole('button', { name: 'Log out' }));
     await screen.findByText('Log out of your account?');
 

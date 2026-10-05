@@ -75,11 +75,9 @@ export interface Profile {
 
 export const getProfile = () => apiClient<Profile>('/api/v1/me/');
 
-export const updateProfile = (data: {
-  username: string;
-  first_name: string;
-  last_name: string;
-}) =>
+export const updateProfile = (
+  data: Partial<Pick<Profile, 'username' | 'first_name' | 'last_name'>>,
+) =>
   apiClient<Profile>('/api/v1/me/', {
     method: 'PATCH',
     body: JSON.stringify(data),

@@ -21,74 +21,141 @@ function formatMemberSince(dateJoined: string): string {
   });
 }
 
-function ProfileForm({ profile }: { profile: Profile }) {
-  const [username, setUsername] = useState(profile.username);
-  const [firstName, setFirstName] = useState(profile.first_name);
-  const [lastName, setLastName] = useState(profile.last_name);
+type ProfileFieldName = 'username' | 'first_name' | 'last_name';
+
+// One row of "label: value [Edit]", or — when this is the field currently
+// being edited — a small inline label+input+Save/Cancel form. Which field
+// (if any) is open lives in the parent (ProfileFields below), not here, so
+// opening one field closes whichever other one was open — the user
+// explicitly didn't want every field editable at once.
+function ProfileFieldRow({
+  label,
+  value,
+  fieldName,
+  isEditing,
+  onStartEdit,
+  onStopEdit,
+  required,
+  hint,
+}: {
+  label: string;
+  value: string;
+  fieldName: ProfileFieldName;
+  isEditing: boolean;
+  onStartEdit: () => void;
+  onStopEdit: () => void;
+  required?: boolean;
+  hint?: string;
+}) {
+  const [draft, setDraft] = useState(value);
   const queryClient = useQueryClient();
-  const usernameHintId = useId();
+  const hintId = useId();
 
   const updateMutation = useMutation({
-    mutationFn: () =>
-      updateProfile({
-        username,
-        first_name: firstName,
-        last_name: lastName,
-      }),
+    mutationFn: () => updateProfile({ [fieldName]: draft }),
     onSuccess: (data) => {
       queryClient.setQueryData(['profile'], data);
+      onStopEdit();
     },
   });
 
+  if (!isEditing) {
+    return (
+      <div className="profile-field-row">
+        <span className="profile-field-label">{label}</span>
+        <span className="profile-field-value">{value || '—'}</span>
+        <button
+          type="button"
+          onClick={() => {
+            setDraft(value);
+            updateMutation.reset();
+            onStartEdit();
+          }}
+        >
+          Edit
+        </button>
+      </div>
+    );
+  }
+
   return (
     <form
-      className="auth-form"
+      className="profile-field-row profile-field-row-editing"
       onSubmit={(e) => {
         e.preventDefault();
         updateMutation.mutate();
       }}
     >
-      <div className="auth-field">
-        <label>
-          Username
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            aria-describedby={usernameHintId}
-            required
-          />
-        </label>
-        <span id={usernameHintId} className="auth-hint">
-          Letters, numbers, and . + - _ only.
+      <label>
+        {label}
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          aria-describedby={hint ? hintId : undefined}
+          required={required}
+        />
+      </label>
+      {hint && (
+        <span id={hintId} className="auth-hint">
+          {hint}
         </span>
+      )}
+      <div className="profile-field-actions">
+        <button type="submit" disabled={updateMutation.isPending}>
+          {updateMutation.isPending ? 'Saving...' : 'Save'}
+        </button>
+        <button
+          type="button"
+          onClick={onStopEdit}
+          disabled={updateMutation.isPending}
+        >
+          Cancel
+        </button>
       </div>
-      <label>
-        First name
-        <input
-          type="text"
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-        />
-      </label>
-      <label>
-        Last name
-        <input
-          type="text"
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-        />
-      </label>
-      <button type="submit" disabled={updateMutation.isPending}>
-        {updateMutation.isPending ? 'Saving...' : 'Save'}
-      </button>
-      {updateMutation.isSuccess && <p>Saved.</p>}
       {updateMutation.isError && (
         <div className="auth-error">
           <p>{errorMessage(updateMutation.error)}</p>
         </div>
       )}
     </form>
+  );
+}
+
+function ProfileFields({ profile }: { profile: Profile }) {
+  const [editingField, setEditingField] = useState<ProfileFieldName | null>(
+    null,
+  );
+
+  return (
+    <div className="profile-fields">
+      <ProfileFieldRow
+        label="Username"
+        fieldName="username"
+        value={profile.username}
+        isEditing={editingField === 'username'}
+        onStartEdit={() => setEditingField('username')}
+        onStopEdit={() => setEditingField(null)}
+        required
+        hint="Letters, numbers, and . + - _ only."
+      />
+      <ProfileFieldRow
+        label="First name"
+        fieldName="first_name"
+        value={profile.first_name}
+        isEditing={editingField === 'first_name'}
+        onStartEdit={() => setEditingField('first_name')}
+        onStopEdit={() => setEditingField(null)}
+      />
+      <ProfileFieldRow
+        label="Last name"
+        fieldName="last_name"
+        value={profile.last_name}
+        isEditing={editingField === 'last_name'}
+        onStartEdit={() => setEditingField('last_name')}
+        onStopEdit={() => setEditingField(null)}
+      />
+    </div>
   );
 }
 
@@ -221,7 +288,7 @@ function ProfilePage() {
       </p>
 
       <h2>Profile</h2>
-      <ProfileForm profile={profile} />
+      <ProfileFields profile={profile} />
 
       <h2>Password</h2>
       {profile.has_usable_password ? (

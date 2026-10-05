@@ -1352,6 +1352,91 @@
   font-size: 14px;
 }
 
+/* Profile page's per-field editor (ProfileFieldRow) — a compact row when
+   at rest (label, current value, small Edit button), swapping to a small
+   inline form only for the one field currently being edited. Deliberately
+   smaller/quieter than .auth-form's full-width CTA styling, since this is
+   an inline, one-field-at-a-time control, not a page-level form. */
+.profile-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+  margin-top: 16px;
+}
+
+.profile-field-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.profile-field-label {
+  flex: 0 0 90px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.profile-field-value {
+  flex: 1;
+  font-size: 15px;
+  color: var(--text-h);
+  overflow-wrap: anywhere;
+}
+
+.profile-field-row button {
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--accent-bg);
+    color: var(--accent);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+.profile-field-row-editing {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  input {
+    font: inherit;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-h);
+  }
+}
+
+.profile-field-actions {
+  display: flex;
+  gap: 8px;
+}
+
 /* Same danger-bordered pill treatment as .quiz-abandon — both are
    confirm-gated (ConfirmDialog) actions that end the current session/flow. */
 .profile-logout-button {
