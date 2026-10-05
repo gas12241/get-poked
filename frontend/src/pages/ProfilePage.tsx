@@ -214,7 +214,7 @@ function ProfilePage() {
 
   return (
     <div className="auth-page">
-      <h1>Your profile</h1>
+      <h1>Welcome, {profile.first_name || profile.username}</h1>
       <p>{profile.email}</p>
       <p className="auth-switch">
         Member since {formatMemberSince(profile.date_joined)}

@@ -36,7 +36,10 @@ describe('ProfilePage', () => {
 
     renderWithProviders(<ProfilePage />);
 
-    expect(await screen.findByText('tester@example.com')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Welcome, Ash' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('tester@example.com')).toBeInTheDocument();
     // Computed the same way the component formats it (toLocaleDateString,
     // local timezone) rather than hardcoded — date_joined is a real
     // timestamp, so which calendar day it lands on for a viewer near
@@ -52,6 +55,29 @@ describe('ProfilePage', () => {
     expect(screen.getByDisplayValue('ash')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Ash')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Ketchum')).toBeInTheDocument();
+  });
+
+  it('falls back to the username in the welcome heading when no first name is set', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    server.use(
+      http.get(`${BASE_URL}/api/v1/me/`, () => {
+        return HttpResponse.json({
+          email: 'tester@example.com',
+          username: 'ash',
+          first_name: '',
+          last_name: '',
+          is_verified: true,
+          date_joined: '2026-01-15T00:00:00Z',
+          has_usable_password: true,
+        });
+      }),
+    );
+
+    renderWithProviders(<ProfilePage />);
+
+    expect(
+      await screen.findByRole('heading', { name: 'Welcome, ash' }),
+    ).toBeInTheDocument();
   });
 
   it('saves an edited username and name', async () => {
