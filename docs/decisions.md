@@ -1058,6 +1058,21 @@ Why
 
 ---
 
+## Decision 072
+
+Profile page polish: per-field edit gating, full join date, personalized heading, no "Session" heading
+
+Why
+
+- **User-requested polish, four small pieces from one request**, shipped as separate commits each: the "Session" heading over the Log out button was redundant (the button alone already says what it does); "Member since" showed only month/year, now the full date; "Your profile" became "Welcome, {first name}" (falling back to username when no first name is set — guaranteed to exist, unlike first name); and the biggest piece, gating the username/first/last name fields behind per-field Edit buttons.
+- **The edit-gating problem was specifically that every field rendered pre-filled and editable the instant the page loaded** — nothing was actually "being edited," but it read that way. Fixed by making each field a quiet read-only row (label, current value, small Edit button) that only becomes an inline Save/Cancel form for the one field currently open. Which field (if any) is open lives in the parent (`ProfileFields`), not in each row, so opening one field's editor closes whichever other one was open — matching the user's own stated goal of "only one thing edited at a time," not just "edits require a click."
+- **Each field now saves independently via its own partial PATCH** (`updateProfile`'s type changed to `Partial<Pick<Profile, 'username' | 'first_name' | 'last_name'>>`) rather than one combined submit for all three — `MeView` already supports partial updates for free (`RetrieveUpdateAPIView`'s `PATCH` is partial by default), so this needed zero backend changes, just a smaller, more precise payload per save.
+- **Confirmed by an actual regression, not just reasoning about it**: a test asserting "only one field editable at a time" was deliberately broken (hardcoding a second field's `isEditing` to `true`) and failed as expected (two `textbox`es present instead of one) before the fix was restored.
+- **Last name is, and already was, optional** — checked before changing anything: the model field inherits `blank=True` from `AbstractUser`, the serializer already reports `required: False`, and the frontend input never had a `required` attribute. No code change was needed; this was confirmed rather than assumed, and preserved deliberately through the edit-gating rewrite (no `required` prop passed for first/last name's `ProfileFieldRow`).
+- 2 new/updated frontend tests for the edit-gating behavior specifically (only-one-open, cancel discards the draft), on top of the existing profile test suite updated for the new read-only-row markup (full 194-test frontend suite, no backend changes this slice). Verified live against a real account: fields render as quiet rows at rest, clicking Edit opens exactly one inline form, clicking Edit on a different field closes the first one, Cancel discards without saving.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).
