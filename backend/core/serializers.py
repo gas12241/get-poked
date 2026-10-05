@@ -7,6 +7,8 @@ from rest_framework_simplejwt.serializers import (
     TokenRefreshSerializer,
 )
 
+from .avatars import process_avatar
+
 User = get_user_model()
 
 
@@ -62,6 +64,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 class UserSerializer(serializers.ModelSerializer):
     has_usable_password = serializers.SerializerMethodField()
+    avatar = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = User
@@ -70,6 +73,7 @@ class UserSerializer(serializers.ModelSerializer):
             "username",
             "first_name",
             "last_name",
+            "avatar",
             "is_verified",
             "date_joined",
             "has_usable_password",
@@ -78,6 +82,15 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_has_usable_password(self, obj):
         return obj.has_usable_password()
+
+    def validate_avatar(self, value):
+        if value is None:
+            return value
+        if value.size > settings.MAX_AVATAR_UPLOAD_SIZE:
+            raise serializers.ValidationError("Image must be 5MB or smaller.")
+        if value.content_type not in settings.ALLOWED_AVATAR_CONTENT_TYPES:
+            raise serializers.ValidationError("Please upload a JPEG, PNG, or WebP image.")
+        return process_avatar(value)
 
 
 class ChangePasswordSerializer(serializers.Serializer):

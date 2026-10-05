@@ -118,6 +118,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# Profile picture uploads (see docs/decisions.md #073)
+MAX_AVATAR_UPLOAD_SIZE = 5 * 1024 * 1024  # 5MB — Pillow downsizes it anyway
+ALLOWED_AVATAR_CONTENT_TYPES = ["image/jpeg", "image/png", "image/webp"]
+
 
 # Django REST Framework — JWT auth (see docs/decisions.md #010)
 
