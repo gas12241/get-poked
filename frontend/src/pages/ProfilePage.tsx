@@ -17,6 +17,7 @@ function formatMemberSince(dateJoined: string): string {
   return new Date(dateJoined).toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'long',
+    day: 'numeric',
   });
 }
 
