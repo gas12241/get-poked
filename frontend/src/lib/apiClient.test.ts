@@ -44,6 +44,39 @@ describe('apiClient', () => {
     expect(capturedAuth).toBeNull();
   });
 
+  it('sets a JSON Content-Type for a plain string body', async () => {
+    let capturedContentType: string | null = null;
+    server.use(
+      http.post(`${BASE_URL}/api/v1/thing/`, ({ request }) => {
+        capturedContentType = request.headers.get('Content-Type');
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+    await apiClient('/api/v1/thing/', {
+      method: 'POST',
+      body: JSON.stringify({ a: 1 }),
+    });
+
+    expect(capturedContentType).toContain('application/json');
+  });
+
+  it('lets the browser set its own Content-Type for a FormData body', async () => {
+    let capturedContentType: string | null = null;
+    server.use(
+      http.post(`${BASE_URL}/api/v1/thing/`, ({ request }) => {
+        capturedContentType = request.headers.get('Content-Type');
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+    const formData = new FormData();
+    formData.append('file', new Blob(['data']), 'file.txt');
+    await apiClient('/api/v1/thing/', { method: 'POST', body: formData });
+
+    expect(capturedContentType).toContain('multipart/form-data');
+  });
+
   it('throws when the response is not ok', async () => {
     server.use(
       http.get(`${BASE_URL}/api/v1/broken/`, () => {

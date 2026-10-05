@@ -68,6 +68,7 @@ export interface Profile {
   username: string;
   first_name: string;
   last_name: string;
+  avatar: string | null;
   is_verified: boolean;
   date_joined: string;
   has_usable_password: boolean;
@@ -81,6 +82,18 @@ export const updateProfile = (
   apiClient<Profile>('/api/v1/me/', {
     method: 'PATCH',
     body: JSON.stringify(data),
+  });
+
+export const uploadAvatar = (file: File) => {
+  const formData = new FormData();
+  formData.append('avatar', file);
+  return apiClient<Profile>('/api/v1/me/', { method: 'PATCH', body: formData });
+};
+
+export const removeAvatar = () =>
+  apiClient<Profile>('/api/v1/me/', {
+    method: 'PATCH',
+    body: JSON.stringify({ avatar: null }),
   });
 
 export const changePassword = (currentPassword: string, newPassword: string) =>
