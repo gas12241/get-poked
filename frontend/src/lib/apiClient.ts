@@ -79,12 +79,16 @@ async function doFetch(
 ): Promise<Response> {
   const { skipAuth, headers, ...rest } = options;
   const accessToken = useAuthStore.getState().accessToken;
+  // A FormData body (file uploads) needs the browser to set its own
+  // Content-Type with the multipart boundary — setting it ourselves breaks
+  // the boundary and silently corrupts the upload.
+  const isFormData = rest.body instanceof FormData;
 
   return fetch(`${BASE_URL}${path}`, {
     ...rest,
     credentials: 'include',
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(accessToken && !skipAuth
         ? { Authorization: `Bearer ${accessToken}` }
         : {}),
