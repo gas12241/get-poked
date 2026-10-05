@@ -37,7 +37,18 @@ describe('ProfilePage', () => {
     renderWithProviders(<ProfilePage />);
 
     expect(await screen.findByText('tester@example.com')).toBeInTheDocument();
-    expect(screen.getByText('Member since January 2026')).toBeInTheDocument();
+    // Computed the same way the component formats it (toLocaleDateString,
+    // local timezone) rather than hardcoded — date_joined is a real
+    // timestamp, so which calendar day it lands on for a viewer near
+    // midnight UTC genuinely depends on the runner's own timezone, same as
+    // any other local-time-converted moment.
+    const expectedDate = new Date('2026-01-15T00:00:00Z').toLocaleDateString(
+      undefined,
+      { year: 'numeric', month: 'long', day: 'numeric' },
+    );
+    expect(
+      screen.getByText(`Member since ${expectedDate}`),
+    ).toBeInTheDocument();
     expect(screen.getByDisplayValue('ash')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Ash')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Ketchum')).toBeInTheDocument();
