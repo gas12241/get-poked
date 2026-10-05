@@ -11,6 +11,7 @@ class User(AbstractUser):
     )
     email = models.EmailField(unique=True)
     is_verified = models.BooleanField(default=False)
+    avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
 
     # Login identifier stays email — username is a separate, unique display
     # attribute, not a credential. Google account-linking (#069) and password
