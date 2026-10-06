@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
@@ -116,6 +116,182 @@ describe('ProfilePage', () => {
     // Back to read-only, showing the new value.
     expect(await screen.findByText('red')).toBeInTheDocument();
     expect(screen.queryByLabelText('Username')).not.toBeInTheDocument();
+  });
+
+  it('shows an initial-letter placeholder when no avatar is set', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+
+    renderWithProviders(<ProfilePage />);
+    await screen.findByText('ash');
+
+    expect(screen.getByText('A')).toBeInTheDocument(); // first name "Ash"
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  });
+
+  it('shows the uploaded picture instead of the placeholder', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    server.use(
+      http.get(`${BASE_URL}/api/v1/me/`, () => {
+        return HttpResponse.json({
+          email: 'tester@example.com',
+          username: 'ash',
+          first_name: 'Ash',
+          last_name: 'Ketchum',
+          avatar: 'https://example.com/media/avatars/ash.jpg',
+          is_verified: true,
+          date_joined: '2026-01-15T00:00:00Z',
+          has_usable_password: true,
+        });
+      }),
+    );
+
+    const { container } = renderWithProviders(<ProfilePage />);
+    await screen.findByText('ash');
+
+    // Deliberately empty alt (the name is already visible as text nearby),
+    // so this is a decorative image with no accessible role to query by.
+    await waitFor(() =>
+      expect(container.querySelector('img')).toHaveAttribute(
+        'src',
+        'https://example.com/media/avatars/ash.jpg',
+      ),
+    );
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
+  });
+
+  it('uploads a picture and shows it once saved', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    server.use(
+      http.patch(`${BASE_URL}/api/v1/me/`, () => {
+        return HttpResponse.json({
+          email: 'tester@example.com',
+          username: 'ash',
+          first_name: 'Ash',
+          last_name: 'Ketchum',
+          avatar: 'https://example.com/media/avatars/new.jpg',
+          is_verified: true,
+          date_joined: '2026-01-15T00:00:00Z',
+          has_usable_password: true,
+        });
+      }),
+    );
+
+    const { container } = renderWithProviders(<ProfilePage />);
+    await screen.findByText('ash');
+
+    const file = new File(['fake-image-bytes'], 'photo.jpg', {
+      type: 'image/jpeg',
+    });
+    const input = screen.getByLabelText('Upload picture', {
+      selector: 'input',
+    });
+    await userEvent.upload(input, file);
+
+    await waitFor(() =>
+      expect(container.querySelector('img')).toHaveAttribute(
+        'src',
+        'https://example.com/media/avatars/new.jpg',
+      ),
+    );
+  });
+
+  it('rejects an oversized file client-side without calling the API', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    let requested = false;
+    server.use(
+      http.patch(`${BASE_URL}/api/v1/me/`, () => {
+        requested = true;
+        return HttpResponse.json({});
+      }),
+    );
+
+    renderWithProviders(<ProfilePage />);
+    await screen.findByText('ash');
+
+    const oversized = new File([new Uint8Array(6 * 1024 * 1024)], 'huge.jpg', {
+      type: 'image/jpeg',
+    });
+    const input = screen.getByLabelText('Upload picture', {
+      selector: 'input',
+    });
+    await userEvent.upload(input, oversized);
+
+    expect(
+      await screen.findByText('Image must be 5MB or smaller.'),
+    ).toBeInTheDocument();
+    expect(requested).toBe(false);
+  });
+
+  it('rejects a disallowed file type client-side without calling the API', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    let requested = false;
+    server.use(
+      http.patch(`${BASE_URL}/api/v1/me/`, () => {
+        requested = true;
+        return HttpResponse.json({});
+      }),
+    );
+
+    renderWithProviders(<ProfilePage />);
+    await screen.findByText('ash');
+
+    const textFile = new File(['not an image'], 'note.txt', {
+      type: 'text/plain',
+    });
+    const input = screen.getByLabelText('Upload picture', {
+      selector: 'input',
+    });
+    // userEvent.upload emulates the browser's own accept-attribute file
+    // picker filtering, which would never let a .txt through — firing the
+    // change event directly is how a non-browser-filtered file (e.g. a
+    // renamed extension, or a drag-and-drop drop that ignores accept)
+    // reaches this component's own validation, which is what's under test.
+    fireEvent.change(input, { target: { files: [textFile] } });
+
+    expect(
+      await screen.findByText('Please upload a JPEG, PNG, or WebP image.'),
+    ).toBeInTheDocument();
+    expect(requested).toBe(false);
+  });
+
+  it('removes a set picture, reverting to the placeholder', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    server.use(
+      http.get(`${BASE_URL}/api/v1/me/`, () => {
+        return HttpResponse.json({
+          email: 'tester@example.com',
+          username: 'ash',
+          first_name: 'Ash',
+          last_name: 'Ketchum',
+          avatar: 'https://example.com/media/avatars/ash.jpg',
+          is_verified: true,
+          date_joined: '2026-01-15T00:00:00Z',
+          has_usable_password: true,
+        });
+      }),
+      http.patch(`${BASE_URL}/api/v1/me/`, () => {
+        return HttpResponse.json({
+          email: 'tester@example.com',
+          username: 'ash',
+          first_name: 'Ash',
+          last_name: 'Ketchum',
+          avatar: null,
+          is_verified: true,
+          date_joined: '2026-01-15T00:00:00Z',
+          has_usable_password: true,
+        });
+      }),
+    );
+
+    const { container } = renderWithProviders(<ProfilePage />);
+    await waitFor(() =>
+      expect(container.querySelector('img')).toBeInTheDocument(),
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
+
+    expect(await screen.findByText('A')).toBeInTheDocument();
+    expect(container.querySelector('img')).not.toBeInTheDocument();
   });
 
   it('only one field is editable at a time', async () => {
