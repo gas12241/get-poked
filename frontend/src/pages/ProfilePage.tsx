@@ -1,11 +1,13 @@
-import { useId, useState } from 'react';
+import { useId, useState, type ChangeEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   changePassword,
   getProfile,
   logoutRequest,
+  removeAvatar,
   updateProfile,
+  uploadAvatar,
   type Profile,
 } from '../api/auth';
 import { errorMessage } from '../lib/apiClient';
@@ -19,6 +21,91 @@ function formatMemberSince(dateJoined: string): string {
     month: 'long',
     day: 'numeric',
   });
+}
+
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+// Picture + an "upload"/"remove" control. With no picture set, falls back to
+// a plain initial-letter circle — generated purely on the frontend (nothing
+// to store or serve for the common case of "hasn't uploaded one yet").
+function Avatar({ profile }: { profile: Profile }) {
+  const queryClient = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+
+  const uploadMutation = useMutation({
+    mutationFn: uploadAvatar,
+    onSuccess: (data) => {
+      queryClient.setQueryData(['profile'], data);
+      setError(null);
+    },
+    onError: (err) => setError(errorMessage(err)),
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: removeAvatar,
+    onSuccess: (data) => queryClient.setQueryData(['profile'], data),
+  });
+
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    if (file.size > MAX_AVATAR_BYTES) {
+      setError('Image must be 5MB or smaller.');
+      return;
+    }
+    if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
+      setError('Please upload a JPEG, PNG, or WebP image.');
+      return;
+    }
+    setError(null);
+    uploadMutation.mutate(file);
+  }
+
+  const initial = (profile.first_name || profile.username)
+    .charAt(0)
+    .toUpperCase();
+  const isPending = uploadMutation.isPending || removeMutation.isPending;
+
+  return (
+    <div className="profile-avatar-section">
+      {profile.avatar ? (
+        <img src={profile.avatar} alt="" className="profile-avatar-image" />
+      ) : (
+        <div className="profile-avatar-placeholder" aria-hidden="true">
+          {initial}
+        </div>
+      )}
+      <div className="profile-avatar-actions">
+        <label className="profile-avatar-upload-button">
+          {uploadMutation.isPending ? 'Uploading...' : 'Upload picture'}
+          <input
+            type="file"
+            accept={ALLOWED_AVATAR_TYPES.join(',')}
+            onChange={handleFileChange}
+            disabled={isPending}
+            hidden
+          />
+        </label>
+        {profile.avatar && (
+          <button
+            type="button"
+            onClick={() => removeMutation.mutate()}
+            disabled={isPending}
+          >
+            Remove
+          </button>
+        )}
+      </div>
+      {error && (
+        <div className="auth-error">
+          <p>{error}</p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 type ProfileFieldName = 'username' | 'first_name' | 'last_name';
@@ -286,6 +373,8 @@ function ProfilePage() {
       <p className="auth-switch">
         Member since {formatMemberSince(profile.date_joined)}
       </p>
+
+      <Avatar profile={profile} />
 
       <h2>Profile</h2>
       <ProfileFields profile={profile} />
