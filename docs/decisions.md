@@ -1073,6 +1073,22 @@ Why
 
 ---
 
+## Decision 073
+
+Profile pictures: real upload with a frontend-only default, deliberately no reporting mechanism yet
+
+Why
+
+- **Last piece of the same Profile-page request batch as #072.** The user confirmed two things up front: a real upload (not a set of presets) plus an auto-generated default, and — after asking why a general "Contact us" link was recommended over a real report flow, then weighing the answer — explicitly chose to skip building any reporting/moderation mechanism at all for now. The reasoning that held up: nothing in the app yet shows one user's profile to another, so there's no actual audience for a report feature today; it's revisited once something like that exists, not designed for speculatively.
+- **Processed at upload time, not lazily generated like quiz images.** `quiz/imaging.py`'s `get_or_create_masked_image` lazily generates and caches because its source is a re-fetchable external card image — regenerating on a cache miss is cheap and safe. An avatar's source is the upload itself, not something fetchable again later, so there's nothing to lazily regenerate *from*; processing happens once, synchronously, inside `UserSerializer.validate_avatar` (`core/avatars.py`), and the processed file is what's assigned to the model field directly.
+- **Center-crop to a square, then a fixed 256×256 JPEG, regardless of what was uploaded** — same reasoning `quiz/imaging.py` already applies (always writing PNG regardless of source format): one predictable output beats a branch per input shape. A non-square photo is center-cropped rather than squashed, so every stored avatar is visually sane and identically sized on disk and in the UI.
+- **The default (no-picture-yet) avatar is frontend-only** — a generated initials circle, computed from `first_name || username`, with zero backend involvement or storage cost for what's the common case for a brand-new account. No "default avatar" ever gets written to disk or returned by the API; the API just returns `null` and the frontend decides what to show instead.
+- **`apiClient.ts` detects a `FormData` body instead of a parallel upload-specific fetch wrapper.** The only other option was a second, hand-rolled fetch function for multipart uploads, which would have meant re-implementing `apiClient`'s 401-refresh-and-retry logic a second time. Instead, `doFetch` skips setting `Content-Type: application/json` when the body is a `FormData` instance (letting the browser set its own `multipart/form-data; boundary=...`) — every existing caller passes a JSON string body, never `FormData`, so this is unreached by all of them and changes nothing about their behavior.
+- **Two known, deliberate simplifications, not oversights**: re-uploading or removing an avatar never deletes the old file from storage (an orphaned-file accumulation that's fine for a dev-stage project, matching this project's existing comfort with similar calls elsewhere, e.g. the Google OAuth slice's test-account cleanup); and file-size/type validation lives only in `UserSerializer.validate_avatar` plus a client-side pre-check in `ProfilePage.tsx` — no separate rate limiting, since this is an authenticated, already-logged-in action like `MeView`'s other fields, not a pre-auth endpoint.
+- Backend: one migration (`avatar`, nullable `ImageField`, no backfill needed since every existing account is already valid with none), `core/avatars.py`'s `process_avatar`, `validate_avatar`'s size/type checks, 6 new tests (full 223-test suite, 99% coverage) — including opening the *stored* file back with Pillow to confirm it's actually 256×256 after a deliberately non-square upload, not just trusting the resize call. Frontend: `Avatar` component on `ProfilePage.tsx`, 8 new/updated tests (full 202-test suite) — the content-type rejection confirmed via a deliberate break (it failed as expected when the check was disabled) before being restored; the disallowed-file-type test itself needed `fireEvent.change` rather than `userEvent.upload`, since the latter faithfully emulates the browser's own `accept`-attribute file-picker filtering and would never let a mismatched file reach the component's own validation at all.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

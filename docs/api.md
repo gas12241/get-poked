@@ -166,7 +166,9 @@ GET or PATCH /api/v1/me/
 
 Description
 
-`email`, `username`, `first_name`, `last_name`, `is_verified`, `date_joined`, `has_usable_password` (computed, not a stored field — `false` for a Google-only account that's never set a password). PATCH accepts `username`/`first_name`/`last_name`; the rest are read-only regardless of what's in the request body — changing your own email isn't supported yet (deliberately out of scope, see docs/decisions.md #070). `username` is unique independently of `email`, same validator/format as at registration (see docs/decisions.md #071).
+`email`, `username`, `first_name`, `last_name`, `avatar`, `is_verified`, `date_joined`, `has_usable_password` (computed, not a stored field — `false` for a Google-only account that's never set a password). PATCH accepts `username`/`first_name`/`last_name`/`avatar`; the rest are read-only regardless of what's in the request body — changing your own email isn't supported yet (deliberately out of scope, see docs/decisions.md #070). `username` is unique independently of `email`, same validator/format as at registration (see docs/decisions.md #071).
+
+`avatar` is a full URL or `null`. Updating it needs `multipart/form-data` instead of JSON (`{"avatar": <file>}`) — JPEG/PNG/WebP only, 5MB max, server-side center-cropped and resized to a fixed 256×256 on upload (see docs/decisions.md #073). Send `{"avatar": null}` as a normal JSON PATCH to clear it back to no picture.
 
 Status
 
