@@ -12,6 +12,11 @@ class User(AbstractUser):
     email = models.EmailField(unique=True)
     is_verified = models.BooleanField(default=False)
     avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
+    # Google's own stable per-account ID (the `sub` claim) — null for every
+    # account that's never signed in with Google. Matched on first, with a
+    # fallback to email for pre-existing accounts (see docs/decisions.md
+    # #074) — email alone isn't a safe long-term link, since it can change.
+    google_sub = models.CharField(max_length=255, unique=True, null=True, blank=True)
 
     # Login identifier stays email — username is a separate, unique display
     # attribute, not a credential. Google account-linking (#069) and password
