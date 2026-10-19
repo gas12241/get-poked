@@ -77,8 +77,18 @@ class GoogleLoginView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        google_sub = payload["sub"]
         email = payload["email"]
-        user = User.objects.filter(email__iexact=email).first()
+
+        # Matched by Google's own stable ID first — the only link that
+        # survives the account's app-facing email changing later (see
+        # docs/decisions.md #074). Email is only a fallback, for accounts
+        # that signed in before this field existed; found that way, they get
+        # backfilled below so they never need the fallback again.
+        user = User.objects.filter(google_sub=google_sub).first()
+        if user is None:
+            user = User.objects.filter(email__iexact=email).first()
+
         if user is None:
             # password=None -> set_password(None) -> an unusable password
             # (Django's own convention), not a special case we handle
@@ -91,10 +101,18 @@ class GoogleLoginView(APIView):
                 first_name=payload.get("given_name", ""),
                 last_name=payload.get("family_name", ""),
                 is_verified=True,
+                google_sub=google_sub,
             )
-        elif not user.is_verified:
-            user.is_verified = True
-            user.save(update_fields=["is_verified"])
+        else:
+            update_fields = []
+            if not user.is_verified:
+                user.is_verified = True
+                update_fields.append("is_verified")
+            if user.google_sub != google_sub:
+                user.google_sub = google_sub
+                update_fields.append("google_sub")
+            if update_fields:
+                user.save(update_fields=update_fields)
 
         refresh = RefreshToken.for_user(user)
         response = Response({"access": str(refresh.access_token)})
