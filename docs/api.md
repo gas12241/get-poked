@@ -224,9 +224,11 @@ DELETE /api/v1/me/
 
 Description
 
+Soft delete, not immediate removal — sets `deleted_at`, blacklists every outstanding refresh token, and clears the refresh cookie. The account (and its quiz/horoscope history) is otherwise untouched. Logging back in — password or Google — within `ACCOUNT_DELETION_GRACE_PERIOD_DAYS` (30) automatically restores it by clearing `deleted_at`; no separate restore endpoint. Past that window, the (not yet scheduler-wired) `purge_deleted_accounts` management command permanently deletes it, cascading through `QuizAttempt`/`HoroscopePull`. See docs/decisions.md #076.
+
 Status
 
-Planned — see docs/decisions.md #070. Will be a soft delete (a `deleted_at` timestamp) with a restore-by-logging-back-in window, not immediate removal.
+Implemented
 
 ---
 
