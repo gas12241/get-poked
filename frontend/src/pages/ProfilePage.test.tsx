@@ -618,4 +618,84 @@ describe('ProfilePage', () => {
     await waitFor(() => expect(useAuthStore.getState().accessToken).toBeNull());
     expect(mockNavigate).toHaveBeenCalledWith('/');
   });
+
+  it('opens a confirm dialog requiring a typed phrase before deleting the account', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+
+    renderWithProviders(<ProfilePage />);
+    await screen.findByText('ash');
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Delete account' }),
+    );
+
+    expect(
+      await screen.findByText(/You can restore it by logging back in/),
+    ).toBeInTheDocument();
+    const confirmButtons = screen.getAllByRole('button', {
+      name: 'Delete account',
+    });
+    const dialogConfirmButton = confirmButtons[confirmButtons.length - 1];
+    expect(dialogConfirmButton).toBeDisabled();
+
+    await userEvent.type(
+      screen.getByLabelText('Confirmation phrase'),
+      'byebyepokemon',
+    );
+    expect(dialogConfirmButton).toBeEnabled();
+
+    // Nothing's happened yet — the account isn't deleted just by typing it.
+    expect(useAuthStore.getState().accessToken).toBe('test-token');
+  });
+
+  it('cancelling the delete-account dialog keeps the session', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+
+    renderWithProviders(<ProfilePage />);
+    await screen.findByText('ash');
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Delete account' }),
+    );
+    await screen.findByText(/You can restore it by logging back in/);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(
+      screen.queryByText(/You can restore it by logging back in/),
+    ).not.toBeInTheDocument();
+    expect(useAuthStore.getState().accessToken).toBe('test-token');
+  });
+
+  it('confirming deletes the account, clears the token, and navigates home', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    let requestedDelete = false;
+    server.use(
+      http.delete(`${BASE_URL}/api/v1/me/`, () => {
+        requestedDelete = true;
+        return HttpResponse.json({
+          detail: 'Account deleted. Log back in within 30 days to restore it.',
+        });
+      }),
+    );
+
+    renderWithProviders(<ProfilePage />);
+    await screen.findByText('ash');
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Delete account' }),
+    );
+    await screen.findByText(/You can restore it by logging back in/);
+
+    await userEvent.type(
+      screen.getByLabelText('Confirmation phrase'),
+      'byebyepokemon',
+    );
+    const confirmButtons = screen.getAllByRole('button', {
+      name: 'Delete account',
+    });
+    await userEvent.click(confirmButtons[confirmButtons.length - 1]);
+
+    await waitFor(() => expect(useAuthStore.getState().accessToken).toBeNull());
+    expect(mockNavigate).toHaveBeenCalledWith('/');
+    expect(requestedDelete).toBe(true);
+  });
 });

@@ -930,6 +930,35 @@
   color: var(--text-h);
 }
 
+.confirm-dialog-phrase {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 20px;
+  text-align: left;
+
+  label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-h);
+  }
+
+  span {
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  input {
+    font: inherit;
+    padding: 8px 10px;
+    margin-top: 4px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-h);
+  }
+}
+
 .confirm-dialog-actions {
   display: flex;
   justify-content: center;
@@ -959,8 +988,13 @@
   background: var(--danger);
   border: none;
 
-  &:hover {
+  &:hover:not(:disabled) {
     opacity: 0.85;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 }
 
@@ -1453,6 +1487,25 @@
 
   &:hover {
     background: var(--danger-bg);
+  }
+}
+
+/* More severe than .profile-logout-button (filled, not just bordered) —
+   deleting the account is a bigger step than ending the session. */
+.profile-delete-button {
+  display: block;
+  margin: 10px auto 0;
+  padding: 10px 24px;
+  font: inherit;
+  font-size: 14px;
+  color: #fff;
+  background: var(--danger);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.85;
   }
 }
 

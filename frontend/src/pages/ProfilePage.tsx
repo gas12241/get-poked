@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   changePassword,
+  deleteAccount,
   getProfile,
   logoutRequest,
   removeAvatar,
@@ -380,6 +381,7 @@ function ChangePasswordForm() {
 function ProfilePage() {
   const isAuthenticated = useIsAuthenticated();
   const [confirmingLogout, setConfirmingLogout] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const navigate = useNavigate();
 
   const profileQuery = useQuery({
@@ -397,6 +399,14 @@ function ProfilePage() {
       navigate('/');
     });
   };
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: deleteAccount,
+    onSuccess: () => {
+      useAuthStore.getState().clearAccessToken();
+      navigate('/');
+    },
+  });
 
   if (!isAuthenticated) {
     return (
@@ -464,6 +474,23 @@ function ProfilePage() {
           confirmLabel="Log out"
           onConfirm={handleLogout}
           onCancel={() => setConfirmingLogout(false)}
+        />
+      )}
+
+      <button
+        type="button"
+        className="profile-delete-button"
+        onClick={() => setConfirmingDelete(true)}
+      >
+        Delete account
+      </button>
+      {confirmingDelete && (
+        <ConfirmDialog
+          message="Delete your account? You can restore it by logging back in within 30 days — after that it's gone for good."
+          confirmLabel="Delete account"
+          confirmationPhrase="byebyepokemon"
+          onConfirm={() => deleteAccountMutation.mutate()}
+          onCancel={() => setConfirmingDelete(false)}
         />
       )}
     </div>
