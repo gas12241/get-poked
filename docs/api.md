@@ -120,7 +120,7 @@ POST /api/v1/google/
 
 Description
 
-`{credential}` — the signed ID token from Google Identity Services' frontend button, not an authorization code (no redirect flow). Verified server-side against Google's public keys and our own Client ID (the `audience` check). Finds or creates a `User` by the token's email, auto-verified; an existing unverified email/password account becomes verified and resolves to the same row (account linking by email, see docs/decisions.md #069). Google never supplies a username, so a new account gets one auto-generated from the email (see docs/decisions.md #071) — editable afterward from the profile page. Same response shape as Login (`{access}` in the body, refresh token set as an httpOnly cookie).
+`{credential}` — the signed ID token from Google Identity Services' frontend button, not an authorization code (no redirect flow). Verified server-side against Google's public keys and our own Client ID (the `audience` check). Resolves a `User` by Google's own stable per-account ID (the token's `sub` claim, stored as `google_sub`), falling back to matching by email only for accounts that signed in before this field existed — and backfilling it onto them the moment they're found that way (see docs/decisions.md #074). An existing unverified email/password account becomes verified and resolves to the same row. Google never supplies a username, so a new account gets one auto-generated from the email (see docs/decisions.md #071) — editable afterward from the profile page. Same response shape as Login (`{access}` in the body, refresh token set as an httpOnly cookie).
 
 Status
 
@@ -166,7 +166,7 @@ GET or PATCH /api/v1/me/
 
 Description
 
-`email`, `username`, `first_name`, `last_name`, `avatar`, `is_verified`, `date_joined`, `has_usable_password` (computed, not a stored field — `false` for a Google-only account that's never set a password). PATCH accepts `username`/`first_name`/`last_name`/`avatar`; the rest are read-only regardless of what's in the request body — changing your own email isn't supported yet (deliberately out of scope, see docs/decisions.md #070). `username` is unique independently of `email`, same validator/format as at registration (see docs/decisions.md #071).
+`email`, `username`, `first_name`, `last_name`, `avatar`, `is_verified`, `date_joined`, `has_usable_password` (computed, not a stored field — `false` for a Google-only account that's never set a password). PATCH accepts `username`/`first_name`/`last_name`/`avatar`; the rest are read-only regardless of what's in the request body — `email` changes through the dedicated Change Email endpoints below, not a direct PATCH (see docs/decisions.md #075). `username` is unique independently of `email`, same validator/format as at registration (see docs/decisions.md #071).
 
 `avatar` is a full URL or `null`. Updating it needs `multipart/form-data` instead of JSON (`{"avatar": <file>}`) — JPEG/PNG/WebP only, 5MB max, server-side center-cropped and resized to a fixed 256×256 on upload (see docs/decisions.md #073). Send `{"avatar": null}` as a normal JSON PATCH to clear it back to no picture.
 
@@ -187,6 +187,46 @@ Description
 Status
 
 Implemented
+
+---
+
+### Request Email Change
+
+POST /api/v1/me/email-change/
+
+Description
+
+`{new_email, current_password}`. `current_password` is only checked (and required) for an account that has a usable one — a Google-only account skips the check entirely, since an authenticated session is already proof enough for it (see docs/decisions.md #075). Sends a signed, time-limited confirmation link to the *new* address (1h expiry, same salt/token pattern as email verification and password reset, see docs/decisions.md #068). Nothing changes until the link is confirmed. Throttled (3/hour).
+
+Status
+
+Implemented
+
+---
+
+### Confirm Email Change
+
+POST /api/v1/email-change/confirm/
+
+Description
+
+`{token}`. No authentication required (the token itself identifies the account and the pending change — the same shape as Confirm Password Reset above). Re-checks the new email's uniqueness at confirm time, not just at request time, to guard the gap between the two. Unlike Confirm Password Reset, this does **not** issue new tokens or log anyone in — the requester was already logged in when they made the request; the confirming click only proves ownership of the new inbox.
+
+Status
+
+Implemented
+
+---
+
+### Delete Account
+
+DELETE /api/v1/me/
+
+Description
+
+Status
+
+Planned — see docs/decisions.md #070. Will be a soft delete (a `deleted_at` timestamp) with a restore-by-logging-back-in window, not immediate removal.
 
 ---
 

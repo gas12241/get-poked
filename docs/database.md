@@ -168,6 +168,7 @@ Fields
 - first_name / last_name — inherited; editable via the profile page (`GET`/`PATCH /api/v1/me/`, docs/decisions.md #070), populated from Google's own profile data on a Google sign-up
 - date_joined, last_login — inherited; `date_joined` is shown on the profile page as "Member since ..."
 - avatar — optional `ImageField` (see docs/decisions.md #073); uploaded via `PATCH /api/v1/me/` as `multipart/form-data`, center-cropped and resized to a fixed 256×256 JPEG on upload; `null` when the user hasn't set one, in which case the frontend shows a generated initials placeholder instead of calling the backend
+- google_sub (unique, nullable) — Google's own stable per-account ID (the verified token's `sub` claim); `null` for any account that's never signed in with Google. `GoogleLoginView` matches on this first, falling back to email only for accounts that signed in before this field existed (see docs/decisions.md #074) — email alone isn't a safe long-term link to a Google identity, since it can change (docs/decisions.md #075)
 
 ---
 
