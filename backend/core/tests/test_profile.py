@@ -1,8 +1,13 @@
+from unittest.mock import patch
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from horoscope.models import HoroscopePull
+from quiz.models import QuizAttempt
 
 User = get_user_model()
 
@@ -175,3 +180,93 @@ class ChangePasswordViewTests(APITestCase):
         self.client.cookies[settings.REFRESH_TOKEN_COOKIE_NAME] = new_cookie
         own_refresh_response = self.client.post(reverse("token_refresh"), {})
         self.assertEqual(own_refresh_response.status_code, 200)
+
+
+class DeleteAccountViewTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="tester@example.com", password="s3cret-pass!", is_verified=True
+        )
+
+    def test_requires_authentication(self):
+        response = self.client.delete(reverse("me"))
+        self.assertEqual(response.status_code, 401)
+
+    def test_soft_deletes_marks_but_does_not_remove_the_row(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.delete(reverse("me"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("30 days", response.data["detail"])
+        self.user.refresh_from_db()
+        self.assertIsNotNone(self.user.deleted_at)
+        # Still exists as a row — a real removal only happens via the purge
+        # command, past the grace period.
+        self.assertTrue(User.objects.filter(pk=self.user.pk).exists())
+
+    def test_quiz_and_horoscope_history_untouched_immediately_after_deletion(self):
+        QuizAttempt.objects.create(user=self.user, quiz_mode="guess_hp", score=3, total_questions=5)
+        HoroscopePull.objects.create(user=self.user, pull_date="2026-01-01")
+        self.client.force_authenticate(self.user)
+
+        self.client.delete(reverse("me"))
+
+        self.assertEqual(QuizAttempt.objects.filter(user=self.user).count(), 1)
+        self.assertEqual(HoroscopePull.objects.filter(user=self.user).count(), 1)
+
+    def test_blacklists_tokens_and_clears_cookie(self):
+        refresh = str(RefreshToken.for_user(self.user))
+        self.client.cookies[settings.REFRESH_TOKEN_COOKIE_NAME] = refresh
+        self.client.force_authenticate(self.user)
+
+        response = self.client.delete(reverse("me"))
+
+        self.assertEqual(response.status_code, 200)
+        # The cookie-clearing instruction is present on the response...
+        self.assertEqual(response.cookies[settings.REFRESH_TOKEN_COOKIE_NAME].value, "")
+        # ...and the blacklisted refresh token can no longer be used.
+        self.client.cookies[settings.REFRESH_TOKEN_COOKIE_NAME] = refresh
+        refresh_response = self.client.post(reverse("token_refresh"), {})
+        self.assertEqual(refresh_response.status_code, 401)
+
+    def test_logging_back_in_restores_the_account(self):
+        self.client.force_authenticate(self.user)
+        self.client.delete(reverse("me"))
+        self.user.refresh_from_db()
+        self.assertIsNotNone(self.user.deleted_at)
+
+        response = self.client.post(
+            reverse("token_obtain_pair"),
+            {"email": "tester@example.com", "password": "s3cret-pass!"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertIsNone(self.user.deleted_at)
+
+    @patch("core.views.id_token.verify_oauth2_token")
+    def test_logging_back_in_via_google_restores_the_account(self, mock_verify):
+        google_user = User.objects.create_user(
+            email="google@example.com",
+            password=None,
+            is_verified=True,
+            google_sub="sub-restore",
+        )
+        self.client.force_authenticate(google_user)
+        self.client.delete(reverse("me"))
+        google_user.refresh_from_db()
+        self.assertIsNotNone(google_user.deleted_at)
+
+        mock_verify.return_value = {
+            "email": "google@example.com",
+            "email_verified": True,
+            "given_name": "Ash",
+            "family_name": "Ketchum",
+            "sub": "sub-restore",
+        }
+        response = self.client.post(reverse("google-login"), {"credential": "fake-token"})
+
+        self.assertEqual(response.status_code, 200)
+        google_user.refresh_from_db()
+        self.assertIsNone(google_user.deleted_at)
