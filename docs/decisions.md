@@ -1116,6 +1116,21 @@ Why
 
 ---
 
+## Decision 076
+
+Account deletion: soft delete with a 30-day restore-by-login window
+
+Why
+
+- **The first of the two items #070 deferred, and the user's own explicit design call**: a typed confirmation phrase in the delete dialog ("type `byebyepokemon` to confirm"), and a 30-day grace period where logging back in restores the account instead of the deletion being immediate and final. Both raised directly by the user, not defaulted to.
+- **`deleted_at` (nullable timestamp) is the sole soft-delete marker — `is_active` is deliberately left untouched.** The account must still be able to log in normally after "deletion," since logging in *is* the restore action; flipping `is_active` to `False` would have blocked exactly the path meant to bring the account back. `MeView.destroy()` sets `deleted_at`, blacklists every outstanding refresh token, and clears the cookie — the row (and all its quiz/horoscope history) is otherwise untouched.
+- **Restore happens on *any* successful login, password or Google** — `EmailTokenObtainPairSerializer.validate()` and `GoogleLoginView`'s existing "found a user" branch both clear `deleted_at` the moment a login succeeds, no separate "restore" endpoint or confirmation step. Proven live, not just in tests: a disposable account was deleted, then signed back into through the real login form, and a direct DB check showed `deleted_at` was `None` again, exactly from that login alone.
+- **Hard delete only ever happens via a separate `purge_deleted_accounts` management command**, filtering on `deleted_at` older than `ACCOUNT_DELETION_GRACE_PERIOD_DAYS` (30) and calling `.delete()` — which cascades through `QuizAttempt`/`HoroscopePull` and their children exactly as confirmed by the earlier schema research (both FKs are `on_delete=CASCADE`). This project has no task scheduler yet (deployment is Phase 7), so the command ships ready to invoke manually or wire to a cron/Celery-beat job later — the same "logic now, infra later" treatment already applied elsewhere (e.g. the avatar feature's media handling). Confirmed live: a backdated test account was actually and permanently removed by a real run of the command.
+- **The typed-phrase gate is a new, generic capability on `ConfirmDialog`** (`confirmationPhrase?: string`), not a one-off hack for this screen — when set, the confirm button stays disabled until the exact text is typed into a rendered input; when unset (every existing caller, including logout), behavior is unchanged. The phrase's hint text and the input's accessible name are deliberately kept separate (`aria-describedby`, not text inside the `<label>`) — the same accessible-name-concatenation mistake decisions #072 already found and fixed once in this project, not repeated here.
+- 10 new backend tests (full 249-test suite, 99% coverage) — including a direct Google-login restore test and a purge-command test confirming the cascade — + 5 new/updated frontend tests (full 213-test suite) — the typed-phrase gate confirmed to fail against a deliberately broken version (the prop removed) before being restored, both as an isolated `ConfirmDialog` test and again through the real `ProfilePage` integration. Verified live in both light and dark mode: the confirm button genuinely disabled until the exact phrase is typed, deletion logging out and redirecting home, a real login afterward restoring the account, and a real run of the purge command permanently removing a backdated one.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).
