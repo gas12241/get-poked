@@ -1089,6 +1089,33 @@ Why
 
 ---
 
+## Decision 074
+
+Match Google sign-in by its own stable account ID, not by email
+
+Why
+
+- **Found by reasoning through a design change, not from a bug report.** While planning self-service email change (#075), tracing through what would happen if an account's email changed surfaced this: `GoogleLoginView` resolved accounts purely by `User.objects.filter(email__iexact=email)`. If an account's app email ever changed by any means, the next Google sign-in would still assert the *original* email, find no match, and silently create a second, empty account — orphaning the real one's entire quiz/horoscope history with no error and no obvious symptom. This was fixed *before* email change shipped, specifically so that feature would be safe to use on day one rather than shipping a known gap.
+- **The fix: store Google's own stable per-account ID (the `sub` claim) in a new `google_sub` column, and match on that first.** `sub` is already present in every verified token payload (`id_token.verify_oauth2_token`'s return value) — it was simply never persisted. Email is kept only as a one-time fallback, for accounts that signed in before this field existed; the moment one is found that way, its `google_sub` is backfilled, so the fallback is only ever needed once per account.
+- **Nullable and unique, no backfill migration needed** — unlike the `username` field (#071), which needed a three-step add-nullable/backfill/enforce-not-null migration because every row needed a value. `google_sub` stays `null` for every account that's never signed in with Google (most of them), and Postgres doesn't treat multiple `NULL`s as colliding under a unique constraint, so a plain `AddField` was sufficient.
+- Proven with a test that creates an account via Google, changes its email directly (simulating #075's feature), signs in via Google again with the same `sub`, and asserts it resolves to the *same* account rather than creating a new one — the actual regression this exists to prevent, not just a unit test of the lookup logic. 4 new backend tests (full 226-test suite, 99% coverage).
+
+---
+
+## Decision 075
+
+Self-service email change: request/confirm, safe for every account type
+
+Why
+
+- **Last of the two items decisions.md #070 deliberately deferred.** Built as a request/confirm pair reusing the exact token-signing shape email verification and password reset already established (`core/tokens.py`): a third salt (`"email-change"`) so a token of one type can never be replayed as another, same 1-hour expiry tier as password reset (changing login identity is at least as sensitive as changing a password), confirmation emailed to the *new* address — not the current one — since that's the actual thing needing proof of ownership.
+- **The current-password check only applies when there's a password to check.** `check_password()` always fails against a Google-only account's unusable password, so requiring it unconditionally would make this feature impossible for those accounts. Instead, `RequestEmailChangeView` checks `request.user.has_usable_password()` first and only enforces the password when it's `True` — an authenticated session alone is accepted as proof for a Google-only account, the same standard `MeView`'s other PATCH-able fields already apply. This is only safe because of #074 shipping first: before that fix, a Google-only account changing its email would have orphaned itself from Google sign-in; proven directly with a test that requests and confirms an email change on a Google-only account, then signs in via Google again and confirms it still resolves to the same (renamed) account.
+- **Confirming doesn't re-issue tokens or log anyone in**, unlike password-reset-confirm. The difference: a password-reset link's click is itself the proof of account control (the user isn't logged in yet at that point). Here, the user was already logged in when they *requested* the change — the new-email click only proves the new inbox, so the response is just `{"detail": "Email updated."}` and the frontend invalidates its cached profile. Existing access/refresh tokens keep working unmodified, since simplejwt's claims embed the user's pk, not their email.
+- **`ConfirmEmailChangePage.tsx` auto-confirms on load** (a `useQuery` gated on the token being present, same shape as the existing `VerifyEmailPage.tsx`), rather than requiring an extra button click — matching the one established convention this project already has for "you clicked a link, now confirm" pages, instead of inventing a second pattern.
+- 13 new backend tests (full 239-test suite, 99% coverage), including the full request→email→token→confirm round trip and the cross-salt rejection proof. 6 new/updated frontend tests (full 208-test suite) — adding the "Email" section surfaced a real test-scoping gap: two existing edit-gating tests asserted "exactly one textbox on the page," which broke once the email form's own always-present input joined the count; fixed by scoping those assertions to `.profile-fields` specifically, since the email input was never part of what they were testing. Verified live: wrong password rejected, the real `3/hour` throttle genuinely firing (not just asserted in a test), a full request→confirm round trip via the real backend console-log email, old credentials failing afterward and the new ones working.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).
