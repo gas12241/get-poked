@@ -15,16 +15,27 @@ from rest_framework_simplejwt.token_blacklist.models import (
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from .emails import send_password_reset_email, send_verification_email
+from .emails import (
+    send_email_change_email,
+    send_password_reset_email,
+    send_verification_email,
+)
 from .serializers import (
     ChangePasswordSerializer,
+    ConfirmEmailChangeSerializer,
     CookieTokenRefreshSerializer,
     EmailTokenObtainPairSerializer,
     PasswordResetConfirmSerializer,
     RegisterSerializer,
+    RequestEmailChangeSerializer,
     UserSerializer,
 )
-from .tokens import read_password_reset_token, read_verification_token
+from .tokens import (
+    make_email_change_token,
+    read_email_change_token,
+    read_password_reset_token,
+    read_verification_token,
+)
 
 User = get_user_model()
 
@@ -219,6 +230,67 @@ class PasswordResetConfirmView(APIView):
         response = Response({"access": str(refresh.access_token)})
         _set_refresh_cookie(response, refresh)
         return response
+
+
+class RequestEmailChangeView(APIView):
+    throttle_scope = "email-change"
+
+    def post(self, request, *args, **kwargs):
+        serializer = RequestEmailChangeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Only checked when there's a password to check — a Google-only
+        # account has none, and an authenticated session is already enough
+        # proof for it, same as every other field MeView lets it PATCH.
+        if request.user.has_usable_password():
+            current_password = serializer.validated_data.get("current_password", "")
+            if not request.user.check_password(current_password):
+                return Response(
+                    {"detail": "Current password is incorrect."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        new_email = serializer.validated_data["new_email"]
+        token = make_email_change_token(request.user, new_email)
+        send_email_change_email(new_email, token)
+        return Response({"detail": "Check your new inbox to confirm the change."})
+
+
+class ConfirmEmailChangeView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = ConfirmEmailChangeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            payload = read_email_change_token(serializer.validated_data["token"])
+        except signing.BadSignature:
+            return Response(
+                {"detail": "This link is invalid or has expired."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        new_email = payload["new_email"]
+        # Guards the gap between request and confirm — someone else could
+        # have taken this email in the meantime.
+        if User.objects.filter(email__iexact=new_email).exists():
+            return Response(
+                {"detail": "That email is already in use."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            user = User.objects.get(pk=payload["user_id"])
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "This link is invalid or has expired."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.email = new_email
+        user.save(update_fields=["email"])
+        return Response({"detail": "Email updated."})
 
 
 class MeView(generics.RetrieveUpdateAPIView):

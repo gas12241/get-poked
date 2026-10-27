@@ -241,4 +241,14 @@ export const handlers = [
   http.post(`${BASE_URL}/api/v1/me/change-password/`, () => {
     return HttpResponse.json({ detail: 'Password changed.' });
   }),
+
+  http.post(`${BASE_URL}/api/v1/me/email-change/`, () => {
+    return HttpResponse.json({
+      detail: 'Check your new inbox to confirm the change.',
+    });
+  }),
+
+  http.post(`${BASE_URL}/api/v1/email-change/confirm/`, () => {
+    return HttpResponse.json({ detail: 'Email updated.' });
+  }),
 ];

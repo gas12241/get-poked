@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
@@ -34,7 +34,7 @@ describe('ProfilePage', () => {
   it('shows the fetched profile when logged in, fields read-only until Edit is clicked', async () => {
     useAuthStore.getState().setAccessToken('test-token');
 
-    renderWithProviders(<ProfilePage />);
+    const { container } = renderWithProviders(<ProfilePage />);
 
     expect(
       await screen.findByRole('heading', { name: 'Welcome, Ash' }),
@@ -54,10 +54,16 @@ describe('ProfilePage', () => {
     ).toBeInTheDocument();
 
     // Plain text, not inputs — nothing is editable until Edit is clicked.
+    // Scoped to .profile-fields: the separate Email section's input is
+    // unconditionally present and isn't part of this edit-gating mechanism.
     expect(screen.getByText('ash')).toBeInTheDocument();
     expect(screen.getByText('Ash')).toBeInTheDocument();
     expect(screen.getByText('Ketchum')).toBeInTheDocument();
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    const profileFields = container.querySelector('.profile-fields');
+    expect(profileFields).not.toBeNull();
+    expect(
+      within(profileFields as HTMLElement).queryByRole('textbox'),
+    ).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Edit' })).toHaveLength(3);
   });
 
@@ -297,12 +303,14 @@ describe('ProfilePage', () => {
   it('only one field is editable at a time', async () => {
     useAuthStore.getState().setAccessToken('test-token');
 
-    renderWithProviders(<ProfilePage />);
+    const { container } = renderWithProviders(<ProfilePage />);
     await screen.findByText('ash');
+    const profileFields = () =>
+      within(container.querySelector('.profile-fields') as HTMLElement);
 
     await userEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]);
     expect(screen.getByLabelText('Username')).toBeInTheDocument();
-    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+    expect(profileFields().getAllByRole('textbox')).toHaveLength(1);
 
     // Username's row is now a Save/Cancel form with no Edit button, leaving
     // First name's and Last name's — click whichever is first. Opening it
@@ -310,7 +318,7 @@ describe('ProfilePage', () => {
     await userEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]);
 
     expect(screen.queryByLabelText('Username')).not.toBeInTheDocument();
-    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+    expect(profileFields().getAllByRole('textbox')).toHaveLength(1);
   });
 
   it('cancelling an edit discards the change and leaves the field read-only', async () => {
@@ -350,6 +358,83 @@ describe('ProfilePage', () => {
     expect(
       await screen.findByText('This field must be unique.'),
     ).toBeInTheDocument();
+  });
+
+  it('requests an email change and shows a check-your-inbox message', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    server.use(
+      http.post(`${BASE_URL}/api/v1/me/email-change/`, async ({ request }) => {
+        const body = (await request.json()) as {
+          new_email?: string;
+          current_password?: string;
+        };
+        expect(body).toEqual({
+          new_email: 'new@example.com',
+          current_password: 'old-pass123!',
+        });
+        return HttpResponse.json({
+          detail: 'Check your new inbox to confirm the change.',
+        });
+      }),
+    );
+
+    renderWithProviders(<ProfilePage />);
+    await screen.findByText('ash');
+
+    await userEvent.type(screen.getByLabelText('New email'), 'new@example.com');
+    await userEvent.type(screen.getByLabelText('Password'), 'old-pass123!');
+    await userEvent.click(screen.getByRole('button', { name: 'Change email' }));
+
+    expect(
+      await screen.findByText(/for a link to confirm the change/),
+    ).toBeInTheDocument();
+    expect(screen.getByText('new@example.com')).toBeInTheDocument();
+  });
+
+  it('shows a backend error for an email-change wrong password', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    server.use(
+      http.post(`${BASE_URL}/api/v1/me/email-change/`, () => {
+        return HttpResponse.json(
+          { detail: 'Current password is incorrect.' },
+          { status: 400 },
+        );
+      }),
+    );
+
+    renderWithProviders(<ProfilePage />);
+    await screen.findByText('ash');
+
+    await userEvent.type(screen.getByLabelText('New email'), 'new@example.com');
+    await userEvent.type(screen.getByLabelText('Password'), 'wrong-password');
+    await userEvent.click(screen.getByRole('button', { name: 'Change email' }));
+
+    expect(
+      await screen.findByText('Current password is incorrect.'),
+    ).toBeInTheDocument();
+  });
+
+  it('does not show a password field for a Google-only account', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    server.use(
+      http.get(`${BASE_URL}/api/v1/me/`, () => {
+        return HttpResponse.json({
+          email: 'google-user@example.com',
+          username: 'redgoogle',
+          first_name: 'Red',
+          last_name: '',
+          avatar: null,
+          is_verified: true,
+          date_joined: '2026-01-15T00:00:00Z',
+          has_usable_password: false,
+        });
+      }),
+    );
+
+    renderWithProviders(<ProfilePage />);
+
+    expect(await screen.findByLabelText('New email')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
   });
 
   it('shows the change-password form for an account with a usable password', async () => {

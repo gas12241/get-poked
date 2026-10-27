@@ -24,3 +24,13 @@ def send_password_reset_email(user) -> None:
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[user.email],
     )
+
+
+def send_email_change_email(new_email: str, token: str) -> None:
+    link = f"{settings.FRONTEND_URL}/confirm-email-change?token={token}"
+    send_mail(
+        subject="Confirm your new Get Poked email",
+        message=f"Click to confirm your new email address: {link}",
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[new_email],
+    )

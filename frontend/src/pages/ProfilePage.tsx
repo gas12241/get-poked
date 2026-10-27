@@ -6,6 +6,7 @@ import {
   getProfile,
   logoutRequest,
   removeAvatar,
+  requestEmailChange,
   updateProfile,
   uploadAvatar,
   type Profile,
@@ -246,6 +247,63 @@ function ProfileFields({ profile }: { profile: Profile }) {
   );
 }
 
+function ChangeEmailForm({ profile }: { profile: Profile }) {
+  const [newEmail, setNewEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+
+  const requestMutation = useMutation({
+    mutationFn: () =>
+      requestEmailChange(newEmail, currentPassword || undefined),
+  });
+
+  if (requestMutation.isSuccess) {
+    return (
+      <p>
+        Check <strong>{newEmail}</strong> for a link to confirm the change.
+      </p>
+    );
+  }
+
+  return (
+    <form
+      className="auth-form"
+      onSubmit={(e) => {
+        e.preventDefault();
+        requestMutation.mutate();
+      }}
+    >
+      <label>
+        New email
+        <input
+          type="email"
+          value={newEmail}
+          onChange={(e) => setNewEmail(e.target.value)}
+          required
+        />
+      </label>
+      {profile.has_usable_password && (
+        <label>
+          Password
+          <input
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            required
+          />
+        </label>
+      )}
+      <button type="submit" disabled={requestMutation.isPending}>
+        {requestMutation.isPending ? 'Sending...' : 'Change email'}
+      </button>
+      {requestMutation.isError && (
+        <div className="auth-error">
+          <p>{errorMessage(requestMutation.error)}</p>
+        </div>
+      )}
+    </form>
+  );
+}
+
 function ChangePasswordForm() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -378,6 +436,9 @@ function ProfilePage() {
 
       <h2>Profile</h2>
       <ProfileFields profile={profile} />
+
+      <h2>Email</h2>
+      <ChangeEmailForm profile={profile} />
 
       <h2>Password</h2>
       {profile.has_usable_password ? (

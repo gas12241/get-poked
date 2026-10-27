@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     ChangePasswordView,
+    ConfirmEmailChangeView,
     CookieTokenObtainPairView,
     CookieTokenRefreshView,
     GoogleLoginView,
@@ -11,6 +12,7 @@ from .views import (
     PasswordResetConfirmView,
     PasswordResetRequestView,
     RegisterView,
+    RequestEmailChangeView,
     ResendVerificationView,
     VerifyEmailView,
 )
@@ -43,5 +45,15 @@ urlpatterns = [
         "me/change-password/",
         ChangePasswordView.as_view(),
         name="change-password",
+    ),
+    path(
+        "me/email-change/",
+        RequestEmailChangeView.as_view(),
+        name="email-change",
+    ),
+    path(
+        "email-change/confirm/",
+        ConfirmEmailChangeView.as_view(),
+        name="email-change-confirm",
     ),
 ]

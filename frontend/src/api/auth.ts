@@ -96,6 +96,25 @@ export const removeAvatar = () =>
     body: JSON.stringify({ avatar: null }),
   });
 
+export const requestEmailChange = (
+  newEmail: string,
+  currentPassword?: string,
+) =>
+  apiClient<{ detail: string }>('/api/v1/me/email-change/', {
+    method: 'POST',
+    body: JSON.stringify({
+      new_email: newEmail,
+      current_password: currentPassword ?? '',
+    }),
+  });
+
+export const confirmEmailChange = (token: string) =>
+  apiClient<{ detail: string }>('/api/v1/email-change/confirm/', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+    skipAuth: true,
+  });
+
 export const changePassword = (currentPassword: string, newPassword: string) =>
   apiClient<{ detail: string }>('/api/v1/me/change-password/', {
     method: 'POST',
