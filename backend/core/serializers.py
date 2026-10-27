@@ -35,6 +35,11 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
             raise serializers.ValidationError(
                 {"detail": "Please verify your email before logging in."}
             )
+        if self.user.deleted_at is not None:
+            # Logging in is the restore action for a soft-deleted account
+            # (see docs/decisions.md #076).
+            self.user.deleted_at = None
+            self.user.save(update_fields=["deleted_at"])
         return data
 
 

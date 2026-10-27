@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import signing
+from django.utils import timezone
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 from rest_framework import generics, status
@@ -122,6 +123,11 @@ class GoogleLoginView(APIView):
             if user.google_sub != google_sub:
                 user.google_sub = google_sub
                 update_fields.append("google_sub")
+            if user.deleted_at is not None:
+                # Logging back in — via Google or email/password — is the
+                # restore action for a soft-deleted account (#076).
+                user.deleted_at = None
+                update_fields.append("deleted_at")
             if update_fields:
                 user.save(update_fields=update_fields)
 
@@ -293,11 +299,32 @@ class ConfirmEmailChangeView(APIView):
         return Response({"detail": "Email updated."})
 
 
-class MeView(generics.RetrieveUpdateAPIView):
+class MeView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = UserSerializer
 
     def get_object(self):
         return self.request.user
+
+    def destroy(self, request, *args, **kwargs):
+        # Soft delete — the row (and its quiz/horoscope history) is left
+        # untouched aside from this one timestamp, so restoring is just
+        # clearing it. A real removal only happens once
+        # purge_deleted_accounts runs past the grace period.
+        user = self.get_object()
+        _blacklist_outstanding_tokens(user)
+        user.deleted_at = timezone.now()
+        user.save(update_fields=["deleted_at"])
+
+        response = Response(
+            {
+                "detail": (
+                    "Account deleted. Log back in within "
+                    f"{settings.ACCOUNT_DELETION_GRACE_PERIOD_DAYS} days to restore it."
+                )
+            }
+        )
+        response.delete_cookie(settings.REFRESH_TOKEN_COOKIE_NAME)
+        return response
 
 
 class ChangePasswordView(APIView):

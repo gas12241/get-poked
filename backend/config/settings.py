@@ -190,6 +190,11 @@ PASSWORD_RESET_TOKEN_MAX_AGE = 60 * 60  # 1 hour
 # identity is at least as sensitive as changing its password.
 EMAIL_CHANGE_TOKEN_MAX_AGE = 60 * 60  # 1 hour
 
+# How long a soft-deleted account can be restored by logging back in before
+# the purge_deleted_accounts command permanently removes it (see
+# docs/decisions.md #076).
+ACCOUNT_DELETION_GRACE_PERIOD_DAYS = 30
+
 
 # Pokémon TCG API (see docs/decisions.md #022)
 

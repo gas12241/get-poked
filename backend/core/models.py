@@ -17,6 +17,10 @@ class User(AbstractUser):
     # fallback to email for pre-existing accounts (see docs/decisions.md
     # #074) — email alone isn't a safe long-term link, since it can change.
     google_sub = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    # Soft-delete marker (see docs/decisions.md #076) — null means active.
+    # `is_active` is deliberately left untouched: the account must still be
+    # able to log in normally, since logging in is the restore action.
+    deleted_at = models.DateTimeField(null=True, blank=True)
 
     # Login identifier stays email — username is a separate, unique display
     # attribute, not a credential. Google account-linking (#069) and password
