@@ -251,4 +251,10 @@ export const handlers = [
   http.post(`${BASE_URL}/api/v1/email-change/confirm/`, () => {
     return HttpResponse.json({ detail: 'Email updated.' });
   }),
+
+  http.delete(`${BASE_URL}/api/v1/me/`, () => {
+    return HttpResponse.json({
+      detail: 'Account deleted. Log back in within 30 days to restore it.',
+    });
+  }),
 ];

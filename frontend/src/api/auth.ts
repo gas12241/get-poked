@@ -115,6 +115,9 @@ export const confirmEmailChange = (token: string) =>
     skipAuth: true,
   });
 
+export const deleteAccount = () =>
+  apiClient<{ detail: string }>('/api/v1/me/', { method: 'DELETE' });
+
 export const changePassword = (currentPassword: string, newPassword: string) =>
   apiClient<{ detail: string }>('/api/v1/me/change-password/', {
     method: 'POST',

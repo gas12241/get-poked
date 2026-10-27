@@ -121,4 +121,54 @@ describe('ConfirmDialog', () => {
 
     expect(onCancel).not.toHaveBeenCalled();
   });
+
+  it('disables confirm until the exact confirmation phrase is typed', async () => {
+    const onConfirm = vi.fn();
+    renderWithProviders(
+      <ConfirmDialog
+        message="Delete your account?"
+        confirmLabel="Delete account"
+        onConfirm={onConfirm}
+        onCancel={vi.fn()}
+        confirmationPhrase="byebyepokemon"
+      />,
+    );
+
+    const confirmButton = screen.getByRole('button', {
+      name: 'Delete account',
+    });
+    expect(confirmButton).toBeDisabled();
+
+    await userEvent.type(
+      screen.getByLabelText('Confirmation phrase'),
+      'not quite right',
+    );
+    expect(confirmButton).toBeDisabled();
+
+    await userEvent.clear(screen.getByLabelText('Confirmation phrase'));
+    await userEvent.type(
+      screen.getByLabelText('Confirmation phrase'),
+      'byebyepokemon',
+    );
+    expect(confirmButton).toBeEnabled();
+
+    await userEvent.click(confirmButton);
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not render a phrase input or disable confirm when no phrase is required', () => {
+    renderWithProviders(
+      <ConfirmDialog
+        message="Log out of your account?"
+        confirmLabel="Log out"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.queryByLabelText('Confirmation phrase'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Log out' })).toBeEnabled();
+  });
 });
