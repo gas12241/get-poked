@@ -3,6 +3,7 @@ from django.core import signing
 
 VERIFICATION_SALT = "email-verification"
 PASSWORD_RESET_SALT = "password-reset"
+EMAIL_CHANGE_SALT = "email-change"
 
 
 def _make_token(payload: dict, salt: str) -> str:
@@ -28,3 +29,11 @@ def make_password_reset_token(user) -> str:
 
 def read_password_reset_token(token: str) -> dict:
     return _read_token(token, PASSWORD_RESET_SALT, settings.PASSWORD_RESET_TOKEN_MAX_AGE)
+
+
+def make_email_change_token(user, new_email: str) -> str:
+    return _make_token({"user_id": user.pk, "new_email": new_email}, EMAIL_CHANGE_SALT)
+
+
+def read_email_change_token(token: str) -> dict:
+    return _read_token(token, EMAIL_CHANGE_SALT, settings.EMAIL_CHANGE_TOKEN_MAX_AGE)

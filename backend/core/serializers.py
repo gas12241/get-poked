@@ -93,6 +93,20 @@ class UserSerializer(serializers.ModelSerializer):
         return process_avatar(value)
 
 
+class RequestEmailChangeSerializer(serializers.Serializer):
+    new_email = serializers.EmailField()
+    current_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    def validate_new_email(self, value):
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("That email is already in use.")
+        return value
+
+
+class ConfirmEmailChangeSerializer(serializers.Serializer):
+    token = serializers.CharField()
+
+
 class ChangePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(write_only=True)
