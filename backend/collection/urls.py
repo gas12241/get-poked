@@ -4,6 +4,7 @@ from .views import (
     CollectionEntriesByCardView,
     CollectionEntryDetailView,
     CollectionEntryListCreateView,
+    CollectionStatsView,
     FavoriteDestroyView,
     FavoriteIdsByCardView,
     FavoriteListCreateView,
@@ -19,6 +20,7 @@ urlpatterns = [
         CollectionEntriesByCardView.as_view(),
         name="collection-entries-by-card",
     ),
+    path("collections/stats/", CollectionStatsView.as_view(), name="collection-stats"),
     path(
         "collections/<int:pk>/",
         CollectionEntryDetailView.as_view(),

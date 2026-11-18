@@ -1,6 +1,9 @@
+from django.db.models import Count, Sum
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from cards.models import Set
 
 from .models import CollectionEntry, Favorite
 from .serializers import CollectionEntrySerializer, FavoriteSerializer
@@ -58,5 +61,51 @@ class CollectionEntriesByCardView(APIView):
             {
                 entry["card_id"]: {"id": entry["id"], "quantity": entry["quantity"]}
                 for entry in entries
+            }
+        )
+
+
+class CollectionStatsView(APIView):
+    """Summary numbers plus a per-set completion and per-rarity breakdown
+    for the requesting user's own collection. The codebase's first
+    Count/annotate-based endpoint — see docs/decisions.md #078."""
+
+    def get(self, request):
+        entries = CollectionEntry.objects.filter(user=request.user)
+
+        owned_by_set = entries.values("card__set").annotate(owned=Count("card", distinct=True))
+        set_totals = {
+            row["id"]: row
+            for row in Set.objects.filter(id__in=[r["card__set"] for r in owned_by_set])
+            .annotate(total=Count("cards"))
+            .values("id", "name", "total")
+        }
+        by_set = sorted(
+            (
+                {
+                    "set_id": row["card__set"],
+                    "set_name": set_totals[row["card__set"]]["name"],
+                    "owned": row["owned"],
+                    "total": set_totals[row["card__set"]]["total"],
+                }
+                for row in owned_by_set
+            ),
+            key=lambda s: (-(s["owned"] / s["total"]), s["set_name"]),
+        )
+
+        by_rarity = [
+            {"rarity": row["card__rarity"], "count": row["count"]}
+            for row in entries.values("card__rarity")
+            .annotate(count=Count("card", distinct=True))
+            .order_by("-count")
+        ]
+
+        return Response(
+            {
+                "total_unique_cards": entries.count(),
+                "total_quantity": entries.aggregate(total=Sum("quantity"))["total"] or 0,
+                "total_favorites": Favorite.objects.filter(user=request.user).count(),
+                "by_set": by_set,
+                "by_rarity": by_rarity,
             }
         )
