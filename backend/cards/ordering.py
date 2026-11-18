@@ -37,6 +37,24 @@ class CardOrderingFilter(OrderingFilter):
         if not ordering:
             return queryset
 
+        # `date_added` only resolves when `?owned=`/`?favorited=` annotated
+        # it (see CardFilter) — drop it rather than letting Django raise a
+        # FieldError if it's requested without either active. Not a case
+        # the frontend ever triggers (the sort option only renders in that
+        # context), but a direct API request shouldn't 500 over it.
+        has_date_added = any(field.lstrip("-") == "date_added" for field in ordering)
+        if has_date_added and "date_added" not in queryset.query.annotations:
+            ordering = [field for field in ordering if field.lstrip("-") != "date_added"]
+            has_date_added = False
+            if not ordering:
+                return queryset
+
+        if has_date_added:
+            # Unrelated to the number/release_date tiebreak logic below —
+            # just sort by it directly, with an `id` tiebreak for
+            # determinism (two cards added in the same instant).
+            return queryset.order_by(*ordering, "id")
+
         has_number = any(field.lstrip("-") == "number" for field in ordering)
         has_release_date = any(field.lstrip("-") == "release_date" for field in ordering)
         has_name = any(field.lstrip("-") == "name" for field in ordering)

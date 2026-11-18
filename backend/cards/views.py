@@ -48,7 +48,10 @@ class CardViewSet(ReadOnlyModelViewSet):
     # typed term matches it directly with no extra normalization needed on
     # the query side. See docs/decisions.md #060.
     search_fields = ["name", "name_ascii"]
-    ordering_fields = ["name", "number", "rarity", "release_date"]
+    # `date_added` only resolves when `?owned=`/`?favorited=` has
+    # annotated it (see CardFilter) — CardOrderingFilter drops the request
+    # rather than erroring if it's asked for without either active.
+    ordering_fields = ["name", "number", "rarity", "release_date", "date_added"]
 
     def get_serializer_class(self):
         if self.action == "retrieve":

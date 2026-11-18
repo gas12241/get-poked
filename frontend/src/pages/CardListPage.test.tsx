@@ -626,4 +626,83 @@ describe('CardListPage', () => {
       expect(capturedParams.current?.get('set')).toBe('1');
     });
   });
+
+  it('only offers "Date added" as a sort option once Owned/Favorites is active', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    renderWithProviders(<CardListPage />);
+
+    await screen.findByText('Charizard');
+    expect(
+      screen.queryByRole('option', { name: 'Sort: Date added' }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Owned' }));
+
+    expect(
+      screen.getByRole('option', { name: 'Sort: Date added' }),
+    ).toBeInTheDocument();
+  });
+
+  it('sends date_added as the ordering param, oldest/newest first per the direction select', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    let capturedOrdering: string | null = null;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, ({ request }) => {
+        capturedOrdering = new URL(request.url).searchParams.get('ordering');
+        return HttpResponse.json({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Owned' }));
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Sort by' }),
+      'date_added',
+    );
+
+    await waitFor(() => expect(capturedOrdering).toBe('date_added'));
+
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Sort direction' }),
+      'desc',
+    );
+
+    await waitFor(() => expect(capturedOrdering).toBe('-date_added'));
+  });
+
+  it('resets the sort to Name when switching back to "All cards" while sorted by date added', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    let capturedOrdering: string | null = null;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, ({ request }) => {
+        capturedOrdering = new URL(request.url).searchParams.get('ordering');
+        return HttpResponse.json({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Owned' }));
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Sort by' }),
+      'date_added',
+    );
+    await waitFor(() => expect(capturedOrdering).toBe('date_added'));
+
+    await userEvent.click(screen.getByRole('button', { name: 'All cards' }));
+
+    await waitFor(() => expect(capturedOrdering).toBe('name'));
+    expect(screen.getByRole('combobox', { name: 'Sort by' })).toHaveValue(
+      'name',
+    );
+  });
 });

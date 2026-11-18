@@ -1,4 +1,5 @@
 import django_filters
+from django.db.models import F
 
 from .models import Card
 
@@ -29,7 +30,14 @@ class CardFilter(django_filters.FilterSet):
         user = self.request.user
         if not user.is_authenticated:
             return queryset.none()
-        return queryset.filter(collection_entries__user=user)
+        # Annotated here (not just filtered) so `?ordering=date_added` can
+        # sort by when the card was added to the collection — see
+        # CardOrderingFilter. Reuses the same join the .filter() above
+        # already creates (verified directly — one INNER JOIN, not two),
+        # so this is the row's own date_added, not an unrelated one.
+        return queryset.filter(collection_entries__user=user).annotate(
+            date_added=F("collection_entries__date_added")
+        )
 
     def filter_favorited(self, queryset, name, value):
         if not value:
@@ -37,4 +45,6 @@ class CardFilter(django_filters.FilterSet):
         user = self.request.user
         if not user.is_authenticated:
             return queryset.none()
-        return queryset.filter(favorited_by__user=user)
+        return queryset.filter(favorited_by__user=user).annotate(
+            date_added=F("favorited_by__date_added")
+        )

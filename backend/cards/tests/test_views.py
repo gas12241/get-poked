@@ -1,3 +1,5 @@
+import datetime
+
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
@@ -213,6 +215,78 @@ class CardOwnedFavoritedFilterTests(CardsSetsTypesTestBase):
         self.client.force_authenticate(self.user)
         response = self.client.get(reverse("card-list"))
         self.assertEqual(response.data["count"], 2)
+
+
+class CardOwnedFavoritedDateAddedOrderingTests(CardsSetsTypesTestBase):
+    """`date_added` on CollectionEntry/Favorite is already tracked (set
+    once at creation, never touched by a later update) — this just exposes
+    it as a Cards-page sort option while owned=/favorited= is active. See
+    docs/decisions.md #079.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.user = User.objects.create_user(email="tester@example.com", password="s3cret-pass!")
+        # charizard added before squirtle — deliberately the opposite of
+        # their alphabetical order, so a wrong fallback to name-ordering
+        # wouldn't coincidentally produce the right result.
+        entry = CollectionEntry.objects.create(user=self.user, card=self.charizard)
+        CollectionEntry.objects.filter(id=entry.id).update(
+            date_added=datetime.datetime(2020, 1, 1, tzinfo=datetime.UTC)
+        )
+        entry = CollectionEntry.objects.create(user=self.user, card=self.squirtle)
+        CollectionEntry.objects.filter(id=entry.id).update(
+            date_added=datetime.datetime(2023, 6, 15, tzinfo=datetime.UTC)
+        )
+        favorite = Favorite.objects.create(user=self.user, card=self.squirtle)
+        Favorite.objects.filter(id=favorite.id).update(
+            date_added=datetime.datetime(2020, 1, 1, tzinfo=datetime.UTC)
+        )
+        favorite = Favorite.objects.create(user=self.user, card=self.charizard)
+        Favorite.objects.filter(id=favorite.id).update(
+            date_added=datetime.datetime(2023, 6, 15, tzinfo=datetime.UTC)
+        )
+        self.client.force_authenticate(self.user)
+
+    def test_owned_orders_oldest_added_first_by_default(self):
+        response = self.client.get(
+            reverse("card-list"), {"owned": "true", "ordering": "date_added"}
+        )
+        names = [c["name"] for c in response.data["results"]]
+        self.assertEqual(names, ["Charizard", "Squirtle"])
+
+    def test_owned_orders_newest_added_first_when_reversed(self):
+        response = self.client.get(
+            reverse("card-list"), {"owned": "true", "ordering": "-date_added"}
+        )
+        names = [c["name"] for c in response.data["results"]]
+        self.assertEqual(names, ["Squirtle", "Charizard"])
+
+    def test_favorited_orders_by_its_own_date_added_not_owned(self):
+        # squirtle was favorited first but owned second — proves this
+        # reads Favorite.date_added, not CollectionEntry.date_added.
+        response = self.client.get(
+            reverse("card-list"), {"favorited": "true", "ordering": "date_added"}
+        )
+        names = [c["name"] for c in response.data["results"]]
+        self.assertEqual(names, ["Squirtle", "Charizard"])
+
+    def test_owned_date_added_composes_with_set(self):
+        response = self.client.get(
+            reverse("card-list"),
+            {"owned": "true", "ordering": "-date_added", "set": self.set_b.id},
+        )
+        names = [c["name"] for c in response.data["results"]]
+        self.assertEqual(names, ["Squirtle"])
+
+    def test_date_added_ordering_without_owned_or_favorited_does_not_error(self):
+        # Not a case the frontend ever sends (the sort option only renders
+        # once Owned/Favorites is active), but a direct API request
+        # shouldn't 500 for asking anyway — falls back to the default order.
+        response = self.client.get(reverse("card-list"), {"ordering": "date_added"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        names = [c["name"] for c in response.data["results"]]
+        self.assertEqual(names, ["Charizard", "Squirtle"])
 
 
 class CardNumberOrderingTests(APITestCase):
