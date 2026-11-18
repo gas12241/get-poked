@@ -28,16 +28,23 @@ function FavoriteButton({ cardId, className }: FavoriteButtonProps) {
   const favoriteId = favoritesQuery.data?.[cardId];
   const isFavorited = favoriteId !== undefined;
 
+  // The Cards page's Owned/Favorites view filters its own ['cards', ...]
+  // query server-side — removing a card here has to refetch that list too,
+  // or it keeps showing a card that no longer belongs in that view until
+  // the page is refreshed.
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['favorite-ids-by-card'] });
+    queryClient.invalidateQueries({ queryKey: ['cards'] });
+  };
+
   const addMutation = useMutation({
     mutationFn: () => addFavorite(cardId),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['favorite-ids-by-card'] }),
+    onSuccess: invalidate,
   });
 
   const removeMutation = useMutation({
     mutationFn: () => removeFavorite(favoriteId as number),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['favorite-ids-by-card'] }),
+    onSuccess: invalidate,
   });
 
   if (!isAuthenticated) return null;

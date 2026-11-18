@@ -36,8 +36,14 @@ function CollectionQuickControl({
 
   const entry = entriesQuery.data?.[cardId];
 
-  const invalidate = () =>
+  const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+    // The Cards page's Owned/Favorites view filters its own ['cards', ...]
+    // query server-side — removing a card here has to refetch that list
+    // too, or it keeps showing a card that no longer belongs in that view
+    // until the page is refreshed.
+    queryClient.invalidateQueries({ queryKey: ['cards'] });
+  };
 
   const addMutation = useMutation({
     mutationFn: () => addToCollection(cardId),
