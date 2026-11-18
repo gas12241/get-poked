@@ -780,14 +780,19 @@ describe('CardListPage', () => {
     expect(await screen.findByText('Owned ×1')).toBeInTheDocument();
   });
 
-  it('does not show a "Showing" heading under the default "All Sets" view', async () => {
+  it('shows "Showing All cards from All Sets" under the default view', async () => {
     renderWithProviders(<CardListPage />);
 
     await screen.findByText('Charizard');
-    expect(screen.queryByText(/Showing:/)).not.toBeInTheDocument();
+    expect(
+      screen.getByText('All cards', { selector: 'strong' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('All Sets', { selector: 'strong' }),
+    ).toBeInTheDocument();
   });
 
-  it('shows "Showing: <set name>" once a specific set is selected', async () => {
+  it('shows "Showing All cards from <set name>" once a specific set is selected', async () => {
     renderWithProviders(<CardListPage />);
 
     await userEvent.click(
@@ -795,13 +800,30 @@ describe('CardListPage', () => {
     );
     await userEvent.click(screen.getByRole('button', { name: 'Base' }));
 
-    expect(await screen.findByText('Showing:')).toBeInTheDocument();
+    expect(
+      await screen.findByText('All cards', { selector: 'strong' }),
+    ).toBeInTheDocument();
     expect(
       screen.getByText('Base', { selector: 'strong' }),
     ).toBeInTheDocument();
   });
 
-  it('shows "Showing: All <series name>", not the set\'s own name, when a whole series is selected', async () => {
+  it('shows the current view (Owned/Favorites) in the "Showing" heading', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    renderWithProviders(<CardListPage />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Owned' }));
+    expect(
+      await screen.findByText('Owned', { selector: 'strong' }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Favorites' }));
+    expect(
+      await screen.findByText('Favorites', { selector: 'strong' }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows "Showing All cards from All <series name>", not the set\'s own name, when a whole series is selected', async () => {
     // Set name deliberately differs from its series name — proves the
     // heading reads the series, not incidentally the one set within it.
     server.use(
@@ -875,6 +897,78 @@ describe('CardListPage', () => {
     );
     expect(
       await screen.findByText('All Mega Evolution', { selector: 'strong' }),
+    ).toBeInTheDocument();
+  });
+
+  it('replaces the pagination controls with a generic empty-state message when no cards match the filters', async () => {
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, () => {
+        return HttpResponse.json({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+
+    expect(
+      await screen.findByText('No cards match your current filters.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Previous' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Next' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('tells the user to add cards to their collection when Owned has nothing in it', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, () => {
+        return HttpResponse.json({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Owned' }));
+
+    expect(
+      await screen.findByText(/don't own any cards here yet/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Previous' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('tells the user to add cards to their favorites when Favorites has nothing in it', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, () => {
+        return HttpResponse.json({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Favorites' }),
+    );
+
+    expect(
+      await screen.findByText(/haven't favorited any cards here yet/),
     ).toBeInTheDocument();
   });
 });
