@@ -405,6 +405,32 @@ Implemented
 
 ---
 
+### Stats
+
+GET /api/v1/collections/stats/
+
+Description
+
+Summary numbers plus a per-set completion and per-rarity breakdown for the requesting user's own collection:
+
+```json
+{
+  "total_unique_cards": 12,
+  "total_quantity": 18,
+  "total_favorites": 5,
+  "by_set": [{"set_id": 1, "set_name": "Base", "owned": 8, "total": 102}],
+  "by_rarity": [{"rarity": "Common", "count": 5}]
+}
+```
+
+`total_quantity` sums raw quantity (duplicates count); `total_unique_cards`, `by_set.owned`, and `by_rarity.count` all count distinct cards instead. `by_set` only includes sets the user owns at least one card from, sorted by completion percentage descending. A card with no recorded rarity appears under `"rarity": ""` — the frontend, not this endpoint, relabels that "Unknown". See docs/decisions.md #078.
+
+Status
+
+Implemented
+
+---
+
 ## Favorites
 
 Maps to the `Favorite` model (docs/database.md) — starred cards, independent of ownership. Same authentication/scoping as Collections above.
