@@ -328,6 +328,59 @@
   margin: 8px 0;
 }
 
+/* Overlaid on a card-list tile's image, bottom-right — mirrors
+   .favorite-button-tile-overlay's top-right treatment on the same
+   position: relative tile. */
+.collection-quick-control-tile-overlay {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  display: flex;
+  gap: 4px;
+}
+
+.collection-quick-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: none;
+  box-shadow: var(--shadow);
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+/* Same semantic-fill convention as .collection-add-button/
+   .collection-remove-button — "add" and "remove" stand out rather than
+   blending into a neutral pill. */
+.collection-quick-increase {
+  background: var(--success);
+}
+
+.collection-quick-decrease {
+  background: var(--danger);
+}
+
+.card-owned-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--success);
+}
+
 /* The +/- quantity steppers are neutral adjustments, not an add/remove
    action, so they keep the plain bordered look — only .collection-
    add-button and .collection-remove-button get the semantic fill below.

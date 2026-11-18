@@ -1191,6 +1191,21 @@ Why
 
 ---
 
+## Decision 081
+
+Quick add/remove-to-collection on Cards page tiles
+
+Why
+
+- **Narrows #077's original "list tiles don't get quantity management" call**, now that a compact-enough affordance exists. #077 reasoned a quantity stepper needed more room than a tile affords and left collection management detail-page-only; this adds a condensed version — a "+" overlay at the tile's bottom-right (mirroring the favorite star's top-right overlay), and once owned, a "−" to its left — rather than reversing that reasoning, since the full stepper-with-"Remove"-button still only exists on the detail page and `/collection`.
+- **No backend or API changes at all.** `getCollectionEntriesByCard()`, `addToCollection`, `updateCollectionQuantity`, `removeFromCollection` already existed for `CollectionControl.tsx`'s detail-page stepper — this is the same data and mutations, surfaced a second time.
+- **New `CollectionQuickControl.tsx` is modeled on `FavoriteButton.tsx`'s shape, not `CollectionControl.tsx`'s.** `CollectionControl` expects to be the sole consumer of its page; `FavoriteButton` is self-contained (own `useQuery`, `cardId`/`className` props, `return null` when logged out) because it has to live inside a `<Link>` on the tile — same `preventDefault`/`stopPropagation` requirement applies here. It uses the *exact same query key* (`['collection-entries-by-card']`) `CollectionControl` already uses, so the tile overlay, the detail page, and the new "Owned ×N" tile-text badge all invalidate and reflect each other without a page reload.
+- **No floor-at-1 disable on the minus button — confirmed with the user directly** (a genuine UX fork, not assumed): this compact control has no separate "Remove" button the way the detail page does, so pressing minus at quantity 1 removes the entry entirely rather than leaving a dead, disabled button as the only way to drop below 1.
+- **The owned-quantity badge is a second, independent consumer of the same query**, fetched once more at the page level in `CardListPage.tsx` (same key — TanStack Query dedupes the identical cached/in-flight request, so this is still one network call per page load, not one per tile) — needed because the badge lives in a different DOM location (`.card-tile-text`, alongside set/rarity/number/artist) than the overlay buttons' own render, the same reason `FavoriteButton`'s internal `isFavorited` state isn't reused for display text elsewhere either. Shows regardless of the current All/Owned/Favorites toggle — an owned card still shows "Owned ×2" while browsing Favorites if it happens to be both.
+- 11 new frontend tests (full 261-test suite) — `CollectionQuickControl.test.tsx` mirrors `FavoriteButton.test.tsx`'s structure including its real two-route navigation-guard test; the quantity-1-removes-rather-than-PATCHes-to-0 test was confirmed to fail against a deliberately broken version (always PATCHing) before being trusted. Verified live in both themes against a real account: add via "+", confirm the badge and "−" both appear immediately; "+" again increments the badge; "−" down to 1 then once more removes the card entirely (badge and "−" gone, only "+" remains); neither button ever navigates off the Cards page.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).
