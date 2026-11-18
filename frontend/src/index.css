@@ -63,9 +63,14 @@
     --danger: #f87171;
     --danger-bg: rgba(248, 113, 113, 0.15);
     --danger-border: rgba(248, 113, 113, 0.5);
-    --success: #4ade80;
-    --success-bg: rgba(74, 222, 128, 0.15);
-    --success-border: rgba(74, 222, 128, 0.5);
+    /* Deliberately more muted than a direct lighten of the light-mode
+       value (the way --danger lightens to #f87171) would produce — a
+       bright, saturated green reads as much more glaring against a near-
+       black background than the equivalent red does, so this is toned
+       down rather than just brightened. */
+    --success: #3ba55c;
+    --success-bg: rgba(59, 165, 92, 0.15);
+    --success-border: rgba(59, 165, 92, 0.5);
     --social-bg: rgba(47, 48, 58, 0.5);
     --shadow:
       rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
@@ -90,9 +95,9 @@
   --danger: #f87171;
   --danger-bg: rgba(248, 113, 113, 0.15);
   --danger-border: rgba(248, 113, 113, 0.5);
-  --success: #4ade80;
-  --success-bg: rgba(74, 222, 128, 0.15);
-  --success-border: rgba(74, 222, 128, 0.5);
+  --success: #3ba55c;
+  --success-bg: rgba(59, 165, 92, 0.15);
+  --success-border: rgba(59, 165, 92, 0.5);
   --social-bg: rgba(47, 48, 58, 0.5);
   --shadow:
     rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;

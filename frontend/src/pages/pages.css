@@ -289,8 +289,14 @@
 
 /* The +/- quantity steppers are neutral adjustments, not an add/remove
    action, so they keep the plain bordered look — only .collection-
-   add-button and .collection-remove-button get the semantic fill below. */
-.collection-stepper button {
+   add-button and .collection-remove-button get the semantic fill below.
+   The :not() here isn't cosmetic: Remove sits inside .collection-stepper
+   right alongside -/+ (see CollectionControl.tsx), and this descendant
+   selector's class+tag specificity would otherwise beat the plain
+   .collection-remove-button class below it, silently winning the cascade
+   and leaving Remove stuck on this neutral background regardless of what
+   color rule came later in the file. */
+.collection-stepper button:not(.collection-remove-button) {
   font: inherit;
   font-size: 13px;
   padding: 5px 12px;
