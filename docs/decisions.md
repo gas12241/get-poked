@@ -1147,6 +1147,21 @@ Why
 
 ---
 
+## Decision 078
+
+Collection statistics: per-set completion and a rarity breakdown
+
+Why
+
+- **The last piece of Phase 5** (ROADMAP.md), now that Collections and Favorites (#077) exist to aggregate over. A new `GET /api/v1/collections/stats/`, not a new model — everything it reports is already derivable from `CollectionEntry`/`Favorite`. This is the first `Count`/`annotate`-based endpoint anywhere in this codebase (checked directly — no prior precedent to follow, so the shape here is the one to match if a second one is ever needed).
+- **`by_set` only lists sets the user owns at least one card from, not all 176.** A near-entirely-empty list of 176 sets isn't a useful "stats" view, and it's also the cheaper query — the grouped query never touches the ~150+ sets a typical collection has nothing in, rather than computing a real 0/N for every set that exists. Sorted by completion percentage descending (set name as the tiebreak), not release order — "closest to done" is the interesting framing for a collector checking their own stats, not chronology.
+- **`by_set.owned` and `by_rarity.count` both count distinct cards, not raw quantity** (`Count("card", distinct=True)`), matching `total_unique_cards` — a card owned at quantity 5 counts once in every one of these, not five times. `total_quantity` is the one number that does sum raw quantity, and it's named to say so.
+- **The blank-rarity bucket (cards with no recorded rarity data) is left as `""` in the API response and relabeled "Unknown" only in the frontend component.** A presentation choice, not something worth encoding into the data itself.
+- **One more tab on the existing `/collection` page, not a new route** — same reasoning #077 already used for Owned/Favorites: one feature, one page, rather than nav entries multiplying for every view on it.
+- 8 new backend tests (full 282-test suite, 99% coverage) — since this is the first aggregation endpoint, the tests prove actual arithmetic (quantity summed not counted, a set's `total` reflects its real size not the owned count, a set absent from the user's collection is absent from the response) rather than just "a response comes back." The sort-order test was confirmed to fail against a deliberately broken version (ascending instead of descending) before being trusted. 4 new frontend tests (full 240-test suite) — the progress-bar-width test specifically needed a fixture where `owned` isn't numerically equal to the resulting percentage (25 owned of 50 = 50%, not 25%); a first draft used owned=25/total=100, where the correct and a broken "forgot to divide" implementation produce the identical "25%" by coincidence, which would have validated nothing. Verified live against a real account with cards added across two real sets at varying quantities: all five numbers (unique cards, total copies, favorites, both sets' owned/total, the rarity count) matched hand-counted expectations exactly, and a brand-new account with nothing owned showed the empty state instead of a broken page; both light and dark mode.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).
