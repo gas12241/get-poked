@@ -18,6 +18,12 @@
      tall) — this sits just below it, rather than the frozen nav bar
      overlapping the sidebar's own top.*/
   top: calc(72px + 16px);
+  /* Scrolls independently of the card grid once its own content (every
+     series expanded) outgrows the viewport, rather than just scrolling
+     along with the page past the point where it stops being sticky — the
+     16px here mirrors the gap already given at the top. */
+  max-height: calc(100vh - 72px - 16px - 16px);
+  overflow-y: auto;
 }
 
 .series-all-sets {
@@ -144,6 +150,17 @@
   gap: 12px;
   justify-content: center;
   margin: 24px 0;
+}
+
+.cards-showing {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text);
+  margin: 0 0 16px;
+}
+
+.cards-showing strong {
+  color: var(--text-h);
 }
 
 .name-autocomplete {

@@ -243,6 +243,15 @@ function CardListPage() {
 
   const setsQuery = useQuery({ queryKey: ['sets'], queryFn: getSets });
 
+  // What to show above the grid so a set picked from deep within the
+  // sidebar (which can require scrolling well past the fold to find)
+  // stays visible without scrolling back up. Absent under the "All Sets"
+  // default — there's nothing to announce.
+  const selectedSet = setId
+    ? setsQuery.data?.find((s) => String(s.id) === setId)
+    : undefined;
+  const showingLabel = selectedSet?.name || series || null;
+
   // Same query key CollectionQuickControl/CollectionControl already use —
   // one shared cache entry, not a second request per tile — used here
   // purely to render the "Owned ×N" text badge in .card-tile-text, a
@@ -474,6 +483,12 @@ function CardListPage() {
             Reset filters
           </button>
         </div>
+
+        {showingLabel && (
+          <p className="cards-showing">
+            Showing: <strong>{showingLabel}</strong>
+          </p>
+        )}
 
         {cardsQuery.isLoading && <p>Loading cards...</p>}
         {cardsQuery.isError && (
