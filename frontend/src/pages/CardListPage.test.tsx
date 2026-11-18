@@ -724,4 +724,52 @@ describe('CardListPage', () => {
       screen.queryByLabelText(/same name or number/i),
     ).not.toBeInTheDocument();
   });
+
+  it('does not show an "Owned" badge for a card that is not in the collection', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    renderWithProviders(<CardListPage />);
+
+    await screen.findByText('Charizard');
+    expect(screen.queryByText(/Owned ×/)).not.toBeInTheDocument();
+  });
+
+  it('shows an "Owned ×N" badge for a card already in the collection', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    server.use(
+      http.get(`${BASE_URL}/api/v1/collections/by-card/`, () => {
+        return HttpResponse.json({ 1: { id: 42, quantity: 3 } });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+
+    expect(await screen.findByText('Owned ×3')).toBeInTheDocument();
+  });
+
+  it('adding a card via the tile\'s quick-add button updates the "Owned" badge without a reload', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    let owned = false;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/collections/by-card/`, () => {
+        return HttpResponse.json(owned ? { 1: { id: 42, quantity: 1 } } : {});
+      }),
+      http.post(`${BASE_URL}/api/v1/collections/`, () => {
+        owned = true;
+        return HttpResponse.json(
+          { id: 42, card: {}, quantity: 1, date_added: '2026-01-15T00:00:00Z' },
+          { status: 201 },
+        );
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+    const addButton = await screen.findByRole('button', {
+      name: 'Add one to collection',
+    });
+    expect(screen.queryByText(/Owned ×/)).not.toBeInTheDocument();
+
+    await userEvent.click(addButton);
+
+    expect(await screen.findByText('Owned ×1')).toBeInTheDocument();
+  });
 });

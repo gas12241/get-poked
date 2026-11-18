@@ -10,6 +10,8 @@ import {
   getTypes,
 } from '../api/cards';
 import type { CardListParams } from '../api/cards';
+import { getCollectionEntriesByCard } from '../api/collection';
+import CollectionQuickControl from '../components/CollectionQuickControl';
 import FavoriteButton from '../components/FavoriteButton';
 import NameAutocomplete from '../components/NameAutocomplete';
 import SeriesSidebar from '../components/SeriesSidebar';
@@ -240,6 +242,17 @@ function CardListPage() {
   });
 
   const setsQuery = useQuery({ queryKey: ['sets'], queryFn: getSets });
+
+  // Same query key CollectionQuickControl/CollectionControl already use —
+  // one shared cache entry, not a second request per tile — used here
+  // purely to render the "Owned ×N" text badge in .card-tile-text, a
+  // different spot in the tile than the overlay buttons' own render. See
+  // docs/decisions.md #081.
+  const collectionEntriesQuery = useQuery({
+    queryKey: ['collection-entries-by-card'],
+    queryFn: getCollectionEntriesByCard,
+    enabled: isAuthenticated,
+  });
 
   // Scoped to the current set or series (neither = every value in the
   // catalog) so these dropdowns never offer a choice that can't match
@@ -481,6 +494,10 @@ function CardListPage() {
                     cardId={card.id}
                     className="favorite-button-tile-overlay"
                   />
+                  <CollectionQuickControl
+                    cardId={card.id}
+                    className="collection-quick-control-tile-overlay"
+                  />
                   {card.image_small ? (
                     <img
                       src={card.image_small}
@@ -514,6 +531,11 @@ function CardListPage() {
                       #{card.number}
                       {card.artist && ` · ${card.artist}`}
                     </span>
+                    {collectionEntriesQuery.data?.[card.id] && (
+                      <span className="card-owned-badge">
+                        Owned ×{collectionEntriesQuery.data[card.id].quantity}
+                      </span>
+                    )}
                   </div>
                 </Link>
               ))}
