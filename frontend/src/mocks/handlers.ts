@@ -257,4 +257,66 @@ export const handlers = [
       detail: 'Account deleted. Log back in within 30 days to restore it.',
     });
   }),
+
+  http.get(`${BASE_URL}/api/v1/favorites/card-ids/`, () => {
+    return HttpResponse.json([]);
+  }),
+
+  http.get(`${BASE_URL}/api/v1/favorites/`, () => {
+    return HttpResponse.json({
+      count: 0,
+      next: null,
+      previous: null,
+      results: [],
+    });
+  }),
+
+  http.post(`${BASE_URL}/api/v1/favorites/`, () => {
+    return HttpResponse.json(
+      { id: 1, card: mockCardListItem, date_added: '2026-01-15T00:00:00Z' },
+      { status: 201 },
+    );
+  }),
+
+  http.delete(`${BASE_URL}/api/v1/favorites/:id/`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get(`${BASE_URL}/api/v1/collections/quantities/`, () => {
+    return HttpResponse.json({});
+  }),
+
+  http.get(`${BASE_URL}/api/v1/collections/`, () => {
+    return HttpResponse.json({
+      count: 0,
+      next: null,
+      previous: null,
+      results: [],
+    });
+  }),
+
+  http.post(`${BASE_URL}/api/v1/collections/`, () => {
+    return HttpResponse.json(
+      {
+        id: 1,
+        card: mockCardListItem,
+        quantity: 1,
+        date_added: '2026-01-15T00:00:00Z',
+      },
+      { status: 201 },
+    );
+  }),
+
+  http.patch(`${BASE_URL}/api/v1/collections/:id/`, () => {
+    return HttpResponse.json({
+      id: 1,
+      card: mockCardListItem,
+      quantity: 2,
+      date_added: '2026-01-15T00:00:00Z',
+    });
+  }),
+
+  http.delete(`${BASE_URL}/api/v1/collections/:id/`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
 ];
