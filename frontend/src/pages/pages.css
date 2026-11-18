@@ -228,12 +228,47 @@
 }
 
 .card-tile {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
   text-decoration: none;
   color: var(--text-h);
+}
+
+.favorite-button {
+  font-size: 18px;
+  line-height: 1;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text);
+  padding: 4px;
+
+  &:hover:not(:disabled) {
+    color: var(--accent);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+.favorite-button-active {
+  color: var(--accent);
+}
+
+/* Overlaid on a card-list tile's image, relying on .card-tile's own
+   position: relative above. */
+.favorite-button-tile-overlay {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--bg);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
 }
 
 .card-tile img {

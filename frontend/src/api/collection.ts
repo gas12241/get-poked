@@ -27,11 +27,12 @@ function toQueryString(params: PageParams) {
   return query ? `?${query}` : '';
 }
 
-// Every favorited card id, unpaginated — for rendering per-tile state while
-// browsing the full card catalog (not for the dedicated Favorites tab,
-// which uses getFavorites below instead). See docs/decisions.md #077.
-export const getFavoriteCardIds = () =>
-  apiClient<number[]>('/api/v1/favorites/card-ids/');
+// {card_id: favorite_id} for the whole catalog, unpaginated — for rendering
+// per-tile state while browsing (not for the dedicated Favorites tab, which
+// uses getFavorites below instead) and for knowing which row to remove to
+// unfavorite. See docs/decisions.md #077.
+export const getFavoriteIdsByCard = () =>
+  apiClient<Record<number, number>>('/api/v1/favorites/by-card/');
 
 export const getFavorites = (params: PageParams = {}) =>
   apiClient<PaginatedResponse<Favorite>>(
@@ -47,10 +48,17 @@ export const addFavorite = (cardId: number) =>
 export const removeFavorite = (id: number) =>
   apiClient<void>(`/api/v1/favorites/${id}/`, { method: 'DELETE' });
 
-// {card_id: quantity} for every card the user owns, unpaginated — same
-// reasoning as getFavoriteCardIds above.
-export const getCollectionQuantities = () =>
-  apiClient<Record<number, number>>('/api/v1/collections/quantities/');
+// {card_id: {id, quantity}} for every card the user owns, unpaginated —
+// same reasoning as getFavoriteIdsByCard above.
+export interface CollectionEntryByCard {
+  id: number;
+  quantity: number;
+}
+
+export const getCollectionEntriesByCard = () =>
+  apiClient<Record<number, CollectionEntryByCard>>(
+    '/api/v1/collections/by-card/',
+  );
 
 export const getCollection = (params: PageParams = {}) =>
   apiClient<PaginatedResponse<CollectionEntry>>(

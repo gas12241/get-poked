@@ -20,14 +20,15 @@ class FavoriteDestroyView(generics.DestroyAPIView):
         return Favorite.objects.filter(user=self.request.user)
 
 
-class FavoriteCardIdsView(APIView):
-    """Every favorited card id for the requesting user, unpaginated — lets
-    card-browsing pages render per-tile state without paging through the
-    main (paginated) list endpoint above. See docs/decisions.md #077."""
+class FavoriteIdsByCardView(APIView):
+    """{card_id: favorite_id} for the requesting user, unpaginated — lets
+    card-browsing pages render per-tile favorited state (and know which
+    Favorite row to DELETE to unfavorite) without paging through the main
+    (paginated) list endpoint above. See docs/decisions.md #077."""
 
     def get(self, request):
-        ids = Favorite.objects.filter(user=request.user).values_list("card_id", flat=True)
-        return Response(list(ids))
+        entries = Favorite.objects.filter(user=request.user).values("card_id", "id")
+        return Response({entry["card_id"]: entry["id"] for entry in entries})
 
 
 class CollectionEntryListCreateView(generics.ListCreateAPIView):
@@ -44,10 +45,18 @@ class CollectionEntryDetailView(generics.RetrieveUpdateDestroyAPIView):
         return CollectionEntry.objects.filter(user=self.request.user)
 
 
-class CollectionQuantitiesView(APIView):
-    """{card_id: quantity} for every card the requesting user owns,
-    unpaginated — same reasoning as FavoriteCardIdsView above."""
+class CollectionEntriesByCardView(APIView):
+    """{card_id: {id, quantity}} for every card the requesting user owns,
+    unpaginated — same reasoning as FavoriteIdsByCardView above. The row id
+    is what a quantity update/removal PATCHes or DELETEs, not the card id."""
 
     def get(self, request):
-        entries = CollectionEntry.objects.filter(user=request.user).values("card_id", "quantity")
-        return Response({entry["card_id"]: entry["quantity"] for entry in entries})
+        entries = CollectionEntry.objects.filter(user=request.user).values(
+            "card_id", "id", "quantity"
+        )
+        return Response(
+            {
+                entry["card_id"]: {"id": entry["id"], "quantity": entry["quantity"]}
+                for entry in entries
+            }
+        )

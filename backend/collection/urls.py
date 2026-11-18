@@ -1,23 +1,23 @@
 from django.urls import path
 
 from .views import (
+    CollectionEntriesByCardView,
     CollectionEntryDetailView,
     CollectionEntryListCreateView,
-    CollectionQuantitiesView,
-    FavoriteCardIdsView,
     FavoriteDestroyView,
+    FavoriteIdsByCardView,
     FavoriteListCreateView,
 )
 
 urlpatterns = [
     path("favorites/", FavoriteListCreateView.as_view(), name="favorite-list"),
-    path("favorites/card-ids/", FavoriteCardIdsView.as_view(), name="favorite-card-ids"),
+    path("favorites/by-card/", FavoriteIdsByCardView.as_view(), name="favorite-ids-by-card"),
     path("favorites/<int:pk>/", FavoriteDestroyView.as_view(), name="favorite-detail"),
     path("collections/", CollectionEntryListCreateView.as_view(), name="collection-list"),
     path(
-        "collections/quantities/",
-        CollectionQuantitiesView.as_view(),
-        name="collection-quantities",
+        "collections/by-card/",
+        CollectionEntriesByCardView.as_view(),
+        name="collection-entries-by-card",
     ),
     path(
         "collections/<int:pk>/",

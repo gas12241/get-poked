@@ -1,6 +1,7 @@
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getCard } from '../api/cards';
+import FavoriteButton from '../components/FavoriteButton';
 import './pages.css';
 
 // Where the user navigated here from, so the back link can read "Back to
@@ -57,7 +58,9 @@ function CardDetailPage() {
         )}
 
         <div className="info">
-          <h1>{card.name}</h1>
+          <h1>
+            {card.name} <FavoriteButton cardId={card.id} />
+          </h1>
           <p>
             {card.set.name} &middot; #{card.number}
           </p>
