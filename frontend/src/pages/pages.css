@@ -271,6 +271,50 @@
   box-shadow: var(--shadow);
 }
 
+.collection-add-button {
+  display: inline-block;
+  margin: 8px 0;
+}
+
+.collection-add-button,
+.collection-stepper button,
+.collection-remove-button {
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--accent-bg);
+    color: var(--accent);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+.collection-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.collection-quantity {
+  min-width: 1.5em;
+  text-align: center;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
 .card-tile img {
   width: 100%;
   border-radius: 8px;
