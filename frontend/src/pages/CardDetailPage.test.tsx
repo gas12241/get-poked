@@ -188,9 +188,10 @@ describe('CardDetailPage', () => {
     expect(
       screen.queryByRole('button', { name: 'Add one to collection' }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Owned ×/)).not.toBeInTheDocument();
   });
 
-  it('shows only a plus button when the card is not yet owned, and no "Owned" badge', async () => {
+  it('shows only a plus button and "Owned ×0" when the card is not yet owned', async () => {
     useAuthStore.getState().setAccessToken('test-token');
 
     renderWithProviders(
@@ -204,7 +205,7 @@ describe('CardDetailPage', () => {
     expect(
       screen.queryByRole('button', { name: 'Remove one from collection' }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText(/Owned ×/)).not.toBeInTheDocument();
+    expect(await screen.findByText('Owned ×0')).toBeInTheDocument();
   });
 
   it('shows minus/plus and the "Owned ×N" badge once the card is owned', async () => {
@@ -255,7 +256,7 @@ describe('CardDetailPage', () => {
     const addButton = await screen.findByRole('button', {
       name: 'Add one to collection',
     });
-    expect(screen.queryByText(/Owned ×/)).not.toBeInTheDocument();
+    expect(await screen.findByText('Owned ×0')).toBeInTheDocument();
 
     await userEvent.click(addButton);
 

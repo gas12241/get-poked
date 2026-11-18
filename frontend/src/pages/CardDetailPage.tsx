@@ -88,11 +88,9 @@ function CardDetailPage() {
                 cardId={card.id}
                 className="collection-quick-control-large"
               />
-              {collectionEntriesQuery.data?.[card.id] && (
-                <span className="card-owned-badge">
-                  Owned ×{collectionEntriesQuery.data[card.id].quantity}
-                </span>
-              )}
+              <span className="card-owned-badge">
+                Owned ×{collectionEntriesQuery.data?.[card.id]?.quantity ?? 0}
+              </span>
             </div>
           )}
 
