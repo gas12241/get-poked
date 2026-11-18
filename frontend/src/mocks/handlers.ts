@@ -258,8 +258,8 @@ export const handlers = [
     });
   }),
 
-  http.get(`${BASE_URL}/api/v1/favorites/card-ids/`, () => {
-    return HttpResponse.json([]);
+  http.get(`${BASE_URL}/api/v1/favorites/by-card/`, () => {
+    return HttpResponse.json({});
   }),
 
   http.get(`${BASE_URL}/api/v1/favorites/`, () => {
@@ -282,7 +282,7 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
-  http.get(`${BASE_URL}/api/v1/collections/quantities/`, () => {
+  http.get(`${BASE_URL}/api/v1/collections/by-card/`, () => {
     return HttpResponse.json({});
   }),
 

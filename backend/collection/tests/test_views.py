@@ -88,15 +88,15 @@ class FavoriteViewTests(CollectionTestBase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertTrue(Favorite.objects.filter(id=favorite.id).exists())
 
-    def test_card_ids_returns_only_own_favorited_ids_unpaginated(self):
-        Favorite.objects.create(user=self.user, card=self.card)
+    def test_ids_by_card_returns_only_own_favorites_unpaginated(self):
+        own_favorite = Favorite.objects.create(user=self.user, card=self.card)
         Favorite.objects.create(user=self.other_user, card=self.other_card)
         self.client.force_authenticate(self.user)
 
-        response = self.client.get(reverse("favorite-card-ids"))
+        response = self.client.get(reverse("favorite-ids-by-card"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data, [self.card.id])
+        self.assertEqual(response.data, {self.card.id: own_favorite.id})
 
 
 class CollectionEntryViewTests(CollectionTestBase):
@@ -196,12 +196,12 @@ class CollectionEntryViewTests(CollectionTestBase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertTrue(CollectionEntry.objects.filter(id=entry.id).exists())
 
-    def test_quantities_returns_only_own_entries_as_a_map(self):
-        CollectionEntry.objects.create(user=self.user, card=self.card, quantity=3)
+    def test_entries_by_card_returns_only_own_entries_as_a_map(self):
+        own_entry = CollectionEntry.objects.create(user=self.user, card=self.card, quantity=3)
         CollectionEntry.objects.create(user=self.other_user, card=self.other_card, quantity=9)
         self.client.force_authenticate(self.user)
 
-        response = self.client.get(reverse("collection-quantities"))
+        response = self.client.get(reverse("collection-entries-by-card"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data, {self.card.id: 3})
+        self.assertEqual(response.data, {self.card.id: {"id": own_entry.id, "quantity": 3}})

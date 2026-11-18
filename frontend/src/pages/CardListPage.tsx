@@ -10,6 +10,7 @@ import {
   getTypes,
 } from '../api/cards';
 import type { CardListParams } from '../api/cards';
+import FavoriteButton from '../components/FavoriteButton';
 import NameAutocomplete from '../components/NameAutocomplete';
 import SeriesSidebar from '../components/SeriesSidebar';
 import './pages.css';
@@ -394,6 +395,10 @@ function CardListPage() {
                   state={{ from: 'cards' }}
                   className="card-tile"
                 >
+                  <FavoriteButton
+                    cardId={card.id}
+                    className="favorite-button-tile-overlay"
+                  />
                   {card.image_small ? (
                     <img
                       src={card.image_small}
