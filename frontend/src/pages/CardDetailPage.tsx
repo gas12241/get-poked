@@ -1,6 +1,7 @@
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getCard } from '../api/cards';
+import CollectionControl from '../components/CollectionControl';
 import FavoriteButton from '../components/FavoriteButton';
 import './pages.css';
 
@@ -64,6 +65,8 @@ function CardDetailPage() {
           <p>
             {card.set.name} &middot; #{card.number}
           </p>
+
+          <CollectionControl cardId={card.id} />
 
           <dl>
             <dt>Supertype</dt>
