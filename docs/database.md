@@ -175,6 +175,8 @@ Fields
 
 ### CollectionEntry
 
+Lives in the `collection` app (see docs/decisions.md #077 for why that app is singular, not plural).
+
 Purpose
 
 Represents a card a user owns.
@@ -182,20 +184,22 @@ Represents a card a user owns.
 Fields
 
 - id
-- user
-- card
-- quantity
+- user — `on_delete=CASCADE` (deleting the account deletes its collection entries too, same as `QuizAttempt.user`)
+- card — `on_delete=PROTECT` (a card can never be deleted while someone owns it, same as `QuizAttemptAnswer.card`)
+- quantity — `PositiveSmallIntegerField`, default 1, enforced `>= 1` at the serializer level (removing an entry is a `DELETE`, not `quantity: 0`)
 - date_added
 
 Relationship
 
-Belongs to one User, belongs to one Card. Unique together: (user, card).
+Belongs to one User, belongs to one Card. Unique together: (user, card) — constraint name `unique_collection_entry_per_user_per_card`.
 
-See docs/decisions.md #009 for why this is separate from Favorite.
+See docs/decisions.md #009 for why this is separate from Favorite, #077 for how it was actually built.
 
 ---
 
 ### Favorite
+
+Also in the `collection` app, alongside `CollectionEntry`.
 
 Purpose
 
@@ -204,13 +208,15 @@ Represents a card a user has starred, independent of ownership.
 Fields
 
 - id
-- user
-- card
+- user — `on_delete=CASCADE`
+- card — `on_delete=PROTECT`
 - date_added
 
 Relationship
 
-Belongs to one User, belongs to one Card. Unique together: (user, card).
+Belongs to one User, belongs to one Card. Unique together: (user, card) — constraint name `unique_favorite_per_user_per_card`.
+
+See docs/decisions.md #077.
 
 ---
 

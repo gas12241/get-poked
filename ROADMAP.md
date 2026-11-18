@@ -69,6 +69,8 @@ Authentication tests
 
 Depends on Phase 2 (Card model) and Phase 4 (User accounts) — Collections and Favorites reference both.
 
+Status: Collections and Favorites complete — see TODO.md and docs/decisions.md #077. Statistics not built; no concrete ask for it yet.
+
 Collections
 
 Owned cards

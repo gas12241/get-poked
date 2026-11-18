@@ -361,39 +361,89 @@ Implemented
 
 ## Collections
 
-Maps to the `CollectionEntry` model (docs/database.md) — owned cards, with quantity.
+Maps to the `CollectionEntry` model (docs/database.md) — owned cards, with quantity. Requires authentication; every endpoint below is scoped to the requesting user via `get_queryset()`, same as Quiz Attempts — another user's entry isn't forbidden, it simply isn't in the queryset (a `PATCH`/`DELETE` on one returns 404, not 403). See docs/decisions.md #077.
 
-GET /api/v1/collections/
+### List/Add
 
-POST /api/v1/collections/
-
-PATCH /api/v1/collections/{id}/
+GET or POST /api/v1/collections/
 
 Description
 
-Updates quantity for an owned card.
-
-DELETE /api/v1/collections/{id}/
+`GET` is paginated (24/page, the project default). `POST` takes `{card_id, quantity?}` (`quantity` defaults to 1); rejects a duplicate `(user, card)` with a 400, and `quantity < 1` with a 400. Response nests the full card (same shape as the Cards list endpoint).
 
 Status
 
-Planned
+Implemented
+
+---
+
+### Update/Remove
+
+GET, PATCH, or DELETE /api/v1/collections/{id}/
+
+Description
+
+`PATCH` takes `{quantity}` to change how many of a card you own. `DELETE` removes the entry entirely.
+
+Status
+
+Implemented
+
+---
+
+### Entries by Card
+
+GET /api/v1/collections/by-card/
+
+Description
+
+`{card_id: {id, quantity}}` for every card the requesting user owns — unpaginated, since a card-browsing page needs to know the owned state of every card on screen at once, not one page of it. The `id` is what a quantity update or removal addresses.
+
+Status
+
+Implemented
 
 ---
 
 ## Favorites
 
-Maps to the `Favorite` model (docs/database.md) — starred cards, independent of ownership.
+Maps to the `Favorite` model (docs/database.md) — starred cards, independent of ownership. Same authentication/scoping as Collections above.
 
-GET /api/v1/favorites/
+### List/Add
 
-POST /api/v1/favorites/
+GET or POST /api/v1/favorites/
+
+Description
+
+`GET` is paginated. `POST` takes `{card_id}`; rejects a duplicate `(user, card)` with a 400. Response nests the full card.
+
+Status
+
+Implemented
+
+---
+
+### Remove
 
 DELETE /api/v1/favorites/{id}/
 
 Status
 
-Planned
+Implemented
+
+---
+
+### Ids by Card
+
+GET /api/v1/favorites/by-card/
+
+Description
+
+`{card_id: favorite_id}` for every card the requesting user has favorited — unpaginated, same reasoning as Collections' "Entries by Card" above.
+
+Status
+
+Implemented
 
 ---
 
