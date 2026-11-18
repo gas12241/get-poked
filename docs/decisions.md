@@ -1206,6 +1206,20 @@ Why
 
 ---
 
+## Decision 082
+
+Relocate the tile's quick collection control; replace the detail page's stepper with it too
+
+Why
+
+- **The Cards page tile's +/- moved from an image overlay to underneath the card number**, at the user's request — out of `.card-tile`'s absolute-positioned overlay (previously bottom-right on the card art, mirroring the favorite star) and into `.card-tile-text`'s normal flex-column flow, in a new `.card-owned-row` directly after `.card-meta` (`#{number} · {artist}`). `CollectionQuickControl.tsx` itself needed no logic changes — only the `className` passed to it, since the component was already self-contained; the base `.collection-quick-control` class is now plain `display: flex` layout rather than `position: absolute`, and the buttons shrank slightly (22px → 18px) to sit comfortably inline next to small meta text rather than floating over card art.
+- **The detail page's old "Add to collection" button / full stepper-with-Remove (`CollectionControl.tsx`) is replaced outright by the same `CollectionQuickControl`**, not kept alongside it — confirmed directly with the user rather than assumed, since keeping both would have meant two different controls doing the same job on one page. `CollectionQuickControl` gained a `.collection-quick-control-large` size variant (32px buttons) for this more spacious context, the same treatment `FavoriteButton`'s `.favorite-button-large` already gets for the identical reason. Minus-at-quantity-1 behaves exactly as it does on the tile (removes the entry entirely) — there is no separate "Remove" button anymore on the detail page either, by the same design logic #081 already established for the tile.
+- **`CollectionControl.tsx` and its test file are deleted outright**, not deprecated or left unused — nothing else referenced it once `CardDetailPage.tsx` was updated (confirmed via a full-codebase grep before deleting). `CollectionPage.tsx`'s own Owned tab has its own, separate inline stepper implementation (never routed through `CollectionControl.tsx`), so the shared CSS it still depends on (`.collection-stepper`, `.collection-quantity`, `.collection-remove-button`) was kept; only `.collection-add-button`'s rules, which had no other consumer, were removed alongside the component.
+- **The detail page now runs its own `getCollectionEntriesByCard` query** (same `['collection-entries-by-card']` key `CollectionQuickControl` and `CardListPage` already use) purely to render the "Owned ×N" badge next to the buttons — the same pattern `CardListPage.tsx` established in #081 for the identical reason: the badge lives in a different spot in the render tree than the self-contained button component's own internal state.
+- 4 new frontend tests on the detail page (full 258-test suite — `CollectionControl.test.tsx`'s own tests are gone along with the component, offsetting these and the earlier #081 tests): logged-out hides the control; unowned shows only plus; owned shows both buttons plus the badge; clicking plus updates the badge live. The existing CardListPage/CollectionQuickControl tests from #081 needed no changes at all, since they assert by role/text rather than DOM position. Verified live in both themes: added two copies via a tile's quick control, confirmed "−"/"+"/"Owned ×2" all sit under the card number rather than overlaid on the art; opened that same card's detail page and confirmed the identical buttons (at the larger size) and badge, with no leftover "Add to collection"/"You own" UI anywhere.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

@@ -1,8 +1,10 @@
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getCard } from '../api/cards';
-import CollectionControl from '../components/CollectionControl';
+import { getCollectionEntriesByCard } from '../api/collection';
+import CollectionQuickControl from '../components/CollectionQuickControl';
 import FavoriteButton from '../components/FavoriteButton';
+import { useIsAuthenticated } from '../store/authStore';
 import './pages.css';
 
 // Where the user navigated here from, so the back link can read "Back to
@@ -22,11 +24,21 @@ function CardDetailPage() {
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from;
   const backLabel = BACK_LABELS[from ?? 'cards'] ?? BACK_LABELS.cards;
+  const isAuthenticated = useIsAuthenticated();
 
   const cardQuery = useQuery({
     queryKey: ['card', id],
     queryFn: () => getCard(id as string),
     enabled: Boolean(id),
+  });
+
+  // Same query key CollectionQuickControl itself uses internally — used
+  // here purely to render the "Owned ×N" text next to it, which lives
+  // outside that component's own render. See docs/decisions.md #082.
+  const collectionEntriesQuery = useQuery({
+    queryKey: ['collection-entries-by-card'],
+    queryFn: getCollectionEntriesByCard,
+    enabled: isAuthenticated,
   });
 
   if (cardQuery.isLoading) return <p>Loading card...</p>;
@@ -70,7 +82,19 @@ function CardDetailPage() {
             {card.set.name} &middot; #{card.number}
           </p>
 
-          <CollectionControl cardId={card.id} />
+          {isAuthenticated && (
+            <div className="collection-quick-row">
+              <CollectionQuickControl
+                cardId={card.id}
+                className="collection-quick-control-large"
+              />
+              {collectionEntriesQuery.data?.[card.id] && (
+                <span className="card-owned-badge">
+                  Owned ×{collectionEntriesQuery.data[card.id].quantity}
+                </span>
+              )}
+            </div>
+          )}
 
           <dl>
             <dt>Supertype</dt>
