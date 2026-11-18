@@ -52,6 +52,83 @@ describe('CardDetailPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows TCGplayer/Cardmarket as icon buttons linking to their real URLs', async () => {
+    renderWithProviders(
+      <Routes>
+        <Route path="/cards/:id" element={<CardDetailPage />} />
+      </Routes>,
+      { route: '/cards/1' },
+    );
+
+    const tcgplayerLink = await screen.findByRole('link', {
+      name: 'View on TCGplayer',
+    });
+    expect(tcgplayerLink).toHaveAttribute(
+      'href',
+      'https://example.com/tcgplayer',
+    );
+    expect(tcgplayerLink).toHaveAttribute('target', '_blank');
+    expect(tcgplayerLink.querySelector('img')).toHaveAttribute(
+      'src',
+      'https://www.google.com/s2/favicons?domain=tcgplayer.com&sz=64',
+    );
+
+    const cardmarketLink = screen.getByRole('link', {
+      name: 'View on Cardmarket',
+    });
+    expect(cardmarketLink).toHaveAttribute(
+      'href',
+      'https://example.com/cardmarket',
+    );
+    expect(cardmarketLink.querySelector('img')).toHaveAttribute(
+      'src',
+      'https://www.google.com/s2/favicons?domain=cardmarket.com&sz=64',
+    );
+  });
+
+  it('omits a link entirely when its URL is blank, rather than showing a broken button', async () => {
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/1/`, () => {
+        return HttpResponse.json({
+          id: 1,
+          name: 'Charizard',
+          number: '4',
+          rarity: 'Rare Holo',
+          supertype: 'Pokémon',
+          hp: '120',
+          language: 'en',
+          image_small: 'https://example.com/small.png',
+          image_large: 'https://example.com/large.png',
+          artist: 'Ken Sugimori',
+          set: { id: 1, name: 'Base', series: 'Base', release_date: null },
+          types: [],
+          national_pokedex_numbers: [],
+          subtypes: [],
+          evolves_from: '',
+          evolves_to: [],
+          tcgplayer_url: '',
+          cardmarket_url: 'https://example.com/cardmarket',
+          details: {},
+          attacks: [],
+          weaknesses: [],
+          resistances: [],
+        });
+      }),
+    );
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/cards/:id" element={<CardDetailPage />} />
+      </Routes>,
+      { route: '/cards/1' },
+    );
+
+    await screen.findByRole('link', { name: 'View on Cardmarket' });
+    expect(
+      screen.queryByRole('link', { name: 'View on TCGplayer' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('shows a "No image available" placeholder instead of a broken image when image_large is blank', async () => {
     server.use(
       http.get(`${BASE_URL}/api/v1/cards/1/`, () => {

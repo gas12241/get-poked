@@ -140,19 +140,36 @@ function CardDetailPage() {
             </>
           )}
 
-          <p>
+          <div className="card-external-links">
             {card.tcgplayer_url && (
-              <a href={card.tcgplayer_url} target="_blank" rel="noreferrer">
+              <a
+                href={card.tcgplayer_url}
+                target="_blank"
+                rel="noreferrer"
+                className="card-external-link"
+              >
+                <img
+                  src="https://www.google.com/s2/favicons?domain=tcgplayer.com&sz=64"
+                  alt=""
+                />
                 View on TCGplayer
               </a>
             )}
-            {card.tcgplayer_url && card.cardmarket_url && ' · '}
             {card.cardmarket_url && (
-              <a href={card.cardmarket_url} target="_blank" rel="noreferrer">
+              <a
+                href={card.cardmarket_url}
+                target="_blank"
+                rel="noreferrer"
+                className="card-external-link"
+              >
+                <img
+                  src="https://www.google.com/s2/favicons?domain=cardmarket.com&sz=64"
+                  alt=""
+                />
                 View on Cardmarket
               </a>
             )}
-          </p>
+          </div>
         </div>
       </div>
     </>
