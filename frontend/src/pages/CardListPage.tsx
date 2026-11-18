@@ -389,36 +389,37 @@ function CardListPage() {
               </option>
             ))}
           </select>
-          <select
-            aria-label="Sort by"
-            value={sortField}
-            onChange={(e) =>
-              handleFilterChange(
-                'ordering',
-                `${sortDirection === 'desc' ? '-' : ''}${e.target.value}`,
-              )
-            }
-          >
-            <option value="name">Sort: Name</option>
-            <option value="number">Sort: Number</option>
-            <option value="release_date">Sort: Release date</option>
-            {view !== 'all' && (
-              <option value="date_added">Sort: Date added</option>
-            )}
-          </select>
-          <select
-            aria-label="Sort direction"
-            value={sortDirection}
-            onChange={(e) =>
-              handleFilterChange(
-                'ordering',
-                `${e.target.value === 'desc' ? '-' : ''}${sortField}`,
-              )
-            }
-          >
-            <option value="asc">Ascending</option>
-            <option value="desc">Descending</option>
-          </select>
+          <div className="sort-control">
+            <span className="sort-control-label">Sort:</span>
+            <select
+              aria-label="Sort by"
+              value={sortField}
+              onChange={(e) =>
+                handleFilterChange(
+                  'ordering',
+                  `${sortDirection === 'desc' ? '-' : ''}${e.target.value}`,
+                )
+              }
+            >
+              <option value="name">Name</option>
+              <option value="number">Number</option>
+              <option value="release_date">Release date</option>
+              {view !== 'all' && <option value="date_added">Date added</option>}
+            </select>
+            <select
+              aria-label="Sort direction"
+              value={sortDirection}
+              onChange={(e) =>
+                handleFilterChange(
+                  'ordering',
+                  `${e.target.value === 'desc' ? '-' : ''}${sortField}`,
+                )
+              }
+            >
+              <option value="asc">Ascending</option>
+              <option value="desc">Descending</option>
+            </select>
+          </div>
           {(sortField === 'name' || sortField === 'number') && (
             <label className="newest-first-toggle">
               <input
