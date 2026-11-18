@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "cards",
     "quiz",
     "horoscope",
+    "collection",
 ]
 
 MIDDLEWARE = [

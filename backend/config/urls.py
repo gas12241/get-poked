@@ -26,6 +26,7 @@ urlpatterns = [
     path("api/v1/", include("cards.urls")),
     path("api/v1/", include("quiz.urls")),
     path("api/v1/", include("horoscope.urls")),
+    path("api/v1/", include("collection.urls")),
 ]
 
 if settings.DEBUG:
