@@ -13,6 +13,11 @@
   --danger: #dc2626;
   --danger-bg: rgba(220, 38, 38, 0.1);
   --danger-border: rgba(220, 38, 38, 0.5);
+  /* Affirmative/constructive actions (e.g. "Add to collection") — same
+     role as --danger, opposite sentiment. */
+  --success: #16a34a;
+  --success-bg: rgba(22, 163, 74, 0.1);
+  --success-border: rgba(22, 163, 74, 0.5);
   /* A single fixed, vivid "press me" color for solid-filled call-to-action
      buttons (e.g. the Quiz page's Start button) — deliberately not varied
      per theme like --accent, since a solid fill doesn't need to blend with
@@ -58,6 +63,9 @@
     --danger: #f87171;
     --danger-bg: rgba(248, 113, 113, 0.15);
     --danger-border: rgba(248, 113, 113, 0.5);
+    --success: #4ade80;
+    --success-bg: rgba(74, 222, 128, 0.15);
+    --success-border: rgba(74, 222, 128, 0.5);
     --social-bg: rgba(47, 48, 58, 0.5);
     --shadow:
       rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
@@ -82,6 +90,9 @@
   --danger: #f87171;
   --danger-bg: rgba(248, 113, 113, 0.15);
   --danger-border: rgba(248, 113, 113, 0.5);
+  --success: #4ade80;
+  --success-bg: rgba(74, 222, 128, 0.15);
+  --success-border: rgba(74, 222, 128, 0.5);
   --social-bg: rgba(47, 48, 58, 0.5);
   --shadow:
     rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;

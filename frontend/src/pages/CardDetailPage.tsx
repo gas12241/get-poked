@@ -60,7 +60,11 @@ function CardDetailPage() {
 
         <div className="info">
           <h1>
-            {card.name} <FavoriteButton cardId={card.id} />
+            <FavoriteButton
+              cardId={card.id}
+              className="favorite-button-large"
+            />{' '}
+            {card.name}
           </h1>
           <p>
             {card.set.name} &middot; #{card.number}
