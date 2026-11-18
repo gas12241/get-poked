@@ -246,11 +246,19 @@ function CardListPage() {
   // What to show above the grid so a set picked from deep within the
   // sidebar (which can require scrolling well past the fold to find)
   // stays visible without scrolling back up. Absent under the "All Sets"
-  // default — there's nothing to announce.
+  // default — there's nothing to announce. A whole series reuses the
+  // sidebar's own "All {series}" button text verbatim — a set and its
+  // series can share the same name (e.g. a set literally named "Mega
+  // Evolution" within the "Mega Evolution" series), so the plain name
+  // alone can't tell the two apart.
   const selectedSet = setId
     ? setsQuery.data?.find((s) => String(s.id) === setId)
     : undefined;
-  const showingLabel = selectedSet?.name || series || null;
+  const showingLabel = selectedSet
+    ? selectedSet.name
+    : series
+      ? `All ${series}`
+      : null;
 
   // Same query key CollectionQuickControl/CollectionControl already use —
   // one shared cache entry, not a second request per tile — used here
