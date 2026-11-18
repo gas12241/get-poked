@@ -801,7 +801,7 @@ describe('CardListPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows "Showing: <series name>", not a specific set\'s name, when a whole series is selected', async () => {
+  it('shows "Showing: All <series name>", not the set\'s own name, when a whole series is selected', async () => {
     // Set name deliberately differs from its series name — proves the
     // heading reads the series, not incidentally the one set within it.
     server.use(
@@ -829,10 +829,52 @@ describe('CardListPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'All Base' }));
 
     expect(
-      await screen.findByText('Base', { selector: 'strong' }),
+      await screen.findByText('All Base', { selector: 'strong' }),
     ).toBeInTheDocument();
     expect(
       screen.queryByText('Base Set', { selector: 'strong' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('distinguishes a set from a series that share the exact same name', async () => {
+    // e.g. a set literally named "Mega Evolution" inside the "Mega
+    // Evolution" series — selecting the set should read just the name;
+    // selecting the whole series should read "All <name>" instead, not
+    // the identical plain name in both cases.
+    server.use(
+      http.get(`${BASE_URL}/api/v1/sets/`, () => {
+        return HttpResponse.json([
+          {
+            id: 1,
+            tcg_id: 'mega1',
+            name: 'Mega Evolution',
+            series: 'Mega Evolution',
+            release_date: '2025-09-26',
+            language: 'en',
+            image_symbol: '',
+            image_logo: '',
+          },
+        ]);
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Expand Mega Evolution' }),
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Mega Evolution' }),
+    );
+    expect(
+      await screen.findByText('Mega Evolution', { selector: 'strong' }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'All Mega Evolution' }),
+    );
+    expect(
+      await screen.findByText('All Mega Evolution', { selector: 'strong' }),
+    ).toBeInTheDocument();
   });
 });
