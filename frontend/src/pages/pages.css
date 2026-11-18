@@ -14,7 +14,10 @@
   border-right: 1px solid var(--border);
   padding: 16px 12px;
   position: sticky;
-  top: 16px;
+  /* .main-nav is now itself sticky at the top of the viewport (~72px
+     tall) — this sits just below it, rather than the frozen nav bar
+     overlapping the sidebar's own top.*/
+  top: calc(72px + 16px);
 }
 
 .series-all-sets {
