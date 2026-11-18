@@ -779,4 +779,60 @@ describe('CardListPage', () => {
 
     expect(await screen.findByText('Owned ×1')).toBeInTheDocument();
   });
+
+  it('does not show a "Showing" heading under the default "All Sets" view', async () => {
+    renderWithProviders(<CardListPage />);
+
+    await screen.findByText('Charizard');
+    expect(screen.queryByText(/Showing:/)).not.toBeInTheDocument();
+  });
+
+  it('shows "Showing: <set name>" once a specific set is selected', async () => {
+    renderWithProviders(<CardListPage />);
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Expand Base' }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Base' }));
+
+    expect(await screen.findByText('Showing:')).toBeInTheDocument();
+    expect(
+      screen.getByText('Base', { selector: 'strong' }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows "Showing: <series name>", not a specific set\'s name, when a whole series is selected', async () => {
+    // Set name deliberately differs from its series name — proves the
+    // heading reads the series, not incidentally the one set within it.
+    server.use(
+      http.get(`${BASE_URL}/api/v1/sets/`, () => {
+        return HttpResponse.json([
+          {
+            id: 1,
+            tcg_id: 'base1',
+            name: 'Base Set',
+            series: 'Base',
+            release_date: '1999-01-09',
+            language: 'en',
+            image_symbol: '',
+            image_logo: '',
+          },
+        ]);
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Expand Base' }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'All Base' }));
+
+    expect(
+      await screen.findByText('Base', { selector: 'strong' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Base Set', { selector: 'strong' }),
+    ).not.toBeInTheDocument();
+  });
 });
