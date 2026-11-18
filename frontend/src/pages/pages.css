@@ -344,10 +344,15 @@
 
 /* Overlaid on a card-list tile's image, bottom-right — mirrors
    .favorite-button-tile-overlay's top-right treatment on the same
-   position: relative tile. */
+   position: relative tile. A bigger bottom offset than the star's 6px
+   top one is deliberate, not an inconsistency: --shadow's own y-offset
+   is downward (e.g. "0 10px 15px -3px"), so the same box-shadow spreads
+   further toward the image's bottom edge than it does away from the top
+   edge — 6px read as touching the card at the bottom, where it reads as
+   clear space at the top. */
 .collection-quick-control-tile-overlay {
   position: absolute;
-  bottom: 6px;
+  bottom: 12px;
   right: 6px;
 }
 
