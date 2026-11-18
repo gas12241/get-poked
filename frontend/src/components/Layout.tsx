@@ -30,6 +30,7 @@ function Layout() {
   const isCardsActive = pathname === '/' || pathname.startsWith('/cards/');
   const isQuizActive = pathname.startsWith('/quiz');
   const isHoroscopeActive = pathname.startsWith('/horoscope');
+  const isCollectionActive = pathname.startsWith('/collection');
   const isLoginActive = pathname.startsWith('/login');
   const isSignupActive = pathname.startsWith('/signup');
   const isProfileActive = pathname.startsWith('/profile');
@@ -60,6 +61,14 @@ function Layout() {
           >
             Horoscope
           </Link>
+          {isAuthenticated && (
+            <Link
+              to="/collection"
+              className={isCollectionActive ? 'active' : undefined}
+            >
+              Collection
+            </Link>
+          )}
         </div>
         <Link to="/" className="main-nav-brand">
           Get Poked
