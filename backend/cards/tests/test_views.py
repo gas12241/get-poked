@@ -1,8 +1,12 @@
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from cards.models import Attack, Card, Resistance, Set, Type, Weakness
+from collection.models import CollectionEntry, Favorite
+
+User = get_user_model()
 
 
 class CardsSetsTypesTestBase(APITestCase):
@@ -151,6 +155,63 @@ class CardListTests(CardsSetsTypesTestBase):
 
     def test_filter_by_series_case_insensitive(self):
         response = self.client.get(reverse("card-list"), {"series": "base"})
+        self.assertEqual(response.data["count"], 2)
+
+
+class CardOwnedFavoritedFilterTests(CardsSetsTypesTestBase):
+    def setUp(self):
+        super().setUp()
+        self.user = User.objects.create_user(email="tester@example.com", password="s3cret-pass!")
+
+    def test_filter_by_owned_returns_only_the_users_collected_cards(self):
+        CollectionEntry.objects.create(user=self.user, card=self.charizard)
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(reverse("card-list"), {"owned": "true"})
+
+        names = [c["name"] for c in response.data["results"]]
+        self.assertEqual(names, ["Charizard"])
+
+    def test_filter_by_favorited_returns_only_the_users_favorited_cards(self):
+        Favorite.objects.create(user=self.user, card=self.squirtle)
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(reverse("card-list"), {"favorited": "true"})
+
+        names = [c["name"] for c in response.data["results"]]
+        self.assertEqual(names, ["Squirtle"])
+
+    def test_owned_composes_with_set(self):
+        # charizard is in set_a, squirtle is in set_b — both owned, but
+        # filtering by set_a should only return charizard.
+        CollectionEntry.objects.create(user=self.user, card=self.charizard)
+        CollectionEntry.objects.create(user=self.user, card=self.squirtle)
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(reverse("card-list"), {"owned": "true", "set": self.set_a.id})
+
+        names = [c["name"] for c in response.data["results"]]
+        self.assertEqual(names, ["Charizard"])
+
+    def test_owned_true_for_an_anonymous_request_returns_no_cards(self):
+        # Not the full public catalog — an anonymous visitor owns nothing,
+        # so silently ignoring the filter would be misleading rather than
+        # helpful. See docs/decisions.md #079.
+        response = self.client.get(reverse("card-list"), {"owned": "true"})
+        self.assertEqual(response.data["count"], 0)
+
+    def test_favorited_true_for_an_anonymous_request_returns_no_cards(self):
+        response = self.client.get(reverse("card-list"), {"favorited": "true"})
+        self.assertEqual(response.data["count"], 0)
+
+    def test_owned_true_for_a_user_with_nothing_owned_returns_no_cards(self):
+        self.client.force_authenticate(self.user)
+        response = self.client.get(reverse("card-list"), {"owned": "true"})
+        self.assertEqual(response.data["count"], 0)
+
+    def test_owned_omitted_returns_every_card_regardless_of_ownership(self):
+        self.client.force_authenticate(self.user)
+        response = self.client.get(reverse("card-list"))
         self.assertEqual(response.data["count"], 2)
 
 

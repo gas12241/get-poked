@@ -69,7 +69,7 @@ Authentication tests
 
 Depends on Phase 2 (Card model) and Phase 4 (User accounts) — Collections and Favorites reference both.
 
-Status: Complete — see TODO.md and docs/decisions.md #077/#078.
+Status: Complete — see TODO.md and docs/decisions.md #077/#078/#079.
 
 Collections
 

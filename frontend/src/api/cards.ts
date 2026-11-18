@@ -94,6 +94,11 @@ export interface CardListParams {
   // cards (same name, or same printed number) break by release date. See
   // docs/decisions.md #038.
   newest_first?: boolean;
+  // Mutually exclusive — CardListPage never sends both at once. Empty for
+  // an anonymous request rather than the full catalog. See
+  // docs/decisions.md #079.
+  owned?: boolean;
+  favorited?: boolean;
 }
 
 function toQueryString(params: CardListParams) {

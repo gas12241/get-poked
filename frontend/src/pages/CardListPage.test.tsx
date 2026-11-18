@@ -1,12 +1,17 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
 import { renderWithProviders } from '../test/renderWithProviders';
+import { useAuthStore } from '../store/authStore';
 import CardListPage from './CardListPage';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+beforeEach(() => {
+  useAuthStore.getState().clearAccessToken();
+});
 
 describe('CardListPage', () => {
   it('renders cards fetched from the API', async () => {
@@ -521,5 +526,104 @@ describe('CardListPage', () => {
     // back to page 1.
     await new Promise((resolve) => setTimeout(resolve, 600));
     expect(capturedPage).toBe('2');
+  });
+
+  it('hides the All/Owned/Favorites toggle when logged out', async () => {
+    renderWithProviders(<CardListPage />);
+
+    await screen.findByText('Charizard');
+    expect(
+      screen.queryByRole('button', { name: 'Owned' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('sends owned=true when "Owned" is selected, and clears it when back to "All cards"', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    const capturedParams: { current: URLSearchParams | null } = {
+      current: null,
+    };
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, ({ request }) => {
+        capturedParams.current = new URL(request.url).searchParams;
+        return HttpResponse.json({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+    const ownedButton = await screen.findByRole('button', { name: 'Owned' });
+    await userEvent.click(ownedButton);
+
+    await waitFor(() =>
+      expect(capturedParams.current?.get('owned')).toBe('true'),
+    );
+    expect(ownedButton).toHaveClass('active');
+
+    await userEvent.click(screen.getByRole('button', { name: 'All cards' }));
+
+    await waitFor(() =>
+      expect(capturedParams.current?.get('owned')).toBeNull(),
+    );
+  });
+
+  it('sends favorited=true when "Favorites" is selected', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    let capturedFavorited: string | null = null;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, ({ request }) => {
+        capturedFavorited = new URL(request.url).searchParams.get('favorited');
+        return HttpResponse.json({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Favorites' }),
+    );
+
+    await waitFor(() => expect(capturedFavorited).toBe('true'));
+  });
+
+  it('keeps the owned filter applied after narrowing to a set', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    const capturedParams: { current: URLSearchParams | null } = {
+      current: null,
+    };
+    server.use(
+      http.get(`${BASE_URL}/api/v1/cards/`, ({ request }) => {
+        capturedParams.current = new URL(request.url).searchParams;
+        return HttpResponse.json({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CardListPage />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Owned' }));
+    await waitFor(() =>
+      expect(capturedParams.current?.get('owned')).toBe('true'),
+    );
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Expand Base' }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Base' }));
+
+    await waitFor(() => {
+      expect(capturedParams.current?.get('owned')).toBe('true');
+      expect(capturedParams.current?.get('set')).toBe('1');
+    });
   });
 });

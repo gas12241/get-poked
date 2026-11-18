@@ -246,10 +246,11 @@ Supports
 
 - search — `?search=` (partial, case-insensitive match on `name`; also accent-insensitive — e.g. `search=Poke` matches "Poké Vital A" — via a diacritic-stripped `name_ascii` field, see docs/decisions.md #060)
 - filtering — `?rarity=`, `?supertype=`, `?set=` (Set id), `?type=` (elemental type name, case-insensitive, e.g. `Fire`), `?series=` (Set.series, case-insensitive, e.g. `Mega Evolution` — matches every card across every set in that series, see docs/decisions.md #035); any combination applies as AND
+- `?owned=true` / `?favorited=true` — restricts to cards the authenticated requester has a `CollectionEntry`/`Favorite` for; composes with every other filter above (e.g. `?owned=true&series=Mega+Evolution`). Mutually exclusive on the frontend, but nothing stops both being sent together (AND'd, same as any other filter combination). Requires authentication — an anonymous request returns an empty result set (`count: 0`), not the full catalog. See docs/decisions.md #079
 - pagination — `?page=`, `?page_size=` (default 24, max 100)
 - sorting — `?ordering=` (`name`, `number`, `rarity`, `release_date`; prefix `-` to reverse). `number` sorts numerically (1, 2, ... 10, 11), not lexicographically as a plain string sort would (1, 10, 11, ... 2) — see docs/decisions.md #032. `release_date` is an alias for the card's set's `release_date` (e.g. every variant of a searched name in the order it was actually printed); cards sharing a release date (i.e. the same set) get a numeric `number` tiebreak, same as above — see docs/decisions.md #037. Conversely, `name`/`number` sorts tiebreak by `release_date` (e.g. every "Abra" print, or every "#1" across sets) — oldest print first by default, or newest first with `?newest_first=true` — see docs/decisions.md #038
 
-No authentication required (see docs/decisions.md #028).
+No authentication required for a plain request — only `?owned=`/`?favorited=` need it, and silently return nothing rather than erroring when it's absent (see docs/decisions.md #028, #079).
 
 Status
 
