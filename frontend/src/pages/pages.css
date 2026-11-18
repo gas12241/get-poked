@@ -163,6 +163,14 @@
   color: var(--text-h);
 }
 
+.cards-empty-state {
+  text-align: center;
+  color: var(--text);
+  max-width: 480px;
+  margin: 48px auto;
+  line-height: 145%;
+}
+
 .name-autocomplete {
   position: relative;
 }

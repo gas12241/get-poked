@@ -243,22 +243,31 @@ function CardListPage() {
 
   const setsQuery = useQuery({ queryKey: ['sets'], queryFn: getSets });
 
-  // What to show above the grid so a set picked from deep within the
+  // What to show above the grid — a set picked from deep within the
   // sidebar (which can require scrolling well past the fold to find)
-  // stays visible without scrolling back up. Absent under the "All Sets"
-  // default — there's nothing to announce. A whole series reuses the
-  // sidebar's own "All {series}" button text verbatim — a set and its
-  // series can share the same name (e.g. a set literally named "Mega
-  // Evolution" within the "Mega Evolution" series), so the plain name
-  // alone can't tell the two apart.
+  // stays visible without scrolling back up, and pairing it with the
+  // current All/Owned/Favorites view explains why the grid might be
+  // empty (e.g. "Showing Owned from All Mega Evolution" when nothing
+  // owned happens to be from that series). A whole series reuses the
+  // sidebar's own "All {series}" button text verbatim, and no set/series
+  // selected reuses its "All Sets" text — a set and its series can share
+  // the same name (e.g. a set literally named "Mega Evolution" within
+  // the "Mega Evolution" series), so the plain name alone can't tell the
+  // two apart.
   const selectedSet = setId
     ? setsQuery.data?.find((s) => String(s.id) === setId)
     : undefined;
-  const showingLabel = selectedSet
+  const setOrSeriesLabel = selectedSet
     ? selectedSet.name
     : series
       ? `All ${series}`
-      : null;
+      : 'All Sets';
+  const viewLabel =
+    view === 'owned'
+      ? 'Owned'
+      : view === 'favorited'
+        ? 'Favorites'
+        : 'All cards';
 
   // Same query key CollectionQuickControl/CollectionControl already use —
   // one shared cache entry, not a second request per tile — used here
@@ -492,18 +501,27 @@ function CardListPage() {
           </button>
         </div>
 
-        {showingLabel && (
-          <p className="cards-showing">
-            Showing: <strong>{showingLabel}</strong>
-          </p>
-        )}
+        <p className="cards-showing">
+          Showing <strong>{viewLabel}</strong> from{' '}
+          <strong>{setOrSeriesLabel}</strong>
+        </p>
 
         {cardsQuery.isLoading && <p>Loading cards...</p>}
         {cardsQuery.isError && (
           <p>Failed to load cards: {(cardsQuery.error as Error).message}</p>
         )}
 
-        {cardsQuery.data && (
+        {cardsQuery.data && cardsQuery.data.count === 0 && (
+          <p className="cards-empty-state">
+            {view === 'owned' &&
+              'You don\'t own any cards here yet — switch to "All cards" and use the + button on a card to add it to your collection.'}
+            {view === 'favorited' &&
+              'You haven\'t favorited any cards here yet — switch to "All cards" and use the ☆ button on a card to add it to your favorites.'}
+            {view === 'all' && 'No cards match your current filters.'}
+          </p>
+        )}
+
+        {cardsQuery.data && cardsQuery.data.count > 0 && (
           <>
             <div className="card-grid">
               {cardsQuery.data.results.map((card) => (
