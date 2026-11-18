@@ -554,6 +554,44 @@
   margin: 0;
 }
 
+/* Styled like .quiz-mode-buttons' tiles (same border/radius/hover-accent
+   language), sized for a compact external-link action rather than a big
+   primary choice. */
+.card-external-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.card-external-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  text-decoration: none;
+
+  &:hover {
+    background: var(--accent-bg);
+    border-color: var(--accent-border);
+    color: var(--accent);
+  }
+}
+
+.card-external-link img {
+  width: 20px;
+  height: 20px;
+  max-width: none;
+  border-radius: 4px;
+}
+
 .attack-list {
   list-style: none;
   padding: 0;
