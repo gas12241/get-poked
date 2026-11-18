@@ -13,6 +13,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ConfirmEmailChangePage from './pages/ConfirmEmailChangePage';
 import ProfilePage from './pages/ProfilePage';
+import CollectionPage from './pages/CollectionPage';
 import { refreshAccessToken } from './lib/apiClient';
 
 const router = createBrowserRouter([
@@ -30,6 +31,7 @@ const router = createBrowserRouter([
       { path: '/reset-password', element: <ResetPasswordPage /> },
       { path: '/confirm-email-change', element: <ConfirmEmailChangePage /> },
       { path: '/profile', element: <ProfilePage /> },
+      { path: '/collection', element: <CollectionPage /> },
     ],
   },
 ]);

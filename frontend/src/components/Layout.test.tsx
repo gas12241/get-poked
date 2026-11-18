@@ -28,6 +28,7 @@ function renderLayoutAt(route: string) {
         <Route path="/login" element={<p>Login page content</p>} />
         <Route path="/signup" element={<p>Signup page content</p>} />
         <Route path="/profile" element={<p>Profile page content</p>} />
+        <Route path="/collection" element={<p>Collection page content</p>} />
       </Route>
     </Routes>,
     { route },
@@ -140,6 +141,38 @@ describe('Layout', () => {
 
     expect(screen.getByRole('link', { name: 'Sign up' })).toHaveClass('active');
     expect(screen.getByRole('link', { name: 'Log in' })).not.toHaveClass(
+      'active',
+    );
+  });
+
+  it('hides the Collection link when logged out', () => {
+    renderLayoutAt('/');
+
+    expect(
+      screen.queryByRole('link', { name: 'Collection' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the Collection link when logged in', () => {
+    useAuthStore.getState().setAccessToken('test-token');
+
+    renderLayoutAt('/');
+
+    expect(screen.getByRole('link', { name: 'Collection' })).toHaveAttribute(
+      'href',
+      '/collection',
+    );
+  });
+
+  it('highlights Collection while on the collection page', () => {
+    useAuthStore.getState().setAccessToken('test-token');
+
+    renderLayoutAt('/collection');
+
+    expect(screen.getByRole('link', { name: 'Collection' })).toHaveClass(
+      'active',
+    );
+    expect(screen.getByRole('link', { name: 'Cards' })).not.toHaveClass(
       'active',
     );
   });
