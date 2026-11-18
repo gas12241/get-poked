@@ -1220,6 +1220,18 @@ Why
 
 ---
 
+## Decision 083
+
+Fix: Owned/Favorites tile not disappearing after remove/unfavorite
+
+Why
+
+- **Bug**: on the Cards page's Owned or Favorites view, removing a card's last copy (via `CollectionQuickControl`'s "−") or unfavoriting it (via `FavoriteButton`'s star) updated the button/badge immediately but left the tile itself sitting in the grid until the page was refreshed. Root cause: both components' mutations only ever invalidated their own narrow query key (`['collection-entries-by-card']` / `['favorite-ids-by-card']`) — never the `['cards', params]` key that actually drives the filtered, paginated grid (`owned=true`/`favorited=true` server-side filtering, #079), so that query stayed cached and stale.
+- **Fix**: both components' `onSuccess` now additionally invalidate `['cards']` (TanStack Query's default prefix match catches every `['cards', params]` variant regardless of the current filters/sort/page, not just an exact match) — one line added to each component's existing invalidation, no new query or API call. Harmless where no `['cards']` query is mounted (e.g. on the detail page), since invalidating an inactive key just marks it stale for next time.
+- 2 new regression tests (one per component, full 269-test suite) — each mounts a sibling component subscribed to the same `['cards', ...]` key the Cards page actually uses and asserts it refetches after the remove/unfavorite mutation; both were confirmed to fail with the exact reported symptom (stale count, no second fetch) against the pre-fix code before the fix was restored. Verified live against a real account with 3 cards both owned and favorited: removing the first tile's last copy on the Owned view, and unfavoriting the first tile on the Favorites view, each dropped the tile from the grid immediately with no reload.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
 import { renderWithProviders } from '../test/renderWithProviders';
@@ -163,6 +167,60 @@ describe('CollectionQuickControl', () => {
 
     await waitFor(() => expect(deletedId).toBe('42'));
     expect(patchCalled).toBe(false);
+  });
+
+  it('refetches an active cards-list query too, so a card removed on the Owned/Favorites view can disappear without a page refresh', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    let cardsFetchCount = 0;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/collections/by-card/`, () => {
+        return HttpResponse.json({ 1: { id: 42, quantity: 1 } });
+      }),
+      http.delete(`${BASE_URL}/api/v1/collections/:id/`, () => {
+        return new HttpResponse(null, { status: 204 });
+      }),
+      http.get(`${BASE_URL}/api/v1/cards/`, () => {
+        cardsFetchCount += 1;
+        return HttpResponse.json({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        });
+      }),
+    );
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    // A sibling consumer of the same ['cards', ...] key the Cards page's
+    // Owned/Favorites view actually uses — stands in for that page's own
+    // query without pulling in all of CardListPage.
+    function CardsListStandIn() {
+      useQuery({
+        queryKey: ['cards', { owned: true }],
+        queryFn: () => fetch(`${BASE_URL}/api/v1/cards/`).then((r) => r.json()),
+      });
+      return null;
+    }
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <CardsListStandIn />
+          <CollectionQuickControl cardId={1} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const button = await screen.findByRole('button', {
+      name: 'Remove one from collection',
+    });
+    await waitFor(() => expect(cardsFetchCount).toBe(1));
+
+    await userEvent.click(button);
+
+    await waitFor(() => expect(cardsFetchCount).toBe(2));
   });
 
   it('does not navigate when clicked inside a wrapping Link (list-tile usage)', async () => {
