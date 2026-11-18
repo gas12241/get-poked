@@ -20,6 +20,14 @@ type SortField = 'name' | 'number' | 'release_date' | 'date_added';
 type SortDirection = 'asc' | 'desc';
 type ViewFilter = 'all' | 'owned' | 'favorited';
 
+// See docs/decisions.md #038 — only meaningful for Name/Number sorts
+// (hence the toggle itself only rendering then), since Release date
+// already sorts chronologically and Date added is an unrelated axis.
+const NEWEST_FIRST_EXPLANATION =
+  'Cards with the same name or number can appear across multiple sets ' +
+  '(e.g. every "Pikachu", or every "#1"). This decides whether the ' +
+  'newest or oldest print of those comes first.';
+
 // Filters/sort/page live in the URL (not component state) so that
 // navigating to a card's detail page and back restores the exact view you
 // were looking at, rather than resetting to the unfiltered default — see
@@ -421,19 +429,29 @@ function CardListPage() {
             </select>
           </div>
           {(sortField === 'name' || sortField === 'number') && (
-            <label className="newest-first-toggle">
-              <input
-                type="checkbox"
-                checked={newestFirst}
-                onChange={(e) =>
-                  handleFilterChange(
-                    'newest_first',
-                    e.target.checked ? 'true' : '',
-                  )
-                }
-              />
-              Newest print first
-            </label>
+            <span className="newest-first-group">
+              <label className="newest-first-toggle">
+                <input
+                  type="checkbox"
+                  checked={newestFirst}
+                  onChange={(e) =>
+                    handleFilterChange(
+                      'newest_first',
+                      e.target.checked ? 'true' : '',
+                    )
+                  }
+                />
+                Newest print first
+              </label>
+              <span
+                className="info-icon"
+                tabIndex={0}
+                aria-label={NEWEST_FIRST_EXPLANATION}
+                title={NEWEST_FIRST_EXPLANATION}
+              >
+                ⓘ
+              </span>
+            </span>
           )}
           <button
             type="button"

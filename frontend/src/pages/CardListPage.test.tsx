@@ -705,4 +705,23 @@ describe('CardListPage', () => {
       'name',
     );
   });
+
+  it('shows an info tooltip explaining "Newest print first", only alongside Name/Number sorts', async () => {
+    renderWithProviders(<CardListPage />);
+    await screen.findByText('Charizard');
+
+    const infoIcon = screen.getByLabelText(/same name or number/i);
+    expect(infoIcon).toHaveAttribute(
+      'title',
+      expect.stringContaining('same name or number'),
+    );
+
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Sort by' }),
+      'release_date',
+    );
+    expect(
+      screen.queryByLabelText(/same name or number/i),
+    ).not.toBeInTheDocument();
+  });
 });
