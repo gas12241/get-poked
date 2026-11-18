@@ -271,14 +271,26 @@
   box-shadow: var(--shadow);
 }
 
+/* CardDetailPage's heading — placed before the name rather than after so
+   its position doesn't drift with how long a given card's name happens to
+   be, and noticeably bigger than the tile-overlay star (buttons don't
+   inherit font-size from the surrounding h1 here, so this is a fixed size
+   deliberately picked to read well next to the heading text, not a
+   relative one). */
+.favorite-button-large {
+  font-size: 32px;
+  vertical-align: middle;
+}
+
 .collection-add-button {
   display: inline-block;
   margin: 8px 0;
 }
 
-.collection-add-button,
-.collection-stepper button,
-.collection-remove-button {
+/* The +/- quantity steppers are neutral adjustments, not an add/remove
+   action, so they keep the plain bordered look — only .collection-
+   add-button and .collection-remove-button get the semantic fill below. */
+.collection-stepper button {
   font: inherit;
   font-size: 13px;
   padding: 5px 12px;
@@ -297,6 +309,39 @@
     cursor: not-allowed;
     opacity: 0.6;
   }
+}
+
+/* Filled, not just bordered — same severity-signaling treatment this app
+   already uses for its other genuinely consequential actions (e.g.
+   .profile-delete-button), so "add" and "remove" stand out rather than
+   blending in with every other quiet pill button on the page. */
+.collection-add-button,
+.collection-remove-button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+.collection-add-button {
+  background: var(--success);
+}
+
+.collection-remove-button {
+  background: var(--danger);
 }
 
 .collection-stepper {
