@@ -383,6 +383,7 @@
 
 .collection-tabs {
   display: flex;
+  justify-content: center;
   gap: 8px;
   margin: 16px 0;
 }
@@ -408,8 +409,13 @@
   }
 }
 
+/* Centered as a block (unlike the Owned/Favorites card grids, which
+   intentionally fill left-to-right) — this is summary content, not a
+   grid, so it should align with the now-centered tab row above it rather
+   than hugging the left edge on wide viewports. */
 .collection-stats {
   max-width: 640px;
+  margin: 0 auto;
 }
 
 .collection-stats-summary {
