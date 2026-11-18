@@ -357,6 +357,86 @@
   }
 }
 
+.collection-stats {
+  max-width: 640px;
+}
+
+.collection-stats-summary {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.collection-stat-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.collection-stat-number {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-h);
+  font-variant-numeric: tabular-nums;
+}
+
+.collection-stat-label {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.collection-stats-sets {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.collection-stats-set-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--text-h);
+  margin-bottom: 4px;
+}
+
+.collection-stats-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent-bg);
+  overflow: hidden;
+}
+
+.collection-stats-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+.collection-stats-rarity {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    color: var(--text-h);
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
 .card-tile img {
   width: 100%;
   border-radius: 8px;

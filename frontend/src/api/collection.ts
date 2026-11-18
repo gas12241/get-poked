@@ -79,3 +79,26 @@ export const updateCollectionQuantity = (id: number, quantity: number) =>
 
 export const removeFromCollection = (id: number) =>
   apiClient<void>(`/api/v1/collections/${id}/`, { method: 'DELETE' });
+
+export interface SetCompletion {
+  set_id: number;
+  set_name: string;
+  owned: number;
+  total: number;
+}
+
+export interface RarityCount {
+  rarity: string;
+  count: number;
+}
+
+export interface CollectionStats {
+  total_unique_cards: number;
+  total_quantity: number;
+  total_favorites: number;
+  by_set: SetCompletion[];
+  by_rarity: RarityCount[];
+}
+
+export const getCollectionStats = () =>
+  apiClient<CollectionStats>('/api/v1/collections/stats/');

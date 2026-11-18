@@ -286,6 +286,16 @@ export const handlers = [
     return HttpResponse.json({});
   }),
 
+  http.get(`${BASE_URL}/api/v1/collections/stats/`, () => {
+    return HttpResponse.json({
+      total_unique_cards: 0,
+      total_quantity: 0,
+      total_favorites: 0,
+      by_set: [],
+      by_rarity: [],
+    });
+  }),
+
   http.get(`${BASE_URL}/api/v1/collections/`, () => {
     return HttpResponse.json({
       count: 0,
