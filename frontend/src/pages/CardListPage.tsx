@@ -490,37 +490,39 @@ function CardListPage() {
                   state={{ from: 'cards' }}
                   className="card-tile"
                 >
-                  <FavoriteButton
-                    cardId={card.id}
-                    className="favorite-button-tile-overlay"
-                  />
-                  <CollectionQuickControl
-                    cardId={card.id}
-                    className="collection-quick-control-tile-overlay"
-                  />
-                  {card.image_small ? (
-                    <img
-                      src={card.image_small}
-                      alt={card.name}
-                      onError={(e) => {
-                        // `image_small` occasionally 404s on the upstream
-                        // image host for older cards — falls back to
-                        // `image_large` once, guarded so a failure of the
-                        // fallback itself doesn't loop. See
-                        // docs/decisions.md #039.
-                        const img = e.currentTarget;
-                        if (img.src !== card.image_large) {
-                          img.src = card.image_large;
-                        }
-                      }}
+                  <div className="card-tile-image">
+                    <FavoriteButton
+                      cardId={card.id}
+                      className="favorite-button-tile-overlay"
                     />
-                  ) : (
-                    // Neither image_small nor image_large has a working
-                    // URL for this card — see docs/decisions.md #039.
-                    <div className="no-image-placeholder">
-                      No image available
-                    </div>
-                  )}
+                    <CollectionQuickControl
+                      cardId={card.id}
+                      className="collection-quick-control-tile-overlay"
+                    />
+                    {card.image_small ? (
+                      <img
+                        src={card.image_small}
+                        alt={card.name}
+                        onError={(e) => {
+                          // `image_small` occasionally 404s on the upstream
+                          // image host for older cards — falls back to
+                          // `image_large` once, guarded so a failure of the
+                          // fallback itself doesn't loop. See
+                          // docs/decisions.md #039.
+                          const img = e.currentTarget;
+                          if (img.src !== card.image_large) {
+                            img.src = card.image_large;
+                          }
+                        }}
+                      />
+                    ) : (
+                      // Neither image_small nor image_large has a working
+                      // URL for this card — see docs/decisions.md #039.
+                      <div className="no-image-placeholder">
+                        No image available
+                      </div>
+                    )}
+                  </div>
                   <div className="card-tile-text">
                     <span className="card-name">{card.name}</span>
                     <span className="card-set">

@@ -278,6 +278,14 @@
   color: var(--text-h);
 }
 
+/* Own positioning context for the favorite/collection overlays below —
+   sized to the image itself, not the whole tile, so "bottom: 6px" lands
+   just past the card art rather than past the text details under it. */
+.card-tile-image {
+  position: relative;
+  width: 100%;
+}
+
 .favorite-button {
   font-size: 18px;
   line-height: 1;
