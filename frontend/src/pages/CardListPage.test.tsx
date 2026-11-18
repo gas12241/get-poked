@@ -633,13 +633,13 @@ describe('CardListPage', () => {
 
     await screen.findByText('Charizard');
     expect(
-      screen.queryByRole('option', { name: 'Sort: Date added' }),
+      screen.queryByRole('option', { name: 'Date added' }),
     ).not.toBeInTheDocument();
 
     await userEvent.click(await screen.findByRole('button', { name: 'Owned' }));
 
     expect(
-      screen.getByRole('option', { name: 'Sort: Date added' }),
+      screen.getByRole('option', { name: 'Date added' }),
     ).toBeInTheDocument();
   });
 
