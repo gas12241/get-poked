@@ -1162,6 +1162,20 @@ Why
 
 ---
 
+## Decision 079
+
+Cards page: filter by Owned / Favorited
+
+Why
+
+- **Extends the existing `CardFilter`/`CardViewSet` rather than a parallel endpoint in `collection`.** The user's request — "see only cards I own/favorite, optionally within a specific set/series" — needs real server-side filtering, not a client-side one: `CardListPage` is paginated, and filtering an already-paginated page client-side would silently break "page 2 of owned cards in this set" for anything spanning more than one page. Extending `CardFilter` reuses every bit of existing search/sort/pagination infrastructure for free and keeps the Cards page one unified browsing experience, rather than standing up a second, parallel card-browsing endpoint that duplicates it and risks the two drifting apart over time.
+- **No new cross-app Python import, despite the new data dependency.** `owned`/`favorited` are two method-based `BooleanFilter`s on `CardFilter` (`backend/cards/filters.py`) that filter via `collection_entries__user`/`favorited_by__user` — the reverse relation accessors Django's app registry attaches to `Card` from the `ForeignKey`s already declared on `collection.CollectionEntry`/`Favorite`. `cards/filters.py` never has to `import` anything from `collection`; the relation exists regardless of which app declared which end of it. `UniqueConstraint(user, card)` on both models already guarantees at most one matching row per card, so no `.distinct()` is needed to avoid duplicate results.
+- **An anonymous request with `?owned=true`/`?favorited=true` gets an empty result set, not the full public catalog.** Silently ignoring the filter for a logged-out request would misleadingly imply "these are all your cards" when they aren't; `filter_owned`/`filter_favorited` check `self.request.user.is_authenticated` and return `.none()` when it isn't. The frontend never sends these params while logged out anyway — the toggle itself is hidden entirely — so this only matters to someone calling the API directly.
+- **A single `view` URL param (`owned` | `favorited`, absent = all), not two independent booleans**, on `CardListPage.tsx` — the three states are mutually exclusive by the user's own framing ("only your favorites **or** only owned cards"), matching this page's existing convention (#033) of filters living in `searchParams`. Styled and behaves like `CollectionPage`'s own Owned/Favorites/Stats tabs (`.collection-tabs`, reused directly rather than duplicated) since it's the same kind of view-mode switch, not a multi-select filter like rarity/type. `handleResetFilters` deliberately leaves it alone, the same treatment already given to `set`/`series` — a navigational choice, not something "Reset filters" should undo.
+- 7 new backend tests (full 289-test suite, 99% coverage) — composing with `set`, the anonymous-empty-result proof, and a user with nothing owned/favorited still returning `count: 0` rather than erroring. 4 new frontend tests (full 246-test suite) — the toggle hidden when logged out, each button sending the right param and marking `.active`, and a composition test (switching to a set while "Owned" is active keeps `owned=true` in the request alongside the new `set`). Verified live against a real account with cards owned/favorited across two different sets, including one multi-set series (Mega Evolution): each toggle showed exactly the right subset, narrowing to the series while "Owned" was active correctly intersected both filters, and logging out made the toggle disappear entirely; both light and dark mode.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

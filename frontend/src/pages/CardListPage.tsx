@@ -13,10 +13,12 @@ import type { CardListParams } from '../api/cards';
 import FavoriteButton from '../components/FavoriteButton';
 import NameAutocomplete from '../components/NameAutocomplete';
 import SeriesSidebar from '../components/SeriesSidebar';
+import { useIsAuthenticated } from '../store/authStore';
 import './pages.css';
 
 type SortField = 'name' | 'number' | 'release_date';
 type SortDirection = 'asc' | 'desc';
+type ViewFilter = 'all' | 'owned' | 'favorited';
 
 // Filters/sort/page live in the URL (not component state) so that
 // navigating to a card's detail page and back restores the exact view you
@@ -26,6 +28,7 @@ type SortDirection = 'asc' | 'desc';
 // of stacking a new one for every keystroke/click.
 function CardListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const isAuthenticated = useIsAuthenticated();
 
   const search = searchParams.get('search') ?? '';
   const rarity = searchParams.get('rarity') ?? '';
@@ -33,6 +36,11 @@ function CardListPage() {
   const type = searchParams.get('type') ?? '';
   const setId = searchParams.get('set') ?? '';
   const series = searchParams.get('series') ?? '';
+  const rawView = searchParams.get('view');
+  const view: ViewFilter =
+    isAuthenticated && (rawView === 'owned' || rawView === 'favorited')
+      ? rawView
+      : 'all';
   const ordering = searchParams.get('ordering') || 'name';
   const sortField: SortField = ordering.replace('-', '') as SortField;
   const sortDirection: SortDirection = ordering.startsWith('-')
@@ -143,6 +151,22 @@ function CardListPage() {
     );
   }
 
+  function handleViewSelect(next: ViewFilter) {
+    setSearchParams(
+      (prev) => {
+        const updated = new URLSearchParams(prev);
+        if (next === 'all') {
+          updated.delete('view');
+        } else {
+          updated.set('view', next);
+        }
+        updated.set('page', '1');
+        return updated;
+      },
+      { replace: true },
+    );
+  }
+
   function handlePageChange(newPage: number) {
     setSearchParams(
       (prev) => {
@@ -189,6 +213,8 @@ function CardListPage() {
       (sortField === 'name' || sortField === 'number') && newestFirst
         ? true
         : undefined,
+    owned: view === 'owned' || undefined,
+    favorited: view === 'favorited' || undefined,
   };
 
   const cardsQuery = useQuery({
@@ -283,6 +309,32 @@ function CardListPage() {
       />
 
       <div className="cards-main">
+        {isAuthenticated && (
+          <div className="collection-tabs">
+            <button
+              type="button"
+              className={view === 'all' ? 'active' : ''}
+              onClick={() => handleViewSelect('all')}
+            >
+              All cards
+            </button>
+            <button
+              type="button"
+              className={view === 'owned' ? 'active' : ''}
+              onClick={() => handleViewSelect('owned')}
+            >
+              Owned
+            </button>
+            <button
+              type="button"
+              className={view === 'favorited' ? 'active' : ''}
+              onClick={() => handleViewSelect('favorited')}
+            >
+              Favorites
+            </button>
+          </div>
+        )}
+
         <div className="filters">
           <NameAutocomplete
             value={searchInput}
