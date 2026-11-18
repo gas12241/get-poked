@@ -494,10 +494,6 @@ function CardListPage() {
                     cardId={card.id}
                     className="favorite-button-tile-overlay"
                   />
-                  <CollectionQuickControl
-                    cardId={card.id}
-                    className="collection-quick-control-tile-overlay"
-                  />
                   {card.image_small ? (
                     <img
                       src={card.image_small}
@@ -531,10 +527,16 @@ function CardListPage() {
                       #{card.number}
                       {card.artist && ` · ${card.artist}`}
                     </span>
-                    {collectionEntriesQuery.data?.[card.id] && (
-                      <span className="card-owned-badge">
-                        Owned ×{collectionEntriesQuery.data[card.id].quantity}
-                      </span>
+                    {isAuthenticated && (
+                      <div className="card-owned-row">
+                        <CollectionQuickControl cardId={card.id} />
+                        {collectionEntriesQuery.data?.[card.id] && (
+                          <span className="card-owned-badge">
+                            Owned ×
+                            {collectionEntriesQuery.data[card.id].quantity}
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
                 </Link>

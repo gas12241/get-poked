@@ -1,12 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Route, Routes } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
 import { renderWithProviders } from '../test/renderWithProviders';
+import { useAuthStore } from '../store/authStore';
 import CardDetailPage from './CardDetailPage';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+beforeEach(() => {
+  useAuthStore.getState().clearAccessToken();
+});
 
 describe('CardDetailPage', () => {
   it('renders full card detail including nested attacks/weaknesses', async () => {
@@ -168,5 +174,91 @@ describe('CardDetailPage', () => {
 
     expect(await screen.findByText('No image available')).toBeInTheDocument();
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  });
+
+  it('hides the collection quick control when logged out', async () => {
+    renderWithProviders(
+      <Routes>
+        <Route path="/cards/:id" element={<CardDetailPage />} />
+      </Routes>,
+      { route: '/cards/1' },
+    );
+
+    await screen.findByRole('heading', { name: 'Charizard' });
+    expect(
+      screen.queryByRole('button', { name: 'Add one to collection' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows only a plus button when the card is not yet owned, and no "Owned" badge', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/cards/:id" element={<CardDetailPage />} />
+      </Routes>,
+      { route: '/cards/1' },
+    );
+
+    await screen.findByRole('button', { name: 'Add one to collection' });
+    expect(
+      screen.queryByRole('button', { name: 'Remove one from collection' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Owned ×/)).not.toBeInTheDocument();
+  });
+
+  it('shows minus/plus and the "Owned ×N" badge once the card is owned', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    server.use(
+      http.get(`${BASE_URL}/api/v1/collections/by-card/`, () => {
+        return HttpResponse.json({ 1: { id: 42, quantity: 3 } });
+      }),
+    );
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/cards/:id" element={<CardDetailPage />} />
+      </Routes>,
+      { route: '/cards/1' },
+    );
+
+    await screen.findByRole('button', { name: 'Remove one from collection' });
+    expect(
+      screen.getByRole('button', { name: 'Add one to collection' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Owned ×3')).toBeInTheDocument();
+  });
+
+  it('updates the "Owned" badge after clicking plus, without a reload', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    let owned = false;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/collections/by-card/`, () => {
+        return HttpResponse.json(owned ? { 1: { id: 42, quantity: 1 } } : {});
+      }),
+      http.post(`${BASE_URL}/api/v1/collections/`, () => {
+        owned = true;
+        return HttpResponse.json(
+          { id: 42, card: {}, quantity: 1, date_added: '2026-01-15T00:00:00Z' },
+          { status: 201 },
+        );
+      }),
+    );
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/cards/:id" element={<CardDetailPage />} />
+      </Routes>,
+      { route: '/cards/1' },
+    );
+
+    const addButton = await screen.findByRole('button', {
+      name: 'Add one to collection',
+    });
+    expect(screen.queryByText(/Owned ×/)).not.toBeInTheDocument();
+
+    await userEvent.click(addButton);
+
+    expect(await screen.findByText('Owned ×1')).toBeInTheDocument();
   });
 });
