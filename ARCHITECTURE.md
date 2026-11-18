@@ -194,13 +194,15 @@ Card artwork and data come from the Pokémon TCG API, an unofficial fan project 
 
 ## Collections
 
-Ownership and favoriting are modeled as two separate tables, not one combined table, since they track different things and grow differently over time.
+Status: implemented (see docs/decisions.md #077). Ownership and favoriting are modeled as two separate tables in a dedicated `collection` app, not one combined table, since they track different things and grow differently over time.
 
 `CollectionEntry` — user, card, quantity, date added. Represents a card the user owns, with a count of how many copies (collectors commonly own duplicates).
 
 `Favorite` — user, card, date added. Represents a card the user has starred, independent of whether they own it.
 
-A card can be owned, favorited, both, or neither — the two tables are queried independently and combined at the API layer when a view needs both (e.g. a card detail page).
+A card can be owned, favorited, both, or neither — the two tables are queried independently. Both are user-scoped the same way `QuizAttempt` already is: `user` is set server-side from the request, never trusted from the client, and every view's queryset is filtered to the requesting user, so another user's entries are invisible rather than merely forbidden. `GET /api/v1/favorites/by-card/` and `GET /api/v1/collections/by-card/` are small unpaginated lookup endpoints that let a card-browsing page render per-card favorited/owned state without paging through the main (paginated) list endpoints.
+
+On the frontend, a star toggle sits on both the card list tiles and the detail page; the dedicated `/collection` page (linked from the nav once logged in) has two tabs — Owned and Favorites — rather than two separate routes.
 
 ---
 
