@@ -530,12 +530,11 @@ function CardListPage() {
                     {isAuthenticated && (
                       <div className="card-owned-row">
                         <CollectionQuickControl cardId={card.id} />
-                        {collectionEntriesQuery.data?.[card.id] && (
-                          <span className="card-owned-badge">
-                            Owned ×
-                            {collectionEntriesQuery.data[card.id].quantity}
-                          </span>
-                        )}
+                        <span className="card-owned-badge">
+                          Owned ×
+                          {collectionEntriesQuery.data?.[card.id]?.quantity ??
+                            0}
+                        </span>
                       </div>
                     )}
                   </div>

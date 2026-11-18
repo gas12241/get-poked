@@ -725,8 +725,15 @@ describe('CardListPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('does not show an "Owned" badge for a card that is not in the collection', async () => {
+  it('shows "Owned ×0" for a card that is not in the collection, rather than hiding the count', async () => {
     useAuthStore.getState().setAccessToken('test-token');
+    renderWithProviders(<CardListPage />);
+
+    await screen.findByText('Charizard');
+    expect(await screen.findByText('Owned ×0')).toBeInTheDocument();
+  });
+
+  it('hides the "Owned" count entirely when logged out', async () => {
     renderWithProviders(<CardListPage />);
 
     await screen.findByText('Charizard');
@@ -766,7 +773,7 @@ describe('CardListPage', () => {
     const addButton = await screen.findByRole('button', {
       name: 'Add one to collection',
     });
-    expect(screen.queryByText(/Owned ×/)).not.toBeInTheDocument();
+    expect(await screen.findByText('Owned ×0')).toBeInTheDocument();
 
     await userEvent.click(addButton);
 
