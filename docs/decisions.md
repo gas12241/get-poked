@@ -1176,6 +1176,21 @@ Why
 
 ---
 
+## Decision 080
+
+Sort Owned/Favorites by date added
+
+Why
+
+- **No new tracking needed.** `CollectionEntry.date_added` and `Favorite.date_added` (#077) already exist, are `auto_now_add=True` (set once at creation), and are `read_only` on both serializers — a quantity update never touches it, so it was already exactly "first date added," just not exposed anywhere. This is purely a new sort option on `?owned=`/`?favorited=` (#079), not a schema change.
+- **Annotated inside `filter_owned`/`filter_favorited` themselves** (`CardFilter`), alongside the `.filter()` already there: `.annotate(date_added=F("collection_entries__date_added"))` / `F("favorited_by__date_added")`. Verified directly before committing to it (not assumed) — filtering through a reverse relation and then annotating an `F()` from that same relation path reuses the *same* SQL join rather than creating a second one or returning NULLs; confirmed via `.query` on a real queryset. Same consequence as #079: no new cross-app import, since it's still just the reverse accessor Django already wires up.
+- **Both branches reuse the one annotation alias `date_added`.** Safe only because `owned`/`favorited` are mutually exclusive by construction on the frontend (the `view` toggle from #079) — exactly one of the two filter methods ever actually runs per request.
+- **`CardOrderingFilter` needed its own guard, not just a new case.** `date_added` only resolves when `owned=`/`favorited=` actually annotated it; requesting `?ordering=date_added` without either active would otherwise raise a Django `FieldError` (a 500), not return an empty/default result. Deliberately dropped from the requested ordering instead, falling back to whatever's left (or the view's own default). Proven to matter, not just asserted: the guard was temporarily removed and the ordering test for exactly this case failed with that same `FieldError`, before being restored.
+- **The frontend's "Date added" sort option only renders while Owned/Favorites is active** (`view !== 'all'` in `CardListPage.tsx`) — it's genuinely meaningless outside that context, so it's hidden rather than shown-but-broken. Switching back to "All cards" while it's selected resets the sort to Name (handled inline in `handleViewSelect`, the one place that can cause it) rather than leaving the URL pointing at a sort option about to vanish from the dropdown — also proven to matter by temporarily removing the reset and watching the corresponding frontend test fail.
+- 5 new backend tests (full 294-test suite, 99% coverage) — ascending/descending order, Favorites proven to sort by its own `date_added` and not Owned's (two cards with opposite owned/favorited orderings), composing with `set`, and the no-crash fallback when neither filter is active. 3 new frontend tests (full 249-test suite). Verified live against a real account with cards added to Owned and to Favorites at deliberately staggered dates (and in opposite relative order between the two, to rule out one leaking into the other): both directions sorted correctly, Favorites' order differed from Owned's exactly as expected, and the option correctly disappeared (with the sort falling back to Name) on returning to "All cards"; both light and dark mode.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

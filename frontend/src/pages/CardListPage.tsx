@@ -16,7 +16,7 @@ import SeriesSidebar from '../components/SeriesSidebar';
 import { useIsAuthenticated } from '../store/authStore';
 import './pages.css';
 
-type SortField = 'name' | 'number' | 'release_date';
+type SortField = 'name' | 'number' | 'release_date' | 'date_added';
 type SortDirection = 'asc' | 'desc';
 type ViewFilter = 'all' | 'owned' | 'favorited';
 
@@ -157,6 +157,14 @@ function CardListPage() {
         const updated = new URLSearchParams(prev);
         if (next === 'all') {
           updated.delete('view');
+          // "Date added" is only meaningful while Owned/Favorites is
+          // active — fall back to Name rather than leaving an option
+          // selected that's about to disappear from the dropdown.
+          if (
+            (updated.get('ordering') ?? '').replace('-', '') === 'date_added'
+          ) {
+            updated.delete('ordering');
+          }
         } else {
           updated.set('view', next);
         }
@@ -394,6 +402,9 @@ function CardListPage() {
             <option value="name">Sort: Name</option>
             <option value="number">Sort: Number</option>
             <option value="release_date">Sort: Release date</option>
+            {view !== 'all' && (
+              <option value="date_added">Sort: Date added</option>
+            )}
           </select>
           <select
             aria-label="Sort direction"
