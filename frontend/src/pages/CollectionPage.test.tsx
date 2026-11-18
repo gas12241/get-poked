@@ -196,4 +196,99 @@ describe('CollectionPage', () => {
 
     await waitFor(() => expect(requestedId).toBe('20'));
   });
+
+  it('switches to the Stats tab and shows the summary numbers', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    server.use(
+      http.get(`${BASE_URL}/api/v1/collections/stats/`, () => {
+        return HttpResponse.json({
+          total_unique_cards: 12,
+          total_quantity: 18,
+          total_favorites: 5,
+          by_set: [{ set_id: 1, set_name: 'Base', owned: 8, total: 102 }],
+          by_rarity: [{ rarity: 'Rare Holo', count: 3 }],
+        });
+      }),
+    );
+
+    renderWithProviders(<CollectionPage />);
+    await userEvent.click(screen.getByRole('button', { name: 'Stats' }));
+
+    expect(await screen.findByText('12')).toBeInTheDocument();
+    expect(screen.getByText('Unique cards')).toBeInTheDocument();
+    expect(screen.getByText('18')).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
+  });
+
+  it('shows a set completion row with a progress bar matching the percentage', async () => {
+    // owned/total deliberately isn't numerically equal to the resulting
+    // percentage (25/50 = 50%, not 25%) — a fixture where they coincided
+    // (e.g. owned=25/total=100) would pass even if the component forgot to
+    // divide by the total at all, which a first draft of this test did.
+    useAuthStore.getState().setAccessToken('test-token');
+    server.use(
+      http.get(`${BASE_URL}/api/v1/collections/stats/`, () => {
+        return HttpResponse.json({
+          total_unique_cards: 8,
+          total_quantity: 8,
+          total_favorites: 0,
+          by_set: [{ set_id: 1, set_name: 'Base', owned: 25, total: 50 }],
+          by_rarity: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CollectionPage />);
+    await userEvent.click(screen.getByRole('button', { name: 'Stats' }));
+
+    expect(await screen.findByText('25/50')).toBeInTheDocument();
+    const fill = document.querySelector(
+      '.collection-stats-bar-fill',
+    ) as HTMLElement;
+    expect(fill.style.width).toBe('50%');
+  });
+
+  it('relabels the blank rarity bucket as "Unknown"', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    server.use(
+      http.get(`${BASE_URL}/api/v1/collections/stats/`, () => {
+        return HttpResponse.json({
+          total_unique_cards: 1,
+          total_quantity: 1,
+          total_favorites: 0,
+          by_set: [],
+          by_rarity: [{ rarity: '', count: 1 }],
+        });
+      }),
+    );
+
+    renderWithProviders(<CollectionPage />);
+    await userEvent.click(screen.getByRole('button', { name: 'Stats' }));
+
+    expect(await screen.findByText('Unknown')).toBeInTheDocument();
+  });
+
+  it('shows an empty-state message for a brand-new account with nothing owned', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    server.use(
+      http.get(`${BASE_URL}/api/v1/collections/stats/`, () => {
+        return HttpResponse.json({
+          total_unique_cards: 0,
+          total_quantity: 0,
+          total_favorites: 0,
+          by_set: [],
+          by_rarity: [],
+        });
+      }),
+    );
+
+    renderWithProviders(<CollectionPage />);
+    await userEvent.click(screen.getByRole('button', { name: 'Stats' }));
+
+    expect(
+      await screen.findByText(
+        'Add some cards to your collection to see stats here.',
+      ),
+    ).toBeInTheDocument();
+  });
 });

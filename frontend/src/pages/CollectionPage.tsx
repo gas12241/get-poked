@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getCollection,
+  getCollectionStats,
   getFavorites,
   removeFavorite,
   removeFromCollection,
@@ -11,7 +12,7 @@ import {
 import { useIsAuthenticated } from '../store/authStore';
 import './pages.css';
 
-type Tab = 'owned' | 'favorites';
+type Tab = 'owned' | 'favorites' | 'stats';
 
 function OwnedTab() {
   const [page, setPage] = useState(1);
@@ -197,6 +198,86 @@ function FavoritesTab() {
   );
 }
 
+function StatsTab() {
+  const statsQuery = useQuery({
+    queryKey: ['collection-stats'],
+    queryFn: getCollectionStats,
+  });
+
+  if (statsQuery.isLoading) return <p>Loading...</p>;
+  if (!statsQuery.data) return null;
+
+  const stats = statsQuery.data;
+
+  return (
+    <div className="collection-stats">
+      <div className="collection-stats-summary">
+        <div className="collection-stat-tile">
+          <span className="collection-stat-number">
+            {stats.total_unique_cards}
+          </span>
+          <span className="collection-stat-label">Unique cards</span>
+        </div>
+        <div className="collection-stat-tile">
+          <span className="collection-stat-number">{stats.total_quantity}</span>
+          <span className="collection-stat-label">Total copies</span>
+        </div>
+        <div className="collection-stat-tile">
+          <span className="collection-stat-number">
+            {stats.total_favorites}
+          </span>
+          <span className="collection-stat-label">Favorites</span>
+        </div>
+      </div>
+
+      {stats.by_set.length > 0 && (
+        <>
+          <h2>Set completion</h2>
+          <div className="collection-stats-sets">
+            {stats.by_set.map((set) => {
+              const pct = Math.round((set.owned / set.total) * 100);
+              return (
+                <div key={set.set_id} className="collection-stats-set-row">
+                  <div className="collection-stats-set-header">
+                    <span>{set.set_name}</span>
+                    <span>
+                      {set.owned}/{set.total}
+                    </span>
+                  </div>
+                  <div className="collection-stats-bar">
+                    <div
+                      className="collection-stats-bar-fill"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {stats.by_rarity.length > 0 && (
+        <>
+          <h2>By rarity</h2>
+          <ul className="collection-stats-rarity">
+            {stats.by_rarity.map((entry) => (
+              <li key={entry.rarity || 'unknown'}>
+                <span>{entry.rarity || 'Unknown'}</span>
+                <span>{entry.count}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {stats.by_set.length === 0 && stats.by_rarity.length === 0 && (
+        <p>Add some cards to your collection to see stats here.</p>
+      )}
+    </div>
+  );
+}
+
 function CollectionPage() {
   const isAuthenticated = useIsAuthenticated();
   const [tab, setTab] = useState<Tab>('owned');
@@ -230,8 +311,17 @@ function CollectionPage() {
         >
           Favorites
         </button>
+        <button
+          type="button"
+          className={tab === 'stats' ? 'active' : undefined}
+          onClick={() => setTab('stats')}
+        >
+          Stats
+        </button>
       </div>
-      {tab === 'owned' ? <OwnedTab /> : <FavoritesTab />}
+      {tab === 'owned' && <OwnedTab />}
+      {tab === 'favorites' && <FavoritesTab />}
+      {tab === 'stats' && <StatsTab />}
     </div>
   );
 }
