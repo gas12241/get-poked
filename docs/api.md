@@ -166,9 +166,11 @@ GET or PATCH /api/v1/me/
 
 Description
 
-`email`, `username`, `first_name`, `last_name`, `avatar`, `is_verified`, `date_joined`, `has_usable_password` (computed, not a stored field — `false` for a Google-only account that's never set a password). PATCH accepts `username`/`first_name`/`last_name`/`avatar`; the rest are read-only regardless of what's in the request body — `email` changes through the dedicated Change Email endpoints below, not a direct PATCH (see docs/decisions.md #075). `username` is unique independently of `email`, same validator/format as at registration (see docs/decisions.md #071).
+`email`, `username`, `first_name`, `last_name`, `avatar`, `is_verified`, `date_joined`, `has_usable_password` (computed, not a stored field — `false` for a Google-only account that's never set a password), `auto_remove_favorite_on_collect`. PATCH accepts `username`/`first_name`/`last_name`/`avatar`/`auto_remove_favorite_on_collect`; the rest are read-only regardless of what's in the request body — `email` changes through the dedicated Change Email endpoints below, not a direct PATCH (see docs/decisions.md #075). `username` is unique independently of `email`, same validator/format as at registration (see docs/decisions.md #071).
 
 `avatar` is a full URL or `null`. Updating it needs `multipart/form-data` instead of JSON (`{"avatar": <file>}`) — JPEG/PNG/WebP only, 5MB max, server-side center-cropped and resized to a fixed 256×256 on upload (see docs/decisions.md #073). Send `{"avatar": null}` as a normal JSON PATCH to clear it back to no picture.
+
+`auto_remove_favorite_on_collect` (boolean, default `False`) — opt-in; when `True`, adding a card to the collection (see Collections → List/Add below) also removes any existing Favorite for that card. PATCHing it from `False` to `True` additionally does a one-time cleanup, removing the Favorite for any card already in the collection at that moment — not just future adds. PATCHing it while already `True` (or omitting it) never re-runs that cleanup. See docs/decisions.md #084.
 
 Status
 
@@ -371,6 +373,8 @@ GET or POST /api/v1/collections/
 Description
 
 `GET` is paginated (24/page, the project default). `POST` takes `{card_id, quantity?}` (`quantity` defaults to 1); rejects a duplicate `(user, card)` with a 400, and `quantity < 1` with a 400. Response nests the full card (same shape as the Cards list endpoint).
+
+If the requesting user has the `auto_remove_favorite_on_collect` profile setting on (see Profile → Get/Update Profile above), a successful `POST` here also deletes any existing Favorite for that card — a one-way side effect of adding to the collection, not the other direction (removing/decrementing a `CollectionEntry` never touches Favorites). Off by default. See docs/decisions.md #084.
 
 Status
 

@@ -567,6 +567,157 @@ describe('ProfilePage', () => {
     expect(screen.queryByLabelText('Current password')).not.toBeInTheDocument();
   });
 
+  it('shows the collection-preferences checkbox unchecked by default', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+
+    renderWithProviders(<ProfilePage />);
+    await screen.findByText('ash');
+
+    const checkbox = screen.getByRole('checkbox', {
+      name: /Remove a card from Favorites automatically/,
+    });
+    expect(checkbox).not.toBeChecked();
+  });
+
+  it('checking the box shows a confirm dialog rather than saving immediately', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    let requested = false;
+    server.use(
+      http.patch(`${BASE_URL}/api/v1/me/`, () => {
+        requested = true;
+        return HttpResponse.json({});
+      }),
+    );
+
+    renderWithProviders(<ProfilePage />);
+    await screen.findByText('ash');
+
+    const checkbox = screen.getByRole('checkbox', {
+      name: /Remove a card from Favorites automatically/,
+    });
+    await userEvent.click(checkbox);
+
+    expect(
+      await screen.findByText(/will remove any cards you already own/),
+    ).toBeInTheDocument();
+    expect(requested).toBe(false);
+    expect(checkbox).not.toBeChecked();
+  });
+
+  it('cancelling the enable dialog leaves the setting off and never calls the API', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    let requested = false;
+    server.use(
+      http.patch(`${BASE_URL}/api/v1/me/`, () => {
+        requested = true;
+        return HttpResponse.json({});
+      }),
+    );
+
+    renderWithProviders(<ProfilePage />);
+    await screen.findByText('ash');
+    const checkbox = screen.getByRole('checkbox', {
+      name: /Remove a card from Favorites automatically/,
+    });
+    await userEvent.click(checkbox);
+    await screen.findByText(/will remove any cards you already own/);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(
+      screen.queryByText(/will remove any cards you already own/),
+    ).not.toBeInTheDocument();
+    expect(checkbox).not.toBeChecked();
+    expect(requested).toBe(false);
+  });
+
+  it('confirming the enable dialog saves the setting on and reflects the checked state', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    let patchedValue: boolean | undefined;
+    server.use(
+      http.patch(`${BASE_URL}/api/v1/me/`, async ({ request }) => {
+        const body = (await request.json()) as {
+          auto_remove_favorite_on_collect?: boolean;
+        };
+        patchedValue = body.auto_remove_favorite_on_collect;
+        return HttpResponse.json({
+          email: 'tester@example.com',
+          username: 'ash',
+          first_name: 'Ash',
+          last_name: 'Ketchum',
+          avatar: null,
+          is_verified: true,
+          date_joined: '2026-01-15T00:00:00Z',
+          has_usable_password: true,
+          auto_remove_favorite_on_collect: true,
+        });
+      }),
+    );
+
+    renderWithProviders(<ProfilePage />);
+    await screen.findByText('ash');
+    const checkbox = screen.getByRole('checkbox', {
+      name: /Remove a card from Favorites automatically/,
+    });
+    await userEvent.click(checkbox);
+    await userEvent.click(screen.getByRole('button', { name: 'Turn on' }));
+
+    await waitFor(() => expect(patchedValue).toBe(true));
+    await waitFor(() => expect(checkbox).toBeChecked());
+  });
+
+  it('unchecking an already-on setting saves directly, with no confirm dialog', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    let patchedValue: boolean | undefined;
+    server.use(
+      http.get(`${BASE_URL}/api/v1/me/`, () => {
+        return HttpResponse.json({
+          email: 'tester@example.com',
+          username: 'ash',
+          first_name: 'Ash',
+          last_name: 'Ketchum',
+          avatar: null,
+          is_verified: true,
+          date_joined: '2026-01-15T00:00:00Z',
+          has_usable_password: true,
+          auto_remove_favorite_on_collect: true,
+        });
+      }),
+      http.patch(`${BASE_URL}/api/v1/me/`, async ({ request }) => {
+        const body = (await request.json()) as {
+          auto_remove_favorite_on_collect?: boolean;
+        };
+        patchedValue = body.auto_remove_favorite_on_collect;
+        return HttpResponse.json({
+          email: 'tester@example.com',
+          username: 'ash',
+          first_name: 'Ash',
+          last_name: 'Ketchum',
+          avatar: null,
+          is_verified: true,
+          date_joined: '2026-01-15T00:00:00Z',
+          has_usable_password: true,
+          auto_remove_favorite_on_collect: false,
+        });
+      }),
+    );
+
+    renderWithProviders(<ProfilePage />);
+    await screen.findByText('ash');
+    const checkbox = await screen.findByRole('checkbox', {
+      name: /Remove a card from Favorites automatically/,
+    });
+    await waitFor(() => expect(checkbox).toBeChecked());
+
+    await userEvent.click(checkbox);
+
+    expect(
+      screen.queryByText(/will remove any cards you already own/),
+    ).not.toBeInTheDocument();
+    await waitFor(() => expect(patchedValue).toBe(false));
+    await waitFor(() => expect(checkbox).not.toBeChecked());
+  });
+
   it('opens a confirm dialog before logging out', async () => {
     useAuthStore.getState().setAccessToken('test-token');
 

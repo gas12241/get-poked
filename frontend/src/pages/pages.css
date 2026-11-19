@@ -1841,6 +1841,19 @@
   margin-top: 16px;
 }
 
+/* CollectionPreferences' toggle — a single checkbox + label, not a form,
+   so it's its own small flex row rather than reusing .profile-field-row
+   (built for the label/value/Edit-button shape). */
+.profile-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--text);
+}
+
 .profile-field-row {
   display: flex;
   align-items: center;

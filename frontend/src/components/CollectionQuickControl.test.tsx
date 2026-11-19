@@ -223,6 +223,56 @@ describe('CollectionQuickControl', () => {
     await waitFor(() => expect(cardsFetchCount).toBe(2));
   });
 
+  it('refetches an active favorite-ids query too, so a card the server auto-unfavorited on add shows up unfavorited without a page refresh', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    let favoritesFetchCount = 0;
+    server.use(
+      http.post(`${BASE_URL}/api/v1/collections/`, () => {
+        return HttpResponse.json(
+          { id: 1, card: {}, quantity: 1, date_added: '2026-01-15T00:00:00Z' },
+          { status: 201 },
+        );
+      }),
+      http.get(`${BASE_URL}/api/v1/favorites/by-card/`, () => {
+        favoritesFetchCount += 1;
+        return HttpResponse.json({});
+      }),
+    );
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    // A sibling consumer of the same ['favorite-ids-by-card'] key
+    // FavoriteButton actually uses — stands in for it without pulling in
+    // the whole component.
+    function FavoritesStandIn() {
+      useQuery({
+        queryKey: ['favorite-ids-by-card'],
+        queryFn: () =>
+          fetch(`${BASE_URL}/api/v1/favorites/by-card/`).then((r) => r.json()),
+      });
+      return null;
+    }
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <FavoritesStandIn />
+          <CollectionQuickControl cardId={9} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const button = await screen.findByRole('button', {
+      name: 'Add one to collection',
+    });
+    await waitFor(() => expect(favoritesFetchCount).toBe(1));
+
+    await userEvent.click(button);
+
+    await waitFor(() => expect(favoritesFetchCount).toBe(2));
+  });
+
   it('does not navigate when clicked inside a wrapping Link (list-tile usage)', async () => {
     useAuthStore.getState().setAccessToken('test-token');
     const queryClient = new QueryClient({

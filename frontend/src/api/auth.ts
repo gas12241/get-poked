@@ -72,12 +72,21 @@ export interface Profile {
   is_verified: boolean;
   date_joined: string;
   has_usable_password: boolean;
+  auto_remove_favorite_on_collect: boolean;
 }
 
 export const getProfile = () => apiClient<Profile>('/api/v1/me/');
 
 export const updateProfile = (
-  data: Partial<Pick<Profile, 'username' | 'first_name' | 'last_name'>>,
+  data: Partial<
+    Pick<
+      Profile,
+      | 'username'
+      | 'first_name'
+      | 'last_name'
+      | 'auto_remove_favorite_on_collect'
+    >
+  >,
 ) =>
   apiClient<Profile>('/api/v1/me/', {
     method: 'PATCH',
