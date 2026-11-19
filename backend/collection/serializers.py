@@ -57,4 +57,11 @@ class CollectionEntrySerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        return CollectionEntry.objects.create(user=self.context["request"].user, **validated_data)
+        user = self.context["request"].user
+        entry = CollectionEntry.objects.create(user=user, **validated_data)
+        # Opt-in per-user setting — see docs/decisions.md #084. Off by
+        # default, so Favorites and the collection stay fully independent
+        # (#077) unless the user has explicitly asked for this.
+        if user.auto_remove_favorite_on_collect:
+            Favorite.objects.filter(user=user, card=entry.card).delete()
+        return entry

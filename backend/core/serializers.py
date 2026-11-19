@@ -82,6 +82,7 @@ class UserSerializer(serializers.ModelSerializer):
             "is_verified",
             "date_joined",
             "has_usable_password",
+            "auto_remove_favorite_on_collect",
         ]
         read_only_fields = ["email", "is_verified", "date_joined"]
 
@@ -96,6 +97,27 @@ class UserSerializer(serializers.ModelSerializer):
         if value.content_type not in settings.ALLOWED_AVATAR_CONTENT_TYPES:
             raise serializers.ValidationError("Please upload a JPEG, PNG, or WebP image.")
         return process_avatar(value)
+
+    def update(self, instance, validated_data):
+        # Enabling the setting also does a one-time cleanup of cards that
+        # are *already* both owned and favorited, not just future adds —
+        # see docs/decisions.md #084. Only the actual False->True
+        # transition triggers it: a PATCH that already has it True (or
+        # omits it entirely, e.g. editing just the username) never
+        # re-runs the cleanup query.
+        turning_on = (
+            validated_data.get("auto_remove_favorite_on_collect") is True
+            and not instance.auto_remove_favorite_on_collect
+        )
+        instance = super().update(instance, validated_data)
+        if turning_on:
+            # Reverse accessors from Favorite/CollectionEntry's `user` FK
+            # (backend/collection/models.py) — no cross-app import needed,
+            # same approach #079 already established.
+            instance.favorites.filter(
+                card__in=instance.collection_entries.values("card")
+            ).delete()
+        return instance
 
 
 class RequestEmailChangeSerializer(serializers.Serializer):

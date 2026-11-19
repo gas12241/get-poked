@@ -222,6 +222,7 @@ export const handlers = [
       is_verified: true,
       date_joined: '2026-01-15T00:00:00Z',
       has_usable_password: true,
+      auto_remove_favorite_on_collect: false,
     });
   }),
 
@@ -235,6 +236,7 @@ export const handlers = [
       is_verified: true,
       date_joined: '2026-01-15T00:00:00Z',
       has_usable_password: true,
+      auto_remove_favorite_on_collect: false,
     });
   }),
 

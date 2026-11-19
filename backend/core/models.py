@@ -21,6 +21,9 @@ class User(AbstractUser):
     # `is_active` is deliberately left untouched: the account must still be
     # able to log in normally, since logging in is the restore action.
     deleted_at = models.DateTimeField(null=True, blank=True)
+    # Off by default — Favorites and the collection are otherwise fully
+    # independent (see docs/decisions.md #077). See docs/decisions.md #084.
+    auto_remove_favorite_on_collect = models.BooleanField(default=False)
 
     # Login identifier stays email — username is a separate, unique display
     # attribute, not a credential. Google account-linking (#069) and password

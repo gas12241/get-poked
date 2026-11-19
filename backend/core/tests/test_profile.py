@@ -6,6 +6,8 @@ from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from cards.models import Card, Set
+from collection.models import CollectionEntry, Favorite
 from horoscope.models import HoroscopePull
 from quiz.models import QuizAttempt
 
@@ -98,6 +100,98 @@ class MeViewTests(APITestCase):
         response = self.client.get(reverse("me"))
 
         self.assertFalse(response.data["has_usable_password"])
+
+    def test_auto_remove_favorite_on_collect_defaults_to_false(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(reverse("me"))
+
+        self.assertFalse(response.data["auto_remove_favorite_on_collect"])
+
+    def test_patch_can_turn_auto_remove_favorite_on_collect_on_and_off(self):
+        self.client.force_authenticate(self.user)
+
+        on_response = self.client.patch(
+            reverse("me"), {"auto_remove_favorite_on_collect": True}
+        )
+        self.assertEqual(on_response.status_code, 200)
+        self.assertTrue(on_response.data["auto_remove_favorite_on_collect"])
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.auto_remove_favorite_on_collect)
+
+        off_response = self.client.patch(
+            reverse("me"), {"auto_remove_favorite_on_collect": False}
+        )
+        self.assertEqual(off_response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.auto_remove_favorite_on_collect)
+
+    def test_turning_on_removes_favorites_for_already_owned_cards(self):
+        set_obj = Set.objects.create(tcg_id="base1", name="Base", series="Base")
+        owned_card = Card.objects.create(
+            tcg_id="base1-4",
+            set=set_obj,
+            name="Charizard",
+            number="4",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        unowned_card = Card.objects.create(
+            tcg_id="base1-5",
+            set=set_obj,
+            name="Blastoise",
+            number="2",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        CollectionEntry.objects.create(user=self.user, card=owned_card, quantity=1)
+        Favorite.objects.create(user=self.user, card=owned_card)
+        Favorite.objects.create(user=self.user, card=unowned_card)
+        self.client.force_authenticate(self.user)
+
+        response = self.client.patch(
+            reverse("me"), {"auto_remove_favorite_on_collect": True}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Favorite.objects.filter(user=self.user, card=owned_card).exists())
+        self.assertTrue(Favorite.objects.filter(user=self.user, card=unowned_card).exists())
+
+    def test_turning_on_with_nothing_owned_or_favorited_is_a_no_op(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.patch(
+            reverse("me"), {"auto_remove_favorite_on_collect": True}
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_patch_of_unrelated_field_while_already_on_does_not_rerun_cleanup(self):
+        set_obj = Set.objects.create(tcg_id="base1", name="Base", series="Base")
+        owned_card = Card.objects.create(
+            tcg_id="base1-4",
+            set=set_obj,
+            name="Charizard",
+            number="4",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        self.user.auto_remove_favorite_on_collect = True
+        self.user.save()
+        CollectionEntry.objects.create(user=self.user, card=owned_card, quantity=1)
+        # A favorite added *after* the setting was already on — the going-
+        # forward path (collection app) is what's supposed to guard this,
+        # not a PATCH to an unrelated profile field re-running the cleanup.
+        Favorite.objects.create(user=self.user, card=owned_card)
+        self.client.force_authenticate(self.user)
+
+        response = self.client.patch(reverse("me"), {"first_name": "Misty"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(Favorite.objects.filter(user=self.user, card=owned_card).exists())
 
 
 class ChangePasswordViewTests(APITestCase):

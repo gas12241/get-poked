@@ -149,6 +149,50 @@ class CollectionEntryViewTests(CollectionTestBase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_create_removes_matching_favorite_when_setting_enabled(self):
+        self.user.auto_remove_favorite_on_collect = True
+        self.user.save()
+        Favorite.objects.create(user=self.user, card=self.card)
+        self.client.force_authenticate(self.user)
+
+        response = self.client.post(reverse("collection-list"), {"card_id": self.card.id})
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertFalse(Favorite.objects.filter(user=self.user, card=self.card).exists())
+
+    def test_create_leaves_favorite_alone_when_setting_disabled(self):
+        # auto_remove_favorite_on_collect defaults to False.
+        Favorite.objects.create(user=self.user, card=self.card)
+        self.client.force_authenticate(self.user)
+
+        response = self.client.post(reverse("collection-list"), {"card_id": self.card.id})
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(Favorite.objects.filter(user=self.user, card=self.card).exists())
+
+    def test_create_with_setting_enabled_and_no_existing_favorite_is_a_no_op(self):
+        self.user.auto_remove_favorite_on_collect = True
+        self.user.save()
+        self.client.force_authenticate(self.user)
+
+        response = self.client.post(reverse("collection-list"), {"card_id": self.card.id})
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_quantity_update_never_touches_favorites_regardless_of_setting(self):
+        self.user.auto_remove_favorite_on_collect = True
+        self.user.save()
+        entry = CollectionEntry.objects.create(user=self.user, card=self.card, quantity=1)
+        Favorite.objects.create(user=self.user, card=self.card)
+        self.client.force_authenticate(self.user)
+
+        response = self.client.patch(
+            reverse("collection-detail", args=[entry.id]), {"quantity": 2}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(Favorite.objects.filter(user=self.user, card=self.card).exists())
+
     def test_zero_quantity_rejected(self):
         self.client.force_authenticate(self.user)
 

@@ -43,6 +43,12 @@ function CollectionQuickControl({
     // too, or it keeps showing a card that no longer belongs in that view
     // until the page is refreshed.
     queryClient.invalidateQueries({ queryKey: ['cards'] });
+    // Adding a card can also silently unfavorite it server-side, if the
+    // user has turned on "remove from Favorites when added to collection"
+    // (see docs/decisions.md #084) — invalidate so FavoriteButton (mounted
+    // right alongside this on every tile and the detail page) reflects
+    // that immediately instead of needing a refresh.
+    queryClient.invalidateQueries({ queryKey: ['favorite-ids-by-card'] });
   };
 
   const addMutation = useMutation({

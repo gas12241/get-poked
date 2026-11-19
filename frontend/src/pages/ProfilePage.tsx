@@ -248,6 +248,55 @@ function ProfileFields({ profile }: { profile: Profile }) {
   );
 }
 
+// Unlike ProfileFieldRow's edit/save/cancel dance (built for text fields),
+// a checkbox doesn't need a draft state. Turning it on routes through
+// ConfirmDialog first — it has a real, immediate side effect (deleting any
+// Favorites that are already owned, see docs/decisions.md #084) — while
+// turning it off is non-destructive and fires directly, the same way
+// Avatar's own removeMutation does above.
+function CollectionPreferences({ profile }: { profile: Profile }) {
+  const queryClient = useQueryClient();
+  const [confirmingEnable, setConfirmingEnable] = useState(false);
+
+  const mutation = useMutation({
+    mutationFn: (checked: boolean) =>
+      updateProfile({ auto_remove_favorite_on_collect: checked }),
+    onSuccess: (data) => queryClient.setQueryData(['profile'], data),
+  });
+
+  return (
+    <>
+      <label className="profile-checkbox-row">
+        <input
+          type="checkbox"
+          checked={profile.auto_remove_favorite_on_collect}
+          disabled={mutation.isPending}
+          onChange={(e) => {
+            if (e.target.checked) {
+              setConfirmingEnable(true);
+            } else {
+              mutation.mutate(false);
+            }
+          }}
+        />
+        Remove a card from Favorites automatically once you add it to your
+        collection
+      </label>
+      {confirmingEnable && (
+        <ConfirmDialog
+          message="Turning this on will remove any cards you already own from your Favorites, and do the same automatically for anything you add from now on. Continue?"
+          confirmLabel="Turn on"
+          onConfirm={() => {
+            mutation.mutate(true);
+            setConfirmingEnable(false);
+          }}
+          onCancel={() => setConfirmingEnable(false)}
+        />
+      )}
+    </>
+  );
+}
+
 function ChangeEmailForm({ profile }: { profile: Profile }) {
   const [newEmail, setNewEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -446,6 +495,9 @@ function ProfilePage() {
 
       <h2>Profile</h2>
       <ProfileFields profile={profile} />
+
+      <h2>Collection</h2>
+      <CollectionPreferences profile={profile} />
 
       <h2>Email</h2>
       <ChangeEmailForm profile={profile} />

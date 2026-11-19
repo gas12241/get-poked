@@ -200,7 +200,9 @@ Status: implemented (see docs/decisions.md #077). Ownership and favoriting are m
 
 `Favorite` — user, card, date added. Represents a card the user has starred, independent of whether they own it.
 
-A card can be owned, favorited, both, or neither — the two tables are queried independently. Both are user-scoped the same way `QuizAttempt` already is: `user` is set server-side from the request, never trusted from the client, and every view's queryset is filtered to the requesting user, so another user's entries are invisible rather than merely forbidden. `GET /api/v1/favorites/by-card/` and `GET /api/v1/collections/by-card/` are small unpaginated lookup endpoints that let a card-browsing page render per-card favorited/owned state without paging through the main (paginated) list endpoints.
+A card can be owned, favorited, both, or neither — the two tables are queried independently by default. Both are user-scoped the same way `QuizAttempt` already is: `user` is set server-side from the request, never trusted from the client, and every view's queryset is filtered to the requesting user, so another user's entries are invisible rather than merely forbidden. `GET /api/v1/favorites/by-card/` and `GET /api/v1/collections/by-card/` are small unpaginated lookup endpoints that let a card-browsing page render per-card favorited/owned state without paging through the main (paginated) list endpoints.
+
+An opt-in per-user setting (`User.auto_remove_favorite_on_collect`, off by default) links the two: when on, adding a card to the collection also removes it from Favorites, and turning the setting on retroactively cleans up anything already both owned and favorited. It's opt-in rather than default behavior because Favorites is also used as a pre-ownership wishlist by some users, and auto-removing would silently break that. See docs/decisions.md #084.
 
 On the frontend, a star toggle sits on both the card list tiles and the detail page; the dedicated `/collection` page (linked from the nav once logged in) has two tabs — Owned and Favorites — rather than two separate routes.
 
