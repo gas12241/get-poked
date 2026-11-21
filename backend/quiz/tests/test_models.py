@@ -101,3 +101,40 @@ class QuizAttemptAnswerModelTests(TestCase):
         )
         with self.assertRaises(ProtectedError):
             self.card.delete()
+
+    def test_requires_exactly_one_of_card_or_set_neither(self):
+        # guess_set_icon answers have a set and no card; every other mode's
+        # answer has a card and no set — the DB-level constraint is the
+        # real guarantee neither is ever left unset. See docs/decisions.md
+        # #096.
+        with self.assertRaises(IntegrityError):
+            QuizAttemptAnswer.objects.create(
+                quiz_attempt=self.attempt,
+                is_correct=True,
+                time_taken_seconds=4.2,
+                order=0,
+            )
+
+    def test_requires_exactly_one_of_card_or_set_not_both(self):
+        set_obj = Set.objects.create(tcg_id="swsh1", name="Sword & Shield", series="Sword & Shield")
+        with self.assertRaises(IntegrityError):
+            QuizAttemptAnswer.objects.create(
+                quiz_attempt=self.attempt,
+                card=self.card,
+                set=set_obj,
+                is_correct=True,
+                time_taken_seconds=4.2,
+                order=0,
+            )
+
+    def test_create_answer_with_a_set_instead_of_a_card(self):
+        set_obj = Set.objects.create(tcg_id="swsh1", name="Sword & Shield", series="Sword & Shield")
+        answer = QuizAttemptAnswer.objects.create(
+            quiz_attempt=self.attempt,
+            set=set_obj,
+            is_correct=True,
+            time_taken_seconds=4.2,
+            order=0,
+        )
+        self.assertIsNone(answer.card)
+        self.assertEqual(answer.set, set_obj)
