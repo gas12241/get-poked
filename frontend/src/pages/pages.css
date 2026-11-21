@@ -2112,7 +2112,13 @@
      own content became the new widest line — reading as the calendar
      itself "growing" on first selection. */
   width: 100%;
-  max-width: 480px;
+  /* Wider than .quiz-mode-selection above it (matches .quiz-question's own
+     860px) so the separator line below reaches a comparable width to the
+     Horoscope page's own full-width line — .quiz-history-calendar (320px)
+     and .quiz-history-day (480px) each already have their own narrower
+     max-width, so the calendar/attempt list itself isn't affected, only
+     how far the line (and the centered "Quiz history" heading) spans. */
+  max-width: 860px;
   margin: 40px auto 0;
   padding: 24px 20px 40px;
   /* Matches .quiz-mode-selection/.quiz-summary above and below it on this
