@@ -225,6 +225,38 @@ class QuizCheckViewTests(QuizTestBase):
         )
         self.assertTrue(response.data["correct"])
 
+    def test_accepts_and_as_an_alternative_to_ampersand_for_a_tag_team_card(self):
+        card = Card.objects.create(
+            tcg_id="base1-95",
+            set=self.set_obj,
+            name="Mewtwo & Mew-GX",
+            number="95",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        response = self.client.post(
+            reverse("quiz-check"),
+            {"card": card.id, "mode": "guess_card", "guess": "mewtwo and mew-gx"},
+        )
+        self.assertTrue(response.data["correct"])
+
+    def test_still_accepts_the_literal_ampersand_for_a_tag_team_card(self):
+        card = Card.objects.create(
+            tcg_id="base1-94",
+            set=self.set_obj,
+            name="Mewtwo & Mew-GX",
+            number="94",
+            supertype="Pokémon",
+            image_small="https://example.com/small.png",
+            image_large="https://example.com/large.png",
+        )
+        response = self.client.post(
+            reverse("quiz-check"),
+            {"card": card.id, "mode": "guess_card", "guess": "Mewtwo & Mew-GX"},
+        )
+        self.assertTrue(response.data["correct"])
+
     def test_does_not_loosen_a_genuine_two_word_species_name(self):
         # "Tapu Koko" is a single, indivisible species name — not a
         # prefix + Pokémon — so only the full name should be accepted.

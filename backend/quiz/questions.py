@@ -4,6 +4,7 @@ from .imaging import get_or_create_masked_image
 
 _TRAINER_PREFIX_RE = re.compile(r"^.+'s ")
 _VARIANT_PREFIXES = ("Dark ", "Light ")
+_AMPERSAND_RE = re.compile(r"\s&\s")
 
 
 def build_question(card, mode, request):
@@ -45,7 +46,12 @@ def _accepted_card_names(name):
     possessive pattern, a two-item literal list for the historical
     Dark/Light convention) rather than a general "last word" heuristic,
     which would also wrongly accept e.g. "Koko" for "Tapu Koko" — a genuine
-    two-word species name, not a prefix. See docs/decisions.md #036.
+    two-word species name, not a prefix. A tag-team card's printed name
+    always uses "&" ("Mewtwo & Mew-GX"), so a guess spelling it out as
+    "and" is also accepted — a natural way to say the name out loud, not
+    a different name. Only this direction is needed, since a guess typed
+    with the literal "&" already matches the printed name. See
+    docs/decisions.md #036.
     """
     names = {name}
     match = _TRAINER_PREFIX_RE.match(name)
@@ -54,6 +60,9 @@ def _accepted_card_names(name):
     for prefix in _VARIANT_PREFIXES:
         if name.startswith(prefix):
             names.add(name[len(prefix) :])
+    for existing in list(names):
+        if _AMPERSAND_RE.search(existing):
+            names.add(_AMPERSAND_RE.sub(" and ", existing))
     return names
 
 
