@@ -1383,6 +1383,19 @@ Why
 
 ---
 
+## Decision 094
+
+Fixed the Quiz/Horoscope top-level sections silently resizing based on their own content
+
+Why
+
+- **Reported directly by the user**: on `/quiz`, selecting a day in the history calendar for the first time visibly made the calendar "grow." Root cause, confirmed live (forcing `align-items: stretch` on `#root` had zero effect; forcing an explicit `width: 100%` on the section immediately fixed it): `#root` is a `display: flex; flex-direction: column` container, and every top-level page section (`.quiz-mode-selection`, `.quiz-summary`, `.quiz-question`, `.quiz-history-section`, `.horoscope-page`) is centered via `margin: 0 auto` as a direct flex-item child of it. A flex item with horizontal auto margins doesn't stretch to fill the container the way `align-items: stretch` would otherwise make it — it shrink-wraps to whatever its own widest line of content happens to be at that moment, instead of consistently filling up to its own `max-width`. Before a day was selected, `.quiz-history-section`'s widest line was just the calendar header; once an attempt row rendered, that row's content became the new widest line, so the whole section (and the calendar inside it, a plain block child sized relative to its now-wider parent) grew to match. The box wasn't literally tracking the attempt rows' width on purpose — it's a byproduct of this flex shrink-wrap quirk, which affects any section using the `max-width` + `margin: auto` centering pattern under `#root`.
+- **Fix: add an explicit `width: 100%`** alongside the existing `max-width`/`margin: auto` on each affected section (`.quiz-mode-selection`/`.quiz-summary`, `.quiz-question`, `.quiz-history-section`, `.horoscope-page`) — forces each to actually fill available width up to its own cap every time, regardless of content, with `margin: auto` still centering the capped box exactly as before. Scoped to the sections actually discussed (Quiz and Horoscope pages); other pages using the same centering pattern may have the same latent issue if their content varies similarly, but weren't reported and are left alone for now.
+- Also fixed in the same pass: `.horoscope-calendar-heading` ("Past horoscopes") had its own `text-align: left`, overriding `.horoscope-page`'s centered text — the same bug, and the same fix, as the quiz-history heading.
+- Pure CSS/layout, no new tests — not meaningfully assertable in jsdom (no real layout engine), consistent with existing precedent for this class of fix (#048, #053, #054, #059, #091, #092). Full 298-test frontend suite unaffected. Verified live: measured `.quiz-history-section`/`.quiz-history-calendar`/`.quiz-mode-selection`'s rendered widths directly — all now constant (522px/320px/522px) both before and after selecting a day, and `.horoscope-page` renders at its full 1020px cap; "Past horoscopes" now shares the same center-x as "Horoscope" above it.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

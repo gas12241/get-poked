@@ -821,6 +821,13 @@
 
 .quiz-mode-selection,
 .quiz-summary {
+  /* #root is a column flex container, and a flex item with horizontal
+     auto margins doesn't stretch to fill it — it shrink-wraps to its
+     own content's natural width instead, so without this explicit
+     width the box's rendered size silently varies with its content
+     (e.g. which mode/difficulty button text is active) instead of
+     staying fixed at max-width. */
+  width: 100%;
   max-width: 480px;
   margin: 0 auto;
   padding: 24px 20px;
@@ -859,6 +866,9 @@
      shared rule, not shared with them) — room for the image and its stats
      side by side once revealed, so the whole thing fits on screen without
      scrolling. See docs/decisions.md #053. */
+  /* width:100% — same flex-item-with-auto-margins shrink-wrap fix as
+     .quiz-mode-selection/.quiz-summary above. */
+  width: 100%;
   max-width: 860px;
   margin: 0 auto;
   padding: 24px 20px;
@@ -1460,6 +1470,14 @@
    sizing root rather than sharing --quiz-card-width, since 7 cards need to
    be much smaller than the quiz's single full-size one. */
 .horoscope-page {
+  /* #root is a column flex container; a flex item with horizontal auto
+     margins shrink-wraps to its own content's width instead of
+     stretching to fill it, so without this explicit width the page's
+     rendered width silently tracked whatever was showing (e.g. narrower
+     before a pull exists, wider once the result grid renders) instead
+     of staying fixed at max-width — same root cause as the quiz page's
+     own sections. */
+  width: 100%;
   max-width: 980px;
   margin: 0 auto;
   padding: 24px 20px;
@@ -2073,6 +2091,14 @@
    *list* of that day's attempts rather than a single item) plus that
    day's attempt list, each expandable into the same breakdown above. */
 .quiz-history-section {
+  /* width:100% — same flex-item-with-auto-margins shrink-wrap fix as
+     .quiz-mode-selection/.quiz-summary above. Without it, this box's
+     rendered width (and the calendar/attempt list inside it) tracked
+     whatever content happened to be the widest line at the time —
+     narrower before a day was selected, wider once an attempt row's
+     own content became the new widest line — reading as the calendar
+     itself "growing" on first selection. */
+  width: 100%;
   max-width: 480px;
   margin: 40px auto 0;
   padding: 0 20px 40px;
