@@ -153,7 +153,7 @@ export const handlers = [
           supertype: 'Pokémon',
           types: ['Fire'],
           hp: '120',
-          set: { id: 1, name: 'Base' },
+          card_set: { id: 1, name: 'Base' },
         },
       ],
     });

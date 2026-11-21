@@ -12,7 +12,9 @@ export interface QuizQuestion {
   types: string[];
   name?: string;
   hp?: string;
-  set?: { id: number; name: string };
+  // The hint shown alongside guess_card/guess_hp questions (the card's own
+  // set).
+  card_set?: { id: number; name: string };
 }
 
 export interface QuizQuestionsResponse {

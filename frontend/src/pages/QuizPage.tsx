@@ -253,10 +253,10 @@ function QuizQuestionView({
                   <dd>{question.hp}</dd>
                 </>
               )}
-              {question.set && (
+              {question.card_set && (
                 <>
                   <dt>Set</dt>
-                  <dd>{question.set.name}</dd>
+                  <dd>{question.card_set.name}</dd>
                 </>
               )}
               <dt>Rarity</dt>
