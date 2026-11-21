@@ -2176,6 +2176,18 @@
   margin: 24px auto 0;
 }
 
+.quiz-attempt-list-area {
+  /* Reserves the same space .quiz-attempt-list's own max-height already
+     caps a long list at (below), so a short list — or the loading/empty
+     states — doesn't leave the page shorter than a long one. Without
+     this, switching between two days with different attempt counts
+     changed the page's total height and the browser's scroll position
+     jumped with it: the same class of problem #091 fixed for the
+     accordion, just caused by reflow instead of a collapse. See
+     docs/decisions.md #092 addendum. */
+  min-height: 200px;
+}
+
 .quiz-attempt-list {
   list-style: none;
   padding: 0;
