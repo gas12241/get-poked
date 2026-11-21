@@ -284,6 +284,8 @@ A quiz abandoned before completion is never saved — a pure dismissal, not a pa
 
 Saving no longer waits for a manual button — the summary screen auto-saves on completion, so a browsable history is actually complete rather than missing whatever a user forgot to click "Save" on. History browsing is calendar-based, directly mirroring Horoscope's own calendar (`QuizHistoryCalendar`/`QuizHistorySection`, parallel to `HoroscopeCalendar`/`HoroscopePage`): a month view highlights days with any attempt (`GET /api/v1/quiz-attempts/dates/`), selecting a day lists that day's attempts (`GET /api/v1/quiz-attempts/by-date/<date>/` — a list, since unlike a Horoscope pull there's no one-per-day limit), and each attempt links to its own detail page (`QuizAttemptDetailPage`, at `/quiz-history/<id>`) showing the full per-question breakdown (`GET /api/v1/quiz-attempts/<id>/`). The flat, unpaginated `GET /api/v1/quiz-attempts/` list this replaced was never actually used by the frontend. Each attempt originally expanded inline instead of linking to its own page; that was replaced after scroll-anchoring the accordion turned out to have a real, physically-unfixable edge case (see docs/decisions.md #091). See docs/decisions.md #088.
 
+Unlike Horoscope's pull (capped at one per day), a day can have any number of quiz attempts — so the day's attempt list, not the calendar itself, is the one part of this that can grow unboundedly. Rather than promote quiz history to its own top-level page (which would make it inconsistent with Horoscope's own embedded pattern for no structural reason), the list itself is height-bounded and scrolls internally past a few rows, with an explicit hint once it does. See docs/decisions.md #092.
+
 ---
 
 ## Caching & Deployment

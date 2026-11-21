@@ -1353,6 +1353,20 @@ Why
 
 ---
 
+## Decision 092
+
+Quiz history stays embedded on `/quiz`; the day's attempt list is bounded and scrollable instead
+
+Why
+
+- **Raised directly by the user**: should quiz history be promoted to its own top-level nav tab, like Collection, instead of living embedded at the bottom of `/quiz` (modeled on Horoscope)? Discussed and rejected — doing so would make Quiz and Horoscope inconsistent with each other for no real structural reason. The actual problem (the user's own framing: "imagine someone who takes many quizzes in one day") isn't about *where* the calendar lives, it's that Horoscope never needed a "list" layer at all — it's capped at one pull per day — while Quiz has no such cap, so a prolific day's attempt list is the one thing that can grow unboundedly and make the page long. Promoting the whole feature to its own tab would have solved that by relocating the problem, not fixing it.
+- **Fix: bound `.quiz-attempt-list` itself** (`max-height` + `overflow-y: auto`, a new `VISIBLE_ATTEMPT_ROWS = 4` constant in `QuizHistorySection.tsx`), the same "constrain and scroll internally" pattern `.series-sidebar` already uses elsewhere in this app for the same class of problem (unbounded content that shouldn't make the whole page grow). The calendar stays embedded on `/quiz`, consistent with Horoscope — only the one layer that's actually unbounded changes.
+- **An explicit text hint ("↓ Scroll to see all N quizzes"), not just a visual affordance** — the user specifically asked that scrollability be made *apparent*, not just technically present. Considered a CSS fade-mask or a partially-cut-off row as subtler alternatives, but a fade mask can't tell whether you've actually reached the bottom (it would keep suggesting "more" even once there isn't any), and a partial row alone isn't necessarily obvious to every user. The hint is driven purely by comparing `byDateQuery.data.length` to `VISIBLE_ATTEMPT_ROWS` — not a DOM/`scrollHeight` measurement — so it's trivially correct and testable (no jsdom layout limitations to work around, unlike the earlier scroll-anchoring attempt in #091).
+- **Hover highlight on each attempt row**, matching `.main-nav-links a`'s own `:hover { background: var(--accent-bg) }` exactly — directly requested, to make "this is clickable" as obvious as the nav tabs it's being compared to. Required moving the row's border/padding from the parent `.quiz-attempt-row` `<li>` onto the `<Link>` itself first, so the highlight covers the full bordered box rather than leaving an unhighlighted gap around it.
+- 2 new frontend tests (no hint at/under the threshold, hint with the correct count once over it) — the over-threshold test confirmed to fail when the threshold constant was deliberately broken, before being trusted. Full 297-test frontend suite green. Verified live in both themes: a 7-attempt day shows exactly 4 rows with the hint below, scrolling reveals the rest, and hovering a row highlights it the same shade as the nav tabs.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

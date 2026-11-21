@@ -10,9 +10,14 @@ import {
 } from '../lib/quizAttemptFormatting';
 import QuizHistoryCalendar, { currentUtcMonth } from './QuizHistoryCalendar';
 
+// Matches .quiz-attempt-list's own max-height (pages.css) — past this many
+// attempts in one day, the list scrolls internally instead of growing the
+// whole page, so a prolific quiz-taking day doesn't make /quiz unbounded.
+const VISIBLE_ATTEMPT_ROWS = 4;
+
 function AttemptRow({ attempt }: { attempt: QuizAttemptSummary }) {
   return (
-    <li className="quiz-attempt-row">
+    <li>
       <Link
         to={`/quiz-history/${attempt.id}`}
         state={{ from: 'quiz' }}
@@ -82,11 +87,18 @@ function QuizHistorySection({ isAuthenticated }: { isAuthenticated: boolean }) {
           {byDateQuery.isLoading ? (
             <p>Loading...</p>
           ) : byDateQuery.data && byDateQuery.data.length > 0 ? (
-            <ul className="quiz-attempt-list">
-              {byDateQuery.data.map((attempt) => (
-                <AttemptRow key={attempt.id} attempt={attempt} />
-              ))}
-            </ul>
+            <>
+              <ul className="quiz-attempt-list">
+                {byDateQuery.data.map((attempt) => (
+                  <AttemptRow key={attempt.id} attempt={attempt} />
+                ))}
+              </ul>
+              {byDateQuery.data.length > VISIBLE_ATTEMPT_ROWS && (
+                <p className="quiz-attempt-list-scroll-hint">
+                  ↓ Scroll to see all {byDateQuery.data.length} quizzes
+                </p>
+              )}
+            </>
           ) : (
             <p>No quizzes taken this day.</p>
           )}

@@ -139,4 +139,56 @@ describe('QuizHistorySection', () => {
     expect(await screen.findByText('September 5th, 2026')).toBeInTheDocument();
     expect(await screen.findByText('Guess the Card')).toBeInTheDocument();
   });
+
+  function makeAttempts(count: number) {
+    return Array.from({ length: count }, (_, i) => ({
+      id: i + 1,
+      quiz_mode: 'guess_card' as const,
+      difficulty: 'medium' as const,
+      score: 1,
+      total_questions: 1,
+      completed_at: `2026-09-05T1${i}:00:00Z`,
+    }));
+  }
+
+  it('shows no scroll hint when a day has few attempts', async () => {
+    server.use(
+      http.get(`${BASE_URL}/api/v1/quiz-attempts/dates/`, () => {
+        return HttpResponse.json({ dates: ['2026-09-05'] });
+      }),
+      http.get(`${BASE_URL}/api/v1/quiz-attempts/by-date/:date/`, () => {
+        return HttpResponse.json(makeAttempts(4));
+      }),
+    );
+
+    renderWithProviders(<QuizHistorySection isAuthenticated />, {
+      route: '/quiz?month=2026-09',
+    });
+
+    await userEvent.click(await screen.findByRole('button', { name: '5' }));
+
+    expect(await screen.findAllByText('Guess the Card')).toHaveLength(4);
+    expect(screen.queryByText(/Scroll to see all/)).not.toBeInTheDocument();
+  });
+
+  it('shows a scroll hint once a day has more attempts than fit without scrolling', async () => {
+    server.use(
+      http.get(`${BASE_URL}/api/v1/quiz-attempts/dates/`, () => {
+        return HttpResponse.json({ dates: ['2026-09-05'] });
+      }),
+      http.get(`${BASE_URL}/api/v1/quiz-attempts/by-date/:date/`, () => {
+        return HttpResponse.json(makeAttempts(6));
+      }),
+    );
+
+    renderWithProviders(<QuizHistorySection isAuthenticated />, {
+      route: '/quiz?month=2026-09',
+    });
+
+    await userEvent.click(await screen.findByRole('button', { name: '5' }));
+
+    expect(
+      await screen.findByText('↓ Scroll to see all 6 quizzes'),
+    ).toBeInTheDocument();
+  });
 });
