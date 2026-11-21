@@ -114,9 +114,7 @@ class UserSerializer(serializers.ModelSerializer):
             # Reverse accessors from Favorite/CollectionEntry's `user` FK
             # (backend/collection/models.py) — no cross-app import needed,
             # same approach #079 already established.
-            instance.favorites.filter(
-                card__in=instance.collection_entries.values("card")
-            ).delete()
+            instance.favorites.filter(card__in=instance.collection_entries.values("card")).delete()
         return instance
 
 

@@ -186,9 +186,7 @@ class CollectionEntryViewTests(CollectionTestBase):
         Favorite.objects.create(user=self.user, card=self.card)
         self.client.force_authenticate(self.user)
 
-        response = self.client.patch(
-            reverse("collection-detail", args=[entry.id]), {"quantity": 2}
-        )
+        response = self.client.patch(reverse("collection-detail", args=[entry.id]), {"quantity": 2})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(Favorite.objects.filter(user=self.user, card=self.card).exists())
