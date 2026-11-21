@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
@@ -6,54 +6,28 @@ import {
   getQuizQuestions,
   submitQuizAttempt,
 } from '../api/quiz';
-import type { QuizAnswerInput, QuizDifficulty, QuizMode } from '../api/quiz';
+import type {
+  QuizAnswerInput,
+  QuizAttemptDetail,
+  QuizDifficulty,
+  QuizMode,
+} from '../api/quiz';
 import { filterSetNameSuggestions, getCardNames, getSets } from '../api/cards';
 import type { QuizSession } from '../store/quizStore';
 import { useQuizStore } from '../store/quizStore';
 import { useIsAuthenticated } from '../store/authStore';
+import { DIFFICULTIES, MODES } from '../lib/quizOptions';
 import NameAutocomplete from '../components/NameAutocomplete';
 import { StartingReel } from '../components/CaseOpeningReel';
 import ConfirmDialog from '../components/ConfirmDialog';
+import QuizAttemptBreakdown from '../components/QuizAttemptBreakdown';
+import QuizHistorySection from '../components/QuizHistorySection';
 import './pages.css';
-
-const MODES: { value: QuizMode; label: string }[] = [
-  { value: 'guess_card', label: 'Guess the Card' },
-  { value: 'guess_set', label: 'Guess the Set' },
-  { value: 'guess_hp', label: 'Guess the HP' },
-];
 
 const QUESTION_COUNTS: { value: number; label: string }[] = [
   { value: 3, label: 'Short' },
   { value: 5, label: 'Medium' },
   { value: 7, label: 'Long' },
-];
-
-// Deliberately the reverse of what "rare" suggests: most players recognize
-// a distinctive chase card's set on sight more easily than a common, which
-// they've likely seen dozens of across different sets — confirmed directly
-// with the user rather than assumed. See docs/decisions.md #047.
-const DIFFICULTIES: {
-  value: QuizDifficulty;
-  label: string;
-  description: string;
-}[] = [
-  {
-    value: 'easy',
-    label: 'Easy',
-    description:
-      'Chase cards — Ultra Rare, Secret Rare, Special Illustration Rare, and similar',
-  },
-  {
-    value: 'medium',
-    label: 'Medium',
-    description:
-      'Everything in between — Rare Holo, EX, GX, V, VMAX, VSTAR, and similar',
-  },
-  {
-    value: 'hard',
-    label: 'Hard',
-    description: 'Common, Uncommon, and Rare cards',
-  },
 ];
 
 function ModeSelection({
@@ -231,6 +205,7 @@ function QuizQuestionView({
     if (!feedback) return;
     onAnswered({
       card: question.card,
+      guess,
       is_correct: feedback.correct,
       time_taken_seconds: (Date.now() - (startedAt ?? Date.now())) / 1000,
       order: session.currentIndex,
@@ -376,11 +351,59 @@ function QuizSummary({
 }) {
   const score = session.answers.filter((a) => a.is_correct).length;
 
-  const saveAttempt = useMutation({
-    mutationFn: () =>
-      submitQuizAttempt({ quiz_mode: session.mode, answers: session.answers }),
-    onSuccess: onSaved,
-  });
+  // Plain state, not useMutation — found live that useMutation's own
+  // isSuccess/data got stuck mid-transition under React StrictMode
+  // specifically when its onSuccess callback synchronously triggers a
+  // second store's (Zustand's) update; a plain async function + useState
+  // has none of that cross-store interaction to race against.
+  const [saveState, setSaveState] = useState<
+    | { status: 'idle' }
+    | { status: 'saving' }
+    | { status: 'saved'; attempt: QuizAttemptDetail }
+    | { status: 'error' }
+  >({ status: 'idle' });
+
+  async function save() {
+    setSaveState({ status: 'saving' });
+    try {
+      const attempt = await submitQuizAttempt({
+        quiz_mode: session.mode,
+        difficulty: session.difficulty,
+        answers: session.answers.map(
+          ({ card, guess, time_taken_seconds, order }) => ({
+            card,
+            guess,
+            time_taken_seconds,
+            order,
+          }),
+        ),
+      });
+      setSaveState({ status: 'saved', attempt });
+      onSaved();
+    } catch {
+      setSaveState({ status: 'error' });
+    }
+  }
+
+  // Auto-saves on completion rather than waiting for a click, so a
+  // browsable history (see the history section below) is actually
+  // complete — see docs/decisions.md #088. Mount-only: QuizSummary itself
+  // only mounts once a session first becomes complete.
+  //
+  // hasTriggeredSave guards against a real, observed bug: React
+  // double-invokes effects in StrictMode (and effects generally aren't
+  // guaranteed to run exactly once), and `!session.submitted` alone doesn't
+  // catch a second invocation that lands before the first save's response
+  // comes back and flips it — caught live (two QuizAttempt rows from one
+  // quiz) before this guard existed, not just a theoretical concern.
+  const hasTriggeredSave = useRef(false);
+  useEffect(() => {
+    if (isAuthenticated && !session.submitted && !hasTriggeredSave.current) {
+      hasTriggeredSave.current = true;
+      save();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="quiz-summary">
@@ -389,19 +412,25 @@ function QuizSummary({
         Score: {score} / {session.questions.length}
       </p>
       {isAuthenticated ? (
-        session.submitted ? (
-          <p>Score saved.</p>
-        ) : (
+        saveState.status === 'saved' ? (
           <>
-            <button
-              onClick={() => saveAttempt.mutate()}
-              disabled={saveAttempt.isPending}
-            >
-              {saveAttempt.isPending ? 'Saving...' : 'Save score'}
-            </button>
-            {saveAttempt.isError && <p>Failed to save score. Try again.</p>}
+            <p>Score saved.</p>
+            <QuizAttemptBreakdown answers={saveState.attempt.answers} />
           </>
-        )
+        ) : session.submitted ? (
+          // A page reload after a successful save (session.submitted
+          // persisted, but this mount's own save never ran) — the
+          // breakdown just isn't re-fetched here; it's still reachable
+          // from the history section below.
+          <p>Score saved.</p>
+        ) : saveState.status === 'saving' ? (
+          <p>Saving...</p>
+        ) : saveState.status === 'error' ? (
+          <>
+            <p>Failed to save score.</p>
+            <button onClick={save}>Try again</button>
+          </>
+        ) : null
       ) : (
         <p>Log in to save your score.</p>
       )}
@@ -469,19 +498,22 @@ function QuizPage() {
 
   if (!session) {
     return (
-      <ModeSelection
-        mode={mode}
-        onSelectMode={setMode}
-        questionCount={questionCount}
-        onSelectCount={setQuestionCount}
-        difficulty={difficulty}
-        onSelectDifficulty={setDifficulty}
-        onStart={() => {
-          setPendingMode(mode);
-          startQuiz.mutate(mode);
-        }}
-        error={startQuiz.isError ? (startQuiz.error as Error).message : null}
-      />
+      <>
+        <ModeSelection
+          mode={mode}
+          onSelectMode={setMode}
+          questionCount={questionCount}
+          onSelectCount={setQuestionCount}
+          difficulty={difficulty}
+          onSelectDifficulty={setDifficulty}
+          onStart={() => {
+            setPendingMode(mode);
+            startQuiz.mutate(mode);
+          }}
+          error={startQuiz.isError ? (startQuiz.error as Error).message : null}
+        />
+        <QuizHistorySection isAuthenticated={isAuthenticated} />
+      </>
     );
   }
 

@@ -16,6 +16,7 @@ import './pages.css';
 const BACK_LABELS: Record<string, string> = {
   cards: 'Back to cards',
   horoscope: 'Back to Horoscope',
+  quiz: 'Back to Quiz',
 };
 
 function CardDetailPage() {

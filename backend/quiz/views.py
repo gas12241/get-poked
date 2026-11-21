@@ -1,5 +1,8 @@
+import datetime
 import random
 
+from django.db.models.functions import TruncDate
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
@@ -10,7 +13,11 @@ from cards.models import Card
 from .eligibility import DIFFICULTIES, GUESS_CARD, GUESS_HP, GUESS_SET, eligible_card_ids
 from .models import QuizAttempt
 from .questions import build_question, check_answer
-from .serializers import QuizAttemptSerializer
+from .serializers import (
+    QuizAttemptCreateSerializer,
+    QuizAttemptDetailSerializer,
+    QuizAttemptSummarySerializer,
+)
 
 VALID_MODES = (GUESS_CARD, GUESS_SET, GUESS_HP)
 DEFAULT_QUESTION_COUNT = 5
@@ -74,9 +81,78 @@ class QuizCheckView(APIView):
         return Response({"correct": correct, "answer": answer})
 
 
-class QuizAttemptListCreateView(generics.ListCreateAPIView):
-    serializer_class = QuizAttemptSerializer
+class QuizAttemptCreateView(generics.CreateAPIView):
+    serializer_class = QuizAttemptCreateSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        attempt = serializer.save()
+        # The response uses the richer detail shape (real, unmasked card
+        # images included) rather than echoing back the input — the
+        # frontend's post-quiz breakdown screen renders directly from this,
+        # see docs/decisions.md #088.
+        output = QuizAttemptDetailSerializer(attempt, context=self.get_serializer_context())
+        return Response(output.data, status=status.HTTP_201_CREATED)
+
+
+class QuizAttemptDatesView(APIView):
+    # Powers the history calendar's "which days this month have an attempt"
+    # check — bare date strings only, same cheapness reasoning as
+    # HoroscopePullDatesView. completed_at is a DateTimeField (not a plain
+    # date like Horoscope's pull_date), so TruncDate+distinct collapses
+    # multiple same-day attempts to one date each.
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        month_param = request.query_params.get("month", "")
+        try:
+            year_str, month_str = month_param.split("-")
+            year, month = int(year_str), int(month_str)
+            if not 1 <= month <= 12:
+                raise ValueError
+        except ValueError:
+            return Response(
+                {"detail": "month must be in YYYY-MM format."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        dates = (
+            QuizAttempt.objects.filter(
+                user=request.user, completed_at__year=year, completed_at__month=month
+            )
+            .annotate(date=TruncDate("completed_at"))
+            .values_list("date", flat=True)
+            .distinct()
+            .order_by("date")
+        )
+        return Response({"dates": [d.isoformat() for d in dates]})
+
+
+class QuizAttemptsByDateView(APIView):
+    # Unlike a Horoscope pull, there's no one-per-day constraint on quiz
+    # attempts, so this returns a list (possibly empty — not a 404) rather
+    # than a single object.
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, date):
+        try:
+            date_obj = datetime.date.fromisoformat(date)
+        except ValueError as e:
+            raise Http404 from e
+
+        attempts = QuizAttempt.objects.filter(user=request.user, completed_at__date=date_obj)
+        return Response(QuizAttemptSummarySerializer(attempts, many=True).data)
+
+
+class QuizAttemptDetailView(generics.RetrieveAPIView):
+    serializer_class = QuizAttemptDetailSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return QuizAttempt.objects.filter(user=self.request.user)
+        # Scoped to the requesting user — another account's attempt id 404s,
+        # same pattern as every other per-user detail view in this app.
+        return QuizAttempt.objects.filter(user=self.request.user).prefetch_related(
+            "answers__card__set", "answers__card__types"
+        )

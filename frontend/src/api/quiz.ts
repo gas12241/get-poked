@@ -1,4 +1,5 @@
 import { apiClient } from '../lib/apiClient';
+import type { CardListItem } from './cards';
 
 export type QuizMode = 'guess_card' | 'guess_set' | 'guess_hp';
 export type QuizDifficulty = 'easy' | 'medium' | 'hard';
@@ -25,22 +26,64 @@ export interface QuizCheckResult {
 
 export interface QuizAnswerInput {
   card: number;
+  guess: string;
+  // Kept locally for the instant score tally shown the moment a quiz
+  // finishes, before the save round-trip completes — never sent to the
+  // backend (stripped when building the request body), which re-derives
+  // it itself from `guess` and doesn't trust a client-submitted value.
+  // See docs/decisions.md #088.
   is_correct: boolean;
   time_taken_seconds: number;
   order: number;
 }
 
-export interface QuizAttemptInput {
+export interface QuizAttemptCreateInput {
   quiz_mode: QuizMode;
-  answers: QuizAnswerInput[];
+  difficulty: QuizDifficulty;
+  answers: {
+    card: number;
+    guess: string;
+    time_taken_seconds: number;
+    order: number;
+  }[];
 }
 
-export interface QuizAttempt {
+export interface QuizAttemptAnswerDetail {
+  // The real, fully unmasked card (not the quiz's masked question image)
+  // — enough to show what was being guessed on and link to its own detail
+  // page.
+  card: CardListItem;
+  guess: string;
+  correct_answer: string;
+  is_correct: boolean;
+  time_taken_seconds: number;
+  order: number;
+}
+
+export interface QuizAttemptDetail {
   id: number;
   quiz_mode: QuizMode;
+  difficulty: QuizDifficulty;
   score: number;
   total_questions: number;
   completed_at: string;
+  answers: QuizAttemptAnswerDetail[];
+}
+
+export interface QuizAttemptSummary {
+  id: number;
+  quiz_mode: QuizMode;
+  difficulty: QuizDifficulty;
+  score: number;
+  total_questions: number;
+  completed_at: string;
+}
+
+export interface QuizAttemptDatesResponse {
+  // "YYYY-MM-DD" — only the days within the requested month that actually
+  // have an attempt. Powers the history calendar's "which days are
+  // clickable" check, same reasoning as Horoscope's own dates endpoint.
+  dates: string[];
 }
 
 export interface QuizQuestionsParams {
@@ -81,8 +124,19 @@ export const checkQuizAnswer = (payload: {
     body: JSON.stringify(payload),
   });
 
-export const submitQuizAttempt = (payload: QuizAttemptInput) =>
-  apiClient<QuizAttempt>('/api/v1/quiz-attempts/', {
+export const submitQuizAttempt = (payload: QuizAttemptCreateInput) =>
+  apiClient<QuizAttemptDetail>('/api/v1/quiz-attempts/', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+
+export const getQuizAttemptDates = (month: string) =>
+  apiClient<QuizAttemptDatesResponse>(
+    `/api/v1/quiz-attempts/dates/?month=${month}`,
+  );
+
+export const getQuizAttemptsByDate = (date: string) =>
+  apiClient<QuizAttemptSummary[]>(`/api/v1/quiz-attempts/by-date/${date}/`);
+
+export const getQuizAttemptDetail = (id: number) =>
+  apiClient<QuizAttemptDetail>(`/api/v1/quiz-attempts/${id}/`);

@@ -2016,3 +2016,184 @@
     opacity: 0.6;
   }
 }
+
+/* Per-question breakdown (guess/correct answer/time) — reused both right
+   after finishing a quiz and when an expanded history entry shows its
+   detail. See docs/decisions.md #088. */
+.quiz-attempt-breakdown {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.quiz-attempt-breakdown-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.quiz-attempt-breakdown-card img {
+  width: 48px;
+  border-radius: 4px;
+  display: block;
+}
+
+.quiz-attempt-breakdown-text {
+  flex: 1;
+  text-align: left;
+}
+
+.quiz-attempt-breakdown-text p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-h);
+}
+
+.quiz-feedback-correct {
+  color: var(--success);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.quiz-feedback-incorrect {
+  color: var(--danger);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* Quiz history — a calendar (same month-grid shape as
+   .horoscope-calendar, kept separate since selecting a day here opens a
+   *list* of that day's attempts rather than a single item) plus that
+   day's attempt list, each expandable into the same breakdown above. */
+.quiz-history-section {
+  margin-top: 40px;
+  text-align: left;
+}
+
+.quiz-history-calendar {
+  max-width: 320px;
+  margin: 16px auto 0;
+}
+
+.quiz-history-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.quiz-history-calendar-header button {
+  font: inherit;
+  font-size: 15px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--accent-bg);
+  }
+}
+
+.quiz-history-calendar-month-label {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.quiz-history-calendar-weekdays,
+.quiz-history-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.quiz-history-calendar-weekdays {
+  margin-bottom: 4px;
+}
+
+.quiz-history-calendar-weekdays span {
+  font-size: 11px;
+  color: var(--text);
+  text-align: center;
+}
+
+.quiz-history-calendar-grid {
+  gap: 4px;
+}
+
+.quiz-history-calendar-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  border-radius: 6px;
+}
+
+.quiz-history-calendar-day-empty {
+  color: var(--text);
+  opacity: 0.4;
+}
+
+.quiz-history-calendar-day {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--accent);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--accent);
+    color: #fff;
+  }
+}
+
+.quiz-history-calendar-day-selected {
+  background: var(--accent);
+  color: #fff;
+}
+
+.quiz-history-day {
+  max-width: 480px;
+  margin: 24px auto 0;
+}
+
+.quiz-attempt-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quiz-attempt-row {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.quiz-attempt-row-summary {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-h);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}

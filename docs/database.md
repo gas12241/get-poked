@@ -232,6 +232,7 @@ Fields
 - id
 - user (required — only created for logged-in users; see docs/decisions.md #011)
 - quiz_mode
+- difficulty (added for the history list — see docs/decisions.md #088; defaults to "medium" purely for pre-existing rows to migrate cleanly, every new row sets it for real)
 - score (cached total correct, to avoid recomputing from QuizAttemptAnswer on every read)
 - total_questions
 - completed_at
@@ -253,7 +254,8 @@ Fields
 - id
 - quiz_attempt
 - card
-- is_correct
+- guess (the user's actual raw answer, added so correctness can be independently re-checked server-side rather than trusted from the client — see docs/decisions.md #088; defaults to "" purely for pre-existing rows)
+- is_correct (server-derived from `guess`, not client-writable)
 - time_taken_seconds
 - order (position within the attempt)
 

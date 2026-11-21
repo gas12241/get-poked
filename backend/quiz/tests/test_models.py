@@ -19,6 +19,14 @@ class QuizAttemptModelTests(TestCase):
         )
         self.assertIsNotNone(attempt.completed_at)
 
+    def test_difficulty_defaults_to_medium(self):
+        # Migration-safety default for rows that predate this field, not a
+        # real "no difficulty" state — every new row always sets it.
+        attempt = QuizAttempt.objects.create(
+            user=self.user, quiz_mode="guess_card", score=7, total_questions=10
+        )
+        self.assertEqual(attempt.difficulty, "medium")
+
     def test_deleting_user_cascades_to_attempts(self):
         QuizAttempt.objects.create(
             user=self.user, quiz_mode="guess_card", score=7, total_questions=10
@@ -58,6 +66,19 @@ class QuizAttemptAnswerModelTests(TestCase):
         )
         self.assertEqual(self.attempt.answers.count(), 1)
         self.assertEqual(answer.card, self.card)
+
+    def test_guess_defaults_to_empty_string(self):
+        # Migration-safety default for rows that predate this field — every
+        # new row going forward always has a real one (enforced by the
+        # serializer, not this default).
+        answer = QuizAttemptAnswer.objects.create(
+            quiz_attempt=self.attempt,
+            card=self.card,
+            is_correct=True,
+            time_taken_seconds=4.2,
+            order=0,
+        )
+        self.assertEqual(answer.guess, "")
 
     def test_deleting_attempt_cascades_to_answers(self):
         QuizAttemptAnswer.objects.create(

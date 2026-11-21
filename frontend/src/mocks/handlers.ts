@@ -17,6 +17,28 @@ const mockCardListItem = {
   types: [{ id: 1, name: 'Fire' }],
 };
 
+export function mockQuizAttemptDetail(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 1,
+    quiz_mode: 'guess_card',
+    difficulty: 'medium',
+    score: 1,
+    total_questions: 1,
+    completed_at: '2026-01-01T00:00:00Z',
+    answers: [
+      {
+        card: mockCardListItem,
+        guess: 'Charizard',
+        correct_answer: 'Charizard',
+        is_correct: true,
+        time_taken_seconds: 3.5,
+        order: 0,
+      },
+    ],
+    ...overrides,
+  };
+}
+
 const HOROSCOPE_SLOTS: { supertype: string; rarity_tier: string }[] = [
   { supertype: 'Pokémon', rarity_tier: 'common' },
   { supertype: 'Pokémon', rarity_tier: 'mid' },
@@ -142,13 +164,19 @@ export const handlers = [
   }),
 
   http.post(`${BASE_URL}/api/v1/quiz-attempts/`, () => {
-    return HttpResponse.json({
-      id: 1,
-      quiz_mode: 'guess_card',
-      score: 1,
-      total_questions: 1,
-      completed_at: '2026-01-01T00:00:00Z',
-    });
+    return HttpResponse.json(mockQuizAttemptDetail());
+  }),
+
+  http.get(`${BASE_URL}/api/v1/quiz-attempts/dates/`, () => {
+    return HttpResponse.json({ dates: [] });
+  }),
+
+  http.get(`${BASE_URL}/api/v1/quiz-attempts/by-date/:date/`, () => {
+    return HttpResponse.json([]);
+  }),
+
+  http.get(`${BASE_URL}/api/v1/quiz-attempts/:id/`, () => {
+    return HttpResponse.json(mockQuizAttemptDetail());
   }),
 
   // Defaults: no pulls anywhere, and pulling today creates a fresh 7-card

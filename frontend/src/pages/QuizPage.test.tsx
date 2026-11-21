@@ -1,8 +1,10 @@
+import { StrictMode } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
+import { mockQuizAttemptDetail } from '../mocks/handlers';
 import { renderWithProviders } from '../test/renderWithProviders';
 import { useQuizStore } from '../store/quizStore';
 import { useAuthStore } from '../store/authStore';
@@ -40,15 +42,15 @@ const REEL_TIMEOUT_MS =
   FLIP_DURATION_MS +
   1000;
 
-async function startQuiz() {
-  renderWithProviders(<QuizPage />);
+async function startQuiz(ui = <QuizPage />) {
+  renderWithProviders(ui);
   await userEvent.click(screen.getByRole('radio', { name: 'Guess the Card' }));
   await userEvent.click(screen.getByRole('button', { name: 'Start Quiz' }));
   await screen.findByLabelText('Your guess', {}, { timeout: REEL_TIMEOUT_MS });
 }
 
-async function completeOneQuestionQuiz() {
-  await startQuiz();
+async function completeOneQuestionQuiz(ui = <QuizPage />) {
+  await startQuiz(ui);
   await userEvent.type(screen.getByLabelText('Your guess'), 'Charizard');
   await userEvent.click(screen.getByRole('button', { name: 'Submit guess' }));
   await screen.findByText('Correct!');
@@ -270,13 +272,71 @@ describe('QuizPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('lets an authenticated user save their score', async () => {
+  it('auto-saves an authenticated user’s score with no button click, and shows the breakdown', async () => {
     useAuthStore.setState({ accessToken: 'test-token' });
     await completeOneQuestionQuiz();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Save score' }));
+    expect(await screen.findByText('Score saved.')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Save score' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Your guess: Charizard')).toBeInTheDocument();
+    expect(screen.getByText('Correct answer: Charizard')).toBeInTheDocument();
+  });
+
+  it('shows a retry button if the auto-save fails, and a successful retry shows the breakdown', async () => {
+    useAuthStore.setState({ accessToken: 'test-token' });
+    let callCount = 0;
+    server.use(
+      http.post(`${BASE_URL}/api/v1/quiz-attempts/`, () => {
+        callCount += 1;
+        if (callCount === 1) {
+          return new HttpResponse(null, { status: 500 });
+        }
+        return HttpResponse.json(mockQuizAttemptDetail());
+      }),
+    );
+
+    await completeOneQuestionQuiz();
+
+    await screen.findByText('Failed to save score.');
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
     expect(await screen.findByText('Score saved.')).toBeInTheDocument();
+    expect(screen.getByText('Correct answer: Charizard')).toBeInTheDocument();
+  });
+
+  it('only saves once even if the completion effect runs twice (React StrictMode)', async () => {
+    // Caught live, not just theoretical: React re-runs effects in
+    // StrictMode (and effects aren't guaranteed to run exactly once in
+    // general), and the naive `!session.submitted` guard alone doesn't
+    // catch a second invocation landing before the first save's response
+    // comes back and flips it — this produced two separate QuizAttempt
+    // rows from one finished quiz before the ref guard was added.
+    useAuthStore.setState({ accessToken: 'test-token' });
+    let saveCallCount = 0;
+    server.use(
+      http.post(`${BASE_URL}/api/v1/quiz-attempts/`, () => {
+        saveCallCount += 1;
+        return HttpResponse.json(mockQuizAttemptDetail());
+      }),
+    );
+
+    await completeOneQuestionQuiz(
+      <StrictMode>
+        <QuizPage />
+      </StrictMode>,
+    );
+
+    await screen.findByText('Score saved.');
+    expect(saveCallCount).toBe(1);
+    // Also pins a second real bug found at the same time: reading
+    // session.submitted (Zustand) before the mutation's own isSuccess/data
+    // (react-query) could render "submitted" a frame before this mutation's
+    // own data was visible under StrictMode, showing no breakdown at all.
+    expect(
+      await screen.findByText('Correct answer: Charizard'),
+    ).toBeInTheDocument();
   });
 
   it('does not show the guess form (or let a guess be typed) until the case-opening reel finishes', async () => {

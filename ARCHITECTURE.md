@@ -276,6 +276,14 @@ Playing a quiz does not require authentication. Recording a score does. The quiz
 
 Tracked at per-question detail, not just session-level. `QuizAttempt` represents a completed session (with a cached score); `QuizAttemptAnswer` represents each individual question within it (card, correctness, time taken). This trades more schema now for future per-card statistics and leaderboard features. See docs/database.md and docs/decisions.md #012.
 
+Each answer's correctness is re-derived server-side from the raw `guess` at save time (`check_answer`, the same function the mid-quiz check endpoint already uses), not trusted from a client-submitted `is_correct` — found and fixed during a user-requested security audit; the original design let a client POST a fake perfect score, and since only the boolean was stored, there was no way to even retroactively verify old attempts. See docs/decisions.md #088.
+
+A quiz abandoned before completion is never saved — a pure dismissal, not a partial record. Auto-save only applies once a session actually finishes; `QuizAttempt.score`/`total_questions` are therefore always a complete, consistent pair, never a partial one.
+
+### Quiz Attempt History
+
+Saving no longer waits for a manual button — the summary screen auto-saves on completion, so a browsable history is actually complete rather than missing whatever a user forgot to click "Save" on. History browsing is calendar-based, directly mirroring Horoscope's own calendar (`QuizHistoryCalendar`/`QuizHistorySection`, parallel to `HoroscopeCalendar`/`HoroscopePage`): a month view highlights days with any attempt (`GET /api/v1/quiz-attempts/dates/`), selecting a day lists that day's attempts (`GET /api/v1/quiz-attempts/by-date/<date>/` — a list, since unlike a Horoscope pull there's no one-per-day limit), and each attempt expands lazily into its full per-question breakdown (`GET /api/v1/quiz-attempts/<id>/`). The flat, unpaginated `GET /api/v1/quiz-attempts/` list this replaced was never actually used by the frontend. See docs/decisions.md #088.
+
 ---
 
 ## Caching & Deployment

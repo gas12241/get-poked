@@ -533,17 +533,67 @@ Implemented
 
 ---
 
-### Quiz Attempts
-
-GET /api/v1/quiz-attempts/
+### Save Quiz Attempt
 
 POST /api/v1/quiz-attempts/
 
 Description
 
-Records a completed quiz session. `POST` body: `{"quiz_mode": "...", "answers": [{"card": <id>, "is_correct": <bool>, "time_taken_seconds": <float>, "order": <int>}, ...]}` — `score`/`total_questions` are computed server-side from `answers`, not trusted from the client. `GET` returns only the requesting user's own attempts (paginated, per the project-wide default).
+Records a completed quiz session. Body: `{"quiz_mode": "...", "difficulty": "easy" | "medium" | "hard", "answers": [{"card": <id>, "guess": "<string>", "time_taken_seconds": <float>, "order": <int>}, ...]}`. `score`/`total_questions`/each answer's `is_correct` are all computed server-side by re-checking `guess` against `card`/`quiz_mode` — none of it is trusted from the client (see docs/decisions.md #088; this endpoint used to also accept a client-submitted `is_correct` per answer and trust it directly). The response is the same rich shape as Get Quiz Attempt Detail below (nested real card data, not the quiz's masked image), not a flat echo of the input — the frontend's post-quiz breakdown screen renders directly from it.
 
 Requires authentication (see docs/decisions.md #011).
+
+Status
+
+Implemented
+
+---
+
+### Get Quiz Attempt Dates
+
+GET /api/v1/quiz-attempts/dates/
+
+Params
+
+- `month` — required, `YYYY-MM`
+
+Description
+
+`{"dates": [...]}` — bare date strings (UTC calendar day) for the requesting user's own attempts within that month, deduplicated (a day with several attempts still appears once). Powers the history calendar's "which days are clickable" check, deliberately lighter than fetching full attempt data for an entire month — same reasoning as Horoscope's own dates endpoint (docs/decisions.md #066).
+
+Requires authentication.
+
+Status
+
+Implemented
+
+---
+
+### Get Quiz Attempts By Date
+
+GET /api/v1/quiz-attempts/by-date/\<date\>/
+
+Description
+
+A flat list of the requesting user's own attempts that day — `[{"id", "quiz_mode", "difficulty", "score", "total_questions", "completed_at"}, ...]`, no nested per-question detail. Unlike a Horoscope pull, there's no one-per-day limit on quiz attempts, so an empty list (not a 404) is the normal response for a date with nothing.
+
+Requires authentication.
+
+Status
+
+Implemented
+
+---
+
+### Get Quiz Attempt Detail
+
+GET /api/v1/quiz-attempts/\<id\>/
+
+Description
+
+The full per-question breakdown for one of the requesting user's own attempts — same shape as the Save Quiz Attempt response: `{"id", "quiz_mode", "difficulty", "score", "total_questions", "completed_at", "answers": [{"card": {...real card fields...}, "guess", "correct_answer", "is_correct", "time_taken_seconds", "order"}, ...]}`. `card` is the real, fully unmasked card (not the quiz's masked question image) so the history view can show what was actually being guessed on and link to its own detail page. `correct_answer` is derived at read time from `card`/`quiz_mode`, not stored — see docs/decisions.md #088. Another user's attempt id 404s, same pattern as every other per-user detail view in this app.
+
+Requires authentication.
 
 Status
 
