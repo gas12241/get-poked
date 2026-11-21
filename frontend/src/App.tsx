@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import CardListPage from './pages/CardListPage';
 import CardDetailPage from './pages/CardDetailPage';
 import QuizPage from './pages/QuizPage';
+import QuizAttemptDetailPage from './pages/QuizAttemptDetailPage';
 import HoroscopePage from './pages/HoroscopePage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
@@ -23,6 +24,7 @@ const router = createBrowserRouter([
       { path: '/', element: <CardListPage /> },
       { path: '/cards/:id', element: <CardDetailPage /> },
       { path: '/quiz', element: <QuizPage /> },
+      { path: '/quiz-history/:id', element: <QuizAttemptDetailPage /> },
       { path: '/horoscope', element: <HoroscopePage /> },
       { path: '/login', element: <LoginPage /> },
       { path: '/signup', element: <SignupPage /> },

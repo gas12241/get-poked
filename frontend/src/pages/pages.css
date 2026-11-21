@@ -2194,13 +2194,32 @@
 .quiz-attempt-row-summary {
   width: 100%;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 8px;
+  gap: 4px 8px;
   font: inherit;
   font-size: 13px;
   color: var(--text-h);
-  background: none;
-  border: none;
   cursor: pointer;
   text-align: left;
+  /* Now a <Link>, not a <button> — an <a> needs these reset explicitly. */
+  text-decoration: none;
+}
+
+/* QuizAttemptDetailPage's own summary line — same information as
+   AttemptRow's, just centered prose instead of a flex row, since this
+   page has no toggle arrow and nothing to line up in columns. */
+.quiz-attempt-detail-summary {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.quiz-attempt-detail-summary span:not(:last-child)::after {
+  content: '·';
+  margin-left: 10px;
+  color: var(--border);
 }

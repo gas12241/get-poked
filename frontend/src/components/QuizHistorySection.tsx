@@ -1,83 +1,22 @@
-import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import {
-  getQuizAttemptDates,
-  getQuizAttemptDetail,
-  getQuizAttemptsByDate,
-} from '../api/quiz';
+import { getQuizAttemptDates, getQuizAttemptsByDate } from '../api/quiz';
 import type { QuizAttemptSummary } from '../api/quiz';
-import { DIFFICULTIES, MODES } from '../lib/quizOptions';
+import {
+  difficultyLabel,
+  formatQuizAttemptTime,
+  formatQuizHistoryDate,
+  modeLabel,
+} from '../lib/quizAttemptFormatting';
 import QuizHistoryCalendar, { currentUtcMonth } from './QuizHistoryCalendar';
-import QuizAttemptBreakdown from './QuizAttemptBreakdown';
-
-// Same formatting (and the same UTC-safe split-the-string-directly
-// parsing, not `new Date(dateStr)` + local getters) as Horoscope's own
-// formatHoroscopeDate — duplicated rather than imported, consistent with
-// QuizHistoryCalendar's own date-math being a deliberate near-duplicate of
-// HoroscopeCalendar's (see docs/decisions.md #090): a "component" file
-// reaching into a "page" file for a few lines is a worse trade than a
-// small, stable, already-tested function copied once.
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
-function ordinal(day: number): string {
-  if (day % 10 === 1 && day % 100 !== 11) return `${day}st`;
-  if (day % 10 === 2 && day % 100 !== 12) return `${day}nd`;
-  if (day % 10 === 3 && day % 100 !== 13) return `${day}rd`;
-  return `${day}th`;
-}
-
-function formatQuizHistoryDate(dateStr: string): string {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  return `${MONTH_NAMES[month - 1]} ${ordinal(day)}, ${year}`;
-}
-
-// The viewer's own local time, not UTC — toLocaleTimeString() (unlike
-// toISOString()) already converts for us, same approach as
-// HoroscopePage's reset-time display.
-function formatQuizAttemptTime(completedAt: string): string {
-  return new Date(completedAt).toLocaleTimeString(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
-
-function modeLabel(mode: QuizAttemptSummary['quiz_mode']) {
-  return MODES.find((m) => m.value === mode)?.label ?? mode;
-}
-
-function difficultyLabel(difficulty: QuizAttemptSummary['difficulty']) {
-  return DIFFICULTIES.find((d) => d.value === difficulty)?.label ?? difficulty;
-}
 
 function AttemptRow({ attempt }: { attempt: QuizAttemptSummary }) {
-  const [expanded, setExpanded] = useState(false);
-  const detailQuery = useQuery({
-    queryKey: ['quiz-attempt-detail', attempt.id],
-    queryFn: () => getQuizAttemptDetail(attempt.id),
-    enabled: expanded,
-  });
-
   return (
     <li className="quiz-attempt-row">
-      <button
-        type="button"
+      <Link
+        to={`/quiz-history/${attempt.id}`}
+        state={{ from: 'quiz' }}
         className="quiz-attempt-row-summary"
-        aria-expanded={expanded}
-        onClick={() => setExpanded((e) => !e)}
       >
         <span>{modeLabel(attempt.quiz_mode)}</span>
         <span>{difficultyLabel(attempt.difficulty)}</span>
@@ -86,22 +25,16 @@ function AttemptRow({ attempt }: { attempt: QuizAttemptSummary }) {
         <span>
           {attempt.score} / {attempt.total_questions}
         </span>
-        <span aria-hidden="true">{expanded ? '▾' : '▸'}</span>
-      </button>
-      {expanded &&
-        (detailQuery.isLoading ? (
-          <p>Loading...</p>
-        ) : detailQuery.data ? (
-          <QuizAttemptBreakdown answers={detailQuery.data.answers} />
-        ) : null)}
+        <span aria-hidden="true">›</span>
+      </Link>
     </li>
   );
 }
 
 function QuizHistorySection({ isAuthenticated }: { isAuthenticated: boolean }) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const month = searchParams.get('month') ?? currentUtcMonth();
+  const selectedDate = searchParams.get('date');
 
   const datesQuery = useQuery({
     queryKey: ['quiz-attempt-dates', month],
@@ -130,11 +63,18 @@ function QuizHistorySection({ isAuthenticated }: { isAuthenticated: boolean }) {
       <QuizHistoryCalendar
         month={month}
         onMonthChange={(newMonth) =>
-          setSearchParams({ month: newMonth }, { replace: true })
+          setSearchParams(
+            selectedDate
+              ? { month: newMonth, date: selectedDate }
+              : { month: newMonth },
+            { replace: true },
+          )
         }
         datesWithAttempts={new Set(datesQuery.data?.dates ?? [])}
         selectedDate={selectedDate}
-        onSelectDate={setSelectedDate}
+        onSelectDate={(date) =>
+          setSearchParams({ month, date }, { replace: true })
+        }
       />
       {selectedDate && (
         <div className="quiz-history-day">

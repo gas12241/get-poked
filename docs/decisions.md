@@ -1337,6 +1337,22 @@ Why
 
 ---
 
+## Decision 091
+
+Quiz history: a dedicated detail page per attempt, replacing the accordion
+
+Why
+
+- **The accordion (#090) was already fixed once and still replaced** — live testing surfaced a real edge case (several attempts expanded while scrolled near the bottom) where even a scroll-anchoring fallback can't perfectly restore position, because the content that would let the browser scroll back there has been removed; there's no scroll position that can achieve it, by any approach. Rather than keep patching an inherently fragile mechanism, the accordion was removed entirely: each `AttemptRow` is now a plain `<Link to={`/quiz-history/${id}`}>` to a new `QuizAttemptDetailPage`, and the `useLayoutEffect`/ref-based scroll-compensation code is gone along with it.
+- **Reasoned explicitly about this at the scale of many users, not just the one edge case found**: the fragile case becomes something that *will* happen to someone eventually, not a one-off; and native browser navigation (back/forward, scroll restoration) is used across the entire web, on every device and browser — far more battle-tested than bespoke scroll-compensation code that had only been exercised in one browser on one machine. The accepted trade-off (losing "compare several same-day attempts without round-tripping," the reason inline was chosen over a page in the first place, back in #090) was judged worth it for the robustness gained.
+- **No backend change** — `GET /api/v1/quiz-attempts/<id>/` already returned everything a self-contained page needs (mode, difficulty, score, date, and the full per-question breakdown); this is purely a frontend restructuring.
+- **`selectedDate` moved from local `useState` into the URL** (`?month=&date=`), alongside the existing `month` param — without this, navigating to the new detail page and back would remount `QuizHistorySection` with its selected day reset to nothing, reintroducing a different flavor of the exact "lost your place" problem this change exists to fix. Same "state lives in the URL" convention `CardListPage`'s own filters and Horoscope's `?month=` already use. A side benefit: `/quiz?month=...&date=...` is now a valid, bookmarkable/shareable URL straight to a specific day's list.
+- **`modeLabel`/`difficultyLabel`/`formatQuizHistoryDate`/`formatQuizAttemptTime` moved into a new shared `lib/quizAttemptFormatting.ts`** — both `QuizHistorySection.tsx` and the new `QuizAttemptDetailPage.tsx` need them now; kept out of either file directly for the same circular-import reason `lib/quizOptions.ts` already exists (#090).
+- The detail page's back button reuses `CardDetailPage.tsx`'s own `navigate(-1)` idiom rather than a fixed `<Link to="/quiz">`, specifically so it returns to the exact prior URL (month *and* selected day) via real browser history, not a hardcoded destination that would discard the query string. Unlike `CardDetailPage`, it doesn't need the `location.state.from` label-switching logic — this page only ever has one real origin (the history list), so one static "Back to Quiz" label is enough.
+- 1 new frontend test file (`QuizAttemptDetailPage.test.tsx` — full breakdown render, an error/not-found state, the back button) and `QuizHistorySection.test.tsx`'s now-obsolete lazy-expand test replaced with one asserting each row is a real link, plus a new test proving a direct `?month=&date=` URL restores the day's list with no click needed. Full 295-test frontend suite green (backend untouched, still 322). Verified live in both themes: selecting a day updates the URL; clicking an attempt navigates to its own page with the same breakdown the accordion used to show; "Back to Quiz" returns to the exact prior month/day, not a reset view; a direct link to `/quiz?month=...&date=...` pre-selects that day immediately.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

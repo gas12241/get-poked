@@ -3,7 +3,6 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
-import { mockQuizAttemptDetail } from '../mocks/handlers';
 import { renderWithProviders } from '../test/renderWithProviders';
 import QuizHistorySection from './QuizHistorySection';
 
@@ -45,7 +44,11 @@ describe('QuizHistorySection', () => {
     const dayButton = await screen.findByRole('button', { name: '5' });
     await userEvent.click(dayButton);
 
+    // The click updated the URL's `date` param (not just local state) —
+    // the calendar re-reads `selectedDate` from there, so it marking the
+    // day as selected is the observable proof the URL actually changed.
     expect(await screen.findByText('Guess the Card')).toBeInTheDocument();
+    expect(dayButton).toHaveClass('quiz-history-calendar-day-selected');
     expect(screen.getByText('Medium')).toBeInTheDocument();
     expect(screen.getByText('1 / 1')).toBeInTheDocument();
     // Computed the same way the component does, not hardcoded — the
@@ -81,12 +84,7 @@ describe('QuizHistorySection', () => {
     ).toBeInTheDocument();
   });
 
-  it('fetches and shows the full breakdown only once an attempt row is expanded', async () => {
-    // A call counter, not just a timing-based absence check — proves the
-    // detail endpoint genuinely isn't hit until expansion, rather than just
-    // asserting on a render that might simply not have resolved yet either
-    // way.
-    let detailCallCount = 0;
+  it('each attempt row links to its own detail page instead of expanding in place', async () => {
     server.use(
       http.get(`${BASE_URL}/api/v1/quiz-attempts/dates/`, () => {
         return HttpResponse.json({ dates: ['2026-09-05'] });
@@ -103,10 +101,6 @@ describe('QuizHistorySection', () => {
           },
         ]);
       }),
-      http.get(`${BASE_URL}/api/v1/quiz-attempts/:id/`, () => {
-        detailCallCount += 1;
-        return HttpResponse.json(mockQuizAttemptDetail({ id: 42 }));
-      }),
     );
 
     renderWithProviders(<QuizHistorySection isAuthenticated />, {
@@ -114,17 +108,35 @@ describe('QuizHistorySection', () => {
     });
 
     await userEvent.click(await screen.findByRole('button', { name: '5' }));
-    const row = await screen.findByRole('button', { name: /Guess the HP/ });
-    // Give any eager (wrongly unguarded) fetch a chance to land before
-    // asserting it didn't.
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(detailCallCount).toBe(0);
+    const row = await screen.findByRole('link', { name: /Guess the HP/ });
 
-    await userEvent.click(row);
+    expect(row).toHaveAttribute('href', '/quiz-history/42');
+  });
 
-    expect(
-      await screen.findByText('Correct answer: Charizard'),
-    ).toBeInTheDocument();
-    expect(detailCallCount).toBe(1);
+  it('restores the selected day immediately from a directly-loaded URL, with no click needed', async () => {
+    server.use(
+      http.get(`${BASE_URL}/api/v1/quiz-attempts/dates/`, () => {
+        return HttpResponse.json({ dates: ['2026-09-05'] });
+      }),
+      http.get(`${BASE_URL}/api/v1/quiz-attempts/by-date/:date/`, () => {
+        return HttpResponse.json([
+          {
+            id: 1,
+            quiz_mode: 'guess_card',
+            difficulty: 'medium',
+            score: 1,
+            total_questions: 1,
+            completed_at: '2026-09-05T10:00:00Z',
+          },
+        ]);
+      }),
+    );
+
+    renderWithProviders(<QuizHistorySection isAuthenticated />, {
+      route: '/quiz?month=2026-09&date=2026-09-05',
+    });
+
+    expect(await screen.findByText('September 5th, 2026')).toBeInTheDocument();
+    expect(await screen.findByText('Guess the Card')).toBeInTheDocument();
   });
 });
