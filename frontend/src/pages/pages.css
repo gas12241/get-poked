@@ -1619,7 +1619,12 @@
 
 .horoscope-calendar-heading {
   margin-top: 40px;
-  text-align: left;
+  /* Matches .horoscope-page's own centered text — a left-aligned heading
+     here sat flush against the column's left edge while "Horoscope" and
+     everything else on this page sit centered, reading as misaligned
+     even though the boxes share one center. Same bug, same fix, as
+     .quiz-history-section's own heading above. */
+  text-align: center;
 }
 
 /* A normal month grid — only days with a saved pull (.horoscope-calendar-day)
