@@ -1396,6 +1396,20 @@ Why
 
 ---
 
+## Decision 095
+
+Separator lines between sections, not bordered boxes — on both the Quiz and Horoscope pages
+
+Why
+
+- **Raised directly by the user**: would a pink/accent-colored border around the quiz-setup section and the history section (and the equivalent on Horoscope) help visually separate a page with "many buttons and text boxes"? Tried first as a full `border` + `border-radius` box around `.quiz-mode-selection`/`.quiz-summary`, `.quiz-question`, and `.quiz-history-section` (reusing `var(--accent-border)`, the same shade already used for a hovered row/button, rather than inventing a new color) — shown live in both themes before any decision was made.
+- **Rejected in favor of a separator line**, for two reasons the user identified directly: (1) a box implies "this container is exactly this size," which reads oddly once its content legitimately varies in height (the attempt list's row count) or, worse, in *width* — on Horoscope specifically, the pull/result-grid section is far wider than the "Past horoscopes" calendar below it, so two boxes of very different widths stacked on one page would read as two mismatched components rather than one page. A line carries no such size expectation, so the same page can have a wide section above a narrow one without it looking off. (2) Using the boxes surfaced a real, independent bug (see #094) that a line wouldn't have revealed — useful in hindsight, but not a reason to keep the box once the actual bug was found and fixed elsewhere.
+- **Implementation**: the border/border-radius was removed from `.quiz-mode-selection`/`.quiz-summary` and `.quiz-question` entirely — they're the first thing on their respective screens, with nothing above them to separate from. `.quiz-history-section` and `.horoscope-calendar-heading` ("Past horoscopes") each got a `border-top: 1px solid var(--accent-border)` instead of a full border, with padding/margin adjusted so there's breathing room on both sides of the line. No new wrapper elements needed — both anchor points already existed as the natural boundary between the two conceptual halves of each page.
+- The `width: 100%` fix from #094 is unrelated to this choice and was kept regardless — it's what makes *either* treatment (box or line) actually consistent, since without it the line's own length would still have silently varied with content the same way the box's size did.
+- Pure CSS, no new tests (same reasoning as #094). Full 298-test frontend suite unaffected. Verified live in both themes: on Horoscope specifically, the line spans the full width of the (wide) pull section while the (narrower) calendar sits centered underneath it, clearly separated without implying the two are the same size.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).
