@@ -13,13 +13,23 @@ function QuizAttemptBreakdown({
     <ol className="quiz-attempt-breakdown">
       {answers.map((answer) => (
         <li key={answer.order} className="quiz-attempt-breakdown-row">
-          <Link
-            to={`/cards/${answer.card.id}`}
-            state={{ from: 'quiz' }}
-            className="quiz-attempt-breakdown-card"
-          >
-            <img src={answer.card.image_small} alt={answer.card.name} />
-          </Link>
+          {answer.set ? (
+            // No set detail page exists in this app — a plain labeled
+            // icon, not a link to nowhere. See docs/decisions.md #096.
+            <div className="quiz-attempt-breakdown-card">
+              <img src={answer.set.image_symbol} alt={answer.set.name} />
+            </div>
+          ) : (
+            answer.card && (
+              <Link
+                to={`/cards/${answer.card.id}`}
+                state={{ from: 'quiz' }}
+                className="quiz-attempt-breakdown-card"
+              >
+                <img src={answer.card.image_small} alt={answer.card.name} />
+              </Link>
+            )
+          )}
           <div className="quiz-attempt-breakdown-text">
             <p>Your guess: {answer.guess || '—'}</p>
             <p>Correct answer: {answer.correct_answer}</p>

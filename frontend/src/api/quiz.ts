@@ -1,5 +1,5 @@
 import { apiClient } from '../lib/apiClient';
-import type { CardListItem } from './cards';
+import type { CardListItem, Set } from './cards';
 
 export type QuizMode =
   'guess_card' | 'guess_set' | 'guess_hp' | 'guess_set_icon';
@@ -66,10 +66,12 @@ export interface QuizAttemptCreateInput {
 }
 
 export interface QuizAttemptAnswerDetail {
-  // The real, fully unmasked card (not the quiz's masked question image)
-  // — enough to show what was being guessed on and link to its own detail
-  // page.
-  card: CardListItem;
+  // Exactly one of card/set is ever present, mirroring the backend's own
+  // either/or answer shape. The real, fully unmasked card (not the
+  // quiz's masked question image) — enough to show what was being
+  // guessed on and link to its own detail page.
+  card: CardListItem | null;
+  set: Set | null;
   guess: string;
   correct_answer: string;
   is_correct: boolean;
