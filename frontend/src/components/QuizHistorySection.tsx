@@ -45,6 +45,16 @@ function formatQuizHistoryDate(dateStr: string): string {
   return `${MONTH_NAMES[month - 1]} ${ordinal(day)}, ${year}`;
 }
 
+// The viewer's own local time, not UTC — toLocaleTimeString() (unlike
+// toISOString()) already converts for us, same approach as
+// HoroscopePage's reset-time display.
+function formatQuizAttemptTime(completedAt: string): string {
+  return new Date(completedAt).toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 function modeLabel(mode: QuizAttemptSummary['quiz_mode']) {
   return MODES.find((m) => m.value === mode)?.label ?? mode;
 }
@@ -72,6 +82,7 @@ function AttemptRow({ attempt }: { attempt: QuizAttemptSummary }) {
         <span>{modeLabel(attempt.quiz_mode)}</span>
         <span>{difficultyLabel(attempt.difficulty)}</span>
         <span>{attempt.total_questions} questions</span>
+        <span>{formatQuizAttemptTime(attempt.completed_at)}</span>
         <span>
           {attempt.score} / {attempt.total_questions}
         </span>

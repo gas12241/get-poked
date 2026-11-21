@@ -48,6 +48,16 @@ describe('QuizHistorySection', () => {
     expect(await screen.findByText('Guess the Card')).toBeInTheDocument();
     expect(screen.getByText('Medium')).toBeInTheDocument();
     expect(screen.getByText('1 / 1')).toBeInTheDocument();
+    // Computed the same way the component does, not hardcoded — the
+    // formatted string depends on the test runner's own timezone/locale.
+    const expectedTime = new Date('2026-09-05T10:00:00Z').toLocaleTimeString(
+      undefined,
+      {
+        hour: 'numeric',
+        minute: '2-digit',
+      },
+    );
+    expect(screen.getByText(expectedTime)).toBeInTheDocument();
   });
 
   it('shows "no quizzes" for a selected day with nothing', async () => {

@@ -2073,8 +2073,15 @@
    *list* of that day's attempts rather than a single item) plus that
    day's attempt list, each expandable into the same breakdown above. */
 .quiz-history-section {
-  margin-top: 40px;
-  text-align: left;
+  max-width: 480px;
+  margin: 40px auto 0;
+  padding: 0 20px 40px;
+  /* Matches .quiz-mode-selection/.quiz-summary above and below it on this
+     page — both are centered text, not just a centered box, so a
+     left-aligned heading here would sit flush against the column's left
+     edge while "Quiz"/"Quiz complete!" sit in the middle of that same
+     column, reading as misaligned even though the boxes share one center. */
+  text-align: center;
 }
 
 .quiz-history-calendar {
