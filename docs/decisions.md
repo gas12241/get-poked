@@ -1251,3 +1251,5 @@ Why
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).
+
+Security of user/database data on AWS — raised directly by the user ahead of any deployment work, as a standing priority rather than something to figure out once deployment starts: when Phase 7 begins, protecting user accounts and their data (nothing exposed via SQL injection or otherwise) must be designed in from the first production deploy, not bolted on after. Concretely, Phase 7 planning should cover at least: no public-internet access to the database (private subnet/security group); all secrets (DB credentials, Django `SECRET_KEY`, OAuth client secret, `POKEMON_TCG_API_KEY`) in a secrets manager, never in source control or host env files; TLS in transit and encryption at rest; least-privilege IAM for the app's runtime role; and keeping all query-building on the Django ORM (already the case throughout `cards`/`collection`/`core`) rather than introducing raw SQL during deployment work. See ARCHITECTURE.md § Caching & Deployment.

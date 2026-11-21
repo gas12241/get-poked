@@ -111,6 +111,6 @@ Performance
 
 Caching
 
-Deployment
+Deployment (target: AWS) — security of user/database data is a first-class requirement of this phase, not a follow-up task; see ARCHITECTURE.md § Caching & Deployment and docs/decisions.md Future Decisions.
 
 Documentation

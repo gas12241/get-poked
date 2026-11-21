@@ -126,6 +126,22 @@ Google OAuth should be the preferred onboarding experience.
 
 ---
 
+## Security
+
+Treat user and database data protection as a first-class requirement of every feature, not a hardening pass done afterward — raised explicitly by the user (see docs/decisions.md #085 and TODO.md § Security Hardening) ahead of any AWS deployment work, and standing from that point on.
+
+When adding or changing a feature:
+
+- Stay on the Django ORM for all queries — never raw SQL or string-built queries.
+- Any new view that creates, updates, or deletes a model instance scopes its queryset to the requesting user (`request.user`), the same pattern already used throughout `collection`/`quiz`/`horoscope`. Another account's data should 404, not just be forbidden.
+- Check serializers for mass assignment: a field a client can PATCH/POST should be exactly the fields they're meant to control — never `is_staff`/`is_superuser`, another user's foreign key, or anything that should be server-computed.
+- Any new endpoint that accepts credentials, tokens, or anything else worth rate-limiting gets a `throttle_scope`, matching the existing pattern in `backend/core/views.py`/`config/settings.py` (see docs/decisions.md #085) — and if that scope is likely to be hit incidentally by unrelated tests (as login's was), add `cache.clear()` to those tests' `setUp()`, not just the dedicated throttle test.
+- Never log or expose secrets, tokens, or passwords in error messages, logs, or API responses.
+- New file uploads need a server-side size and content-type check before processing, matching `UserSerializer.validate_avatar`.
+- Keep `.env`/secrets out of git; anything deployment-specific (AWS, IAM, network isolation, secrets manager) stays deferred to Phase 7 per ARCHITECTURE.md § Caching & Deployment, but app-level security above does not wait for Phase 7.
+
+---
+
 ## Documentation Maintenance
 
 Maintain the following project documents:
