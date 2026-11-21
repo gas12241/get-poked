@@ -8,7 +8,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from cards.models import Card
+from cards.models import Card, Set
 
 from .eligibility import DIFFICULTIES, GUESS_CARD, GUESS_HP, GUESS_SET, eligible_card_ids
 from .models import QuizAttempt
@@ -18,8 +18,9 @@ from .serializers import (
     QuizAttemptDetailSerializer,
     QuizAttemptSummarySerializer,
 )
+from .sets_quiz import ELIGIBLE_SETS, GUESS_SET_ICON, build_set_icon_question, check_set_icon_answer
 
-VALID_MODES = (GUESS_CARD, GUESS_SET, GUESS_HP)
+VALID_MODES = (GUESS_CARD, GUESS_SET, GUESS_HP, GUESS_SET_ICON)
 DEFAULT_QUESTION_COUNT = 5
 MAX_QUESTION_COUNT = 20
 
@@ -35,9 +36,6 @@ class QuizQuestionsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        rarities_param = request.query_params.get("rarities")
-        rarities = [r for r in rarities_param.split(",") if r] if rarities_param else None
-
         difficulty = request.query_params.get("difficulty")
         if difficulty is not None and difficulty not in DIFFICULTIES:
             return Response(
@@ -50,6 +48,23 @@ class QuizQuestionsView(APIView):
         except ValueError:
             count = DEFAULT_QUESTION_COUNT
         count = max(1, min(count, MAX_QUESTION_COUNT))
+
+        if mode == GUESS_SET_ICON:
+            # A question about a Set directly, not a Card — difficulty here
+            # means answer format (multiple-choice size, or free-text),
+            # never a rarity pool, so eligible_card_ids doesn't apply.
+            # Distinct targets across one quiz, same as the card-based
+            # modes below.
+            ids = list(ELIGIBLE_SETS.values_list("id", flat=True))
+            sample_ids = random.sample(ids, min(count, len(ids)))
+            sets_by_id = {s.id: s for s in Set.objects.filter(id__in=sample_ids)}
+            questions = [
+                build_set_icon_question(sets_by_id[set_id], difficulty) for set_id in sample_ids
+            ]
+            return Response({"questions": questions})
+
+        rarities_param = request.query_params.get("rarities")
+        rarities = [r for r in rarities_param.split(",") if r] if rarities_param else None
 
         ids = eligible_card_ids(mode, rarities, difficulty)
         sample_ids = random.sample(ids, min(count, len(ids)))
@@ -74,6 +89,11 @@ class QuizCheckView(APIView):
                 {"detail": f"mode must be one of: {', '.join(VALID_MODES)}."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        if mode == GUESS_SET_ICON:
+            target_set = get_object_or_404(Set, id=request.data.get("set"))
+            correct, answer = check_set_icon_answer(target_set, request.data.get("guess", ""))
+            return Response({"correct": correct, "answer": answer})
 
         card = get_object_or_404(Card, id=request.data.get("card"))
         correct, answer = check_answer(card, mode, request.data.get("guess", ""))
@@ -154,5 +174,5 @@ class QuizAttemptDetailView(generics.RetrieveAPIView):
         # Scoped to the requesting user — another account's attempt id 404s,
         # same pattern as every other per-user detail view in this app.
         return QuizAttempt.objects.filter(user=self.request.user).prefetch_related(
-            "answers__card__set", "answers__card__types"
+            "answers__card__set", "answers__card__types", "answers__set"
         )

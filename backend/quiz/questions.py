@@ -31,7 +31,10 @@ def build_question(card, mode, request):
     if mode != "guess_hp":
         payload["hp"] = card.hp
     if mode != "guess_set":
-        payload["set"] = {"id": card.set_id, "name": card.set.name}
+        # Named card_set, not set — guess_set_icon's own question payload
+        # (sets_quiz.py) uses the bare key "set" for its actual subject (the
+        # set being guessed), a different thing from this hint.
+        payload["card_set"] = {"id": card.set_id, "name": card.set.name}
     return payload
 
 

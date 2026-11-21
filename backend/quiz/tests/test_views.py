@@ -77,7 +77,7 @@ class QuizQuestionsViewTests(QuizTestBase):
         question = response.data["questions"][0]
         self.assertNotIn("name", question)
         self.assertIn("hp", question)
-        self.assertIn("set", question)
+        self.assertIn("card_set", question)
         self.assertIn("image", question)
 
     @responses.activate
@@ -97,7 +97,7 @@ class QuizQuestionsViewTests(QuizTestBase):
         response = self.client.get(reverse("quiz-questions"), {"mode": "guess_set", "count": 1})
 
         question = response.data["questions"][0]
-        self.assertNotIn("set", question)
+        self.assertNotIn("card_set", question)
         self.assertIn("name", question)
         self.assertIn("hp", question)
 
@@ -165,6 +165,76 @@ class QuizQuestionsViewTests(QuizTestBase):
         response = self.client.get(reverse("quiz-questions"), {"mode": "guess_hp", "count": 999})
 
         self.assertEqual(len(response.data["questions"]), 20)
+
+    def _make_sibling_sets(self, count, series="Sword & Shield"):
+        return [
+            Set.objects.create(
+                tcg_id=f"swshsib{i}",
+                name=f"Sibling Set {i}",
+                series=series,
+                release_date=date(2020, 1, 1),
+            )
+            for i in range(count)
+        ]
+
+    def test_guess_set_icon_hard_has_no_choices_and_uses_the_sets_own_symbol(self):
+        # No sibling sets — hard mode needs no distractors, and the only
+        # eligible set is guaranteed to be the one picked as the target.
+        target = Set.objects.create(
+            tcg_id="swsh1",
+            name="Sword & Shield",
+            series="Sword & Shield",
+            release_date=date(2020, 2, 7),
+            image_symbol="https://example.com/swsh1-symbol.png",
+        )
+
+        response = self.client.get(
+            reverse("quiz-questions"),
+            {"mode": "guess_set_icon", "difficulty": "hard", "count": 1},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        question = response.data["questions"][0]
+        self.assertEqual(question["set"], target.id)
+        self.assertEqual(question["image"], target.image_symbol)
+        self.assertNotIn("choices", question)
+        self.assertNotIn("name", question)
+
+    def test_guess_set_icon_easy_has_four_choices(self):
+        Set.objects.create(
+            tcg_id="swsh1",
+            name="Sword & Shield",
+            series="Sword & Shield",
+            release_date=date(2020, 2, 7),
+        )
+        self._make_sibling_sets(5)
+
+        response = self.client.get(
+            reverse("quiz-questions"),
+            {"mode": "guess_set_icon", "difficulty": "easy", "count": 1},
+        )
+
+        question = response.data["questions"][0]
+        self.assertEqual(len(question["choices"]), 4)
+        for choice in question["choices"]:
+            self.assertEqual(set(choice.keys()), {"id", "name"})
+
+    def test_guess_set_icon_medium_has_eight_choices(self):
+        Set.objects.create(
+            tcg_id="swsh1",
+            name="Sword & Shield",
+            series="Sword & Shield",
+            release_date=date(2020, 2, 7),
+        )
+        self._make_sibling_sets(10)
+
+        response = self.client.get(
+            reverse("quiz-questions"),
+            {"mode": "guess_set_icon", "difficulty": "medium", "count": 1},
+        )
+
+        question = response.data["questions"][0]
+        self.assertEqual(len(question["choices"]), 8)
 
 
 class QuizCheckViewTests(QuizTestBase):
@@ -304,6 +374,31 @@ class QuizCheckViewTests(QuizTestBase):
         )
         self.assertNotEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_correct_guess_for_guess_set_icon(self):
+        target_set = Set.objects.create(
+            tcg_id="swsh1", name="Sword & Shield", series="Sword & Shield"
+        )
+
+        response = self.client.post(
+            reverse("quiz-check"),
+            {"set": target_set.id, "mode": "guess_set_icon", "guess": "sword & shield"},
+        )
+
+        self.assertTrue(response.data["correct"])
+        self.assertEqual(response.data["answer"], "Sword & Shield")
+
+    def test_incorrect_guess_for_guess_set_icon(self):
+        target_set = Set.objects.create(
+            tcg_id="swsh1", name="Sword & Shield", series="Sword & Shield"
+        )
+
+        response = self.client.post(
+            reverse("quiz-check"),
+            {"set": target_set.id, "mode": "guess_set_icon", "guess": "Scarlet & Violet"},
+        )
+
+        self.assertFalse(response.data["correct"])
+
 
 class QuizAttemptCreateViewTests(QuizTestBase):
     def setUp(self):
@@ -396,6 +491,47 @@ class QuizAttemptCreateViewTests(QuizTestBase):
         self.assertEqual(answer["card"]["id"], self.pokemon_card.id)
         self.assertEqual(answer["card"]["name"], "Charizard")
         self.assertEqual(answer["correct_answer"], "120")
+
+    def test_guess_set_icon_answer_saves_a_set_not_a_card(self):
+        self.client.force_authenticate(self.user)
+        target_set = Set.objects.create(
+            tcg_id="swsh1",
+            name="Sword & Shield",
+            series="Sword & Shield",
+            image_symbol="https://example.com/swsh1-symbol.png",
+        )
+        payload = {
+            "quiz_mode": "guess_set_icon",
+            "difficulty": "easy",
+            "answers": [
+                {
+                    "set": target_set.id,
+                    "guess": "Sword & Shield",
+                    "time_taken_seconds": 2.5,
+                    "order": 0,
+                },
+            ],
+        }
+
+        response = self.client.post(reverse("quiz-attempt-create"), payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        attempt = QuizAttempt.objects.get(user=self.user)
+        self.assertEqual(attempt.score, 1)
+        saved_answer = attempt.answers.get()
+        self.assertIsNone(saved_answer.card)
+        self.assertEqual(saved_answer.set, target_set)
+        # The breakdown's "Your guess" / "Correct answer" text already
+        # just renders these two plain strings — no new display logic
+        # needed for a set-based row (docs/decisions.md #096).
+        answer = response.data["answers"][0]
+        self.assertEqual(answer["guess"], "Sword & Shield")
+        self.assertEqual(answer["correct_answer"], "Sword & Shield")
+        self.assertTrue(answer["is_correct"])
+        self.assertIsNone(answer["card"])
+        self.assertEqual(answer["set"]["id"], target_set.id)
+        self.assertEqual(answer["set"]["name"], "Sword & Shield")
+        self.assertEqual(answer["set"]["image_symbol"], target_set.image_symbol)
 
 
 class QuizAttemptDatesViewTests(QuizTestBase):
