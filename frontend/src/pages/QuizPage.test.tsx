@@ -235,7 +235,9 @@ describe('QuizPage', () => {
     );
 
     renderWithProviders(<QuizPage />);
-    await userEvent.click(screen.getByRole('radio', { name: 'Guess the Set' }));
+    await userEvent.click(
+      screen.getByRole('radio', { name: "Guess the Pokémon's Set" }),
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Start Quiz' }));
     await screen.findByLabelText(
       'Your guess',
@@ -257,6 +259,57 @@ describe('QuizPage', () => {
 
     await userEvent.click(screen.getByRole('option', { name: 'Base' }));
     expect(screen.getByLabelText('Your guess')).toHaveValue('Base');
+  });
+
+  it('completes a "Guess the Set by Symbol" quiz at easy difficulty by clicking a choice, not typing', async () => {
+    server.use(
+      http.get(`${BASE_URL}/api/v1/quiz/`, () => {
+        return HttpResponse.json({
+          questions: [
+            {
+              set: 5,
+              image: 'https://example.com/symbol.png',
+              choices: [
+                { id: 5, name: 'Sword & Shield' },
+                { id: 6, name: 'Scarlet & Violet' },
+                { id: 7, name: 'Sun & Moon' },
+                { id: 8, name: 'Black & White' },
+              ],
+            },
+          ],
+        });
+      }),
+      http.post(`${BASE_URL}/api/v1/quiz/check/`, () => {
+        return HttpResponse.json({
+          correct: true,
+          answer: 'Sword & Shield',
+        });
+      }),
+    );
+
+    renderWithProviders(<QuizPage />);
+    await userEvent.click(
+      screen.getByRole('radio', { name: 'Guess the Set by Symbol' }),
+    );
+    await userEvent.click(screen.getByRole('radio', { name: 'Easy' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Start Quiz' }));
+
+    const choiceButton = await screen.findByRole(
+      'radio',
+      { name: 'Sword & Shield' },
+      { timeout: REEL_TIMEOUT_MS },
+    );
+    // No text input at all for this mode's easy/medium rounds — a typed
+    // guess would be meaningless once the choices are right there.
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+
+    await userEvent.click(choiceButton);
+    expect(choiceButton).toHaveAttribute('aria-checked', 'true');
+    await userEvent.click(screen.getByRole('button', { name: 'Submit guess' }));
+
+    expect(await screen.findByText('Correct!')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(await screen.findByText('Quiz complete!')).toBeInTheDocument();
   });
 
   it('shows feedback for a guess and advances to the summary', async () => {

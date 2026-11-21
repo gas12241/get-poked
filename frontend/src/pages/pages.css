@@ -966,6 +966,17 @@
   gap: 8px;
 }
 
+/* guess_set_icon's multiple-choice answer buttons — up to 8 set names,
+   some long ("Twilight Masquerade"), so unlike the mode/difficulty/length
+   pickers above (2-3 short items, never wrap) this one needs to wrap
+   across rows. Reuses .quiz-picker button's own styling via the shared
+   class on the wrapping element. */
+.quiz-set-icon-choices {
+  flex-wrap: wrap;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
 .quiz-picker-description {
   margin: 8px auto 0;
   max-width: 320px;

@@ -1,20 +1,30 @@
 import { apiClient } from '../lib/apiClient';
 import type { CardListItem } from './cards';
 
-export type QuizMode = 'guess_card' | 'guess_set' | 'guess_hp';
+export type QuizMode =
+  'guess_card' | 'guess_set' | 'guess_hp' | 'guess_set_icon';
 export type QuizDifficulty = 'easy' | 'medium' | 'hard';
 
 export interface QuizQuestion {
-  card: number;
+  // Present for guess_card/guess_set/guess_hp only — absent for
+  // guess_set_icon, which has no particular card involved at all.
+  card?: number;
   image: string;
-  rarity: string;
-  supertype: string;
-  types: string[];
+  rarity?: string;
+  supertype?: string;
+  types?: string[];
   name?: string;
   hp?: string;
   // The hint shown alongside guess_card/guess_hp questions (the card's own
-  // set).
+  // set) — not to be confused with `set` below, guess_set_icon's own
+  // subject.
   card_set?: { id: number; name: string };
+  // guess_set_icon only: the set being guessed, and — for easy/medium —
+  // the multiple-choice options to pick from (never flagged with which is
+  // correct). Absent entirely for hard difficulty, same "never send the
+  // answer" principle every other mode already follows.
+  set?: number;
+  choices?: { id: number; name: string }[];
 }
 
 export interface QuizQuestionsResponse {
@@ -27,7 +37,11 @@ export interface QuizCheckResult {
 }
 
 export interface QuizAnswerInput {
-  card: number;
+  // Exactly one of card/set is ever present, mirroring the backend's own
+  // either/or answer shape — guess_set_icon sets `set`, every other mode
+  // sets `card`.
+  card?: number;
+  set?: number;
   guess: string;
   // Kept locally for the instant score tally shown the moment a quiz
   // finishes, before the save round-trip completes — never sent to the
@@ -43,7 +57,8 @@ export interface QuizAttemptCreateInput {
   quiz_mode: QuizMode;
   difficulty: QuizDifficulty;
   answers: {
-    card: number;
+    card?: number;
+    set?: number;
     guess: string;
     time_taken_seconds: number;
     order: number;
@@ -117,7 +132,8 @@ export const getQuizQuestions = ({
   );
 
 export const checkQuizAnswer = (payload: {
-  card: number;
+  card?: number;
+  set?: number;
   mode: QuizMode;
   guess: string;
 }) =>

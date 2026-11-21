@@ -17,7 +17,11 @@ import { filterSetNameSuggestions, getCardNames, getSets } from '../api/cards';
 import type { QuizSession } from '../store/quizStore';
 import { useQuizStore } from '../store/quizStore';
 import { useIsAuthenticated } from '../store/authStore';
-import { DIFFICULTIES, MODES } from '../lib/quizOptions';
+import {
+  DIFFICULTIES,
+  MODES,
+  SET_ICON_DIFFICULTY_DESCRIPTIONS,
+} from '../lib/quizOptions';
 import NameAutocomplete from '../components/NameAutocomplete';
 import { StartingReel } from '../components/CaseOpeningReel';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -50,7 +54,13 @@ function ModeSelection({
   onStart: () => void;
   error: string | null;
 }) {
-  const selectedDifficulty = DIFFICULTIES.find((d) => d.value === difficulty);
+  // guess_set_icon's difficulty means answer format, not a rarity pool —
+  // sets have no rarity — so it gets its own description text instead of
+  // DIFFICULTIES' rarity-based ones. See docs/decisions.md #096.
+  const difficultyDescription =
+    mode === 'guess_set_icon'
+      ? SET_ICON_DIFFICULTY_DESCRIPTIONS[difficulty]
+      : DIFFICULTIES.find((d) => d.value === difficulty)?.description;
 
   return (
     <div className="quiz-mode-selection">
@@ -88,10 +98,8 @@ function ModeSelection({
           </button>
         ))}
       </div>
-      {selectedDifficulty && (
-        <p className="quiz-picker-description">
-          {selectedDifficulty.description}
-        </p>
+      {difficultyDescription && (
+        <p className="quiz-picker-description">{difficultyDescription}</p>
       )}
       <p className="quiz-picker-label">Quiz length</p>
       <div className="quiz-picker" role="radiogroup" aria-label="Quiz length">
@@ -193,7 +201,9 @@ function QuizQuestionView({
 
   const checkMutation = useMutation({
     mutationFn: () =>
-      checkQuizAnswer({ card: question.card, mode: session.mode, guess }),
+      session.mode === 'guess_set_icon'
+        ? checkQuizAnswer({ set: question.set, mode: session.mode, guess })
+        : checkQuizAnswer({ card: question.card, mode: session.mode, guess }),
     onSuccess: setFeedback,
   });
 
@@ -205,7 +215,9 @@ function QuizQuestionView({
   function handleNext() {
     if (!feedback) return;
     onAnswered({
-      card: question.card,
+      ...(session.mode === 'guess_set_icon'
+        ? { set: question.set }
+        : { card: question.card }),
       guess,
       is_correct: feedback.correct,
       time_taken_seconds: (Date.now() - (startedAt ?? Date.now())) / 1000,
@@ -227,7 +239,11 @@ function QuizQuestionView({
         // "Next" straight into a full-speed 3.5s spin doesn't feel abrupt.
         <StartingReel
           ready
-          rarity={question.rarity}
+          // guess_set_icon has no rarity at all (sets aren't rare) — a
+          // fixed neutral tier purely for the reel's own tint, since the
+          // reel treats an undefined rarity as "data not ready yet" and
+          // would otherwise idle forever. See docs/decisions.md #096.
+          rarity={question.rarity ?? 'Common'}
           imageSrc={question.image}
           difficulty={session.difficulty}
           onFinish={() => {
@@ -238,7 +254,14 @@ function QuizQuestionView({
         />
       ) : (
         <div className="quiz-revealed">
-          <img src={question.image} alt="Card to guess" />
+          <img
+            src={question.image}
+            alt={
+              session.mode === 'guess_set_icon'
+                ? 'Set to guess'
+                : 'Card to guess'
+            }
+          />
           <div className="quiz-revealed-details">
             <dl>
               {question.name && (
@@ -259,10 +282,18 @@ function QuizQuestionView({
                   <dd>{question.card_set.name}</dd>
                 </>
               )}
-              <dt>Rarity</dt>
-              <dd>{question.rarity || '—'}</dd>
-              <dt>Types</dt>
-              <dd>{question.types.join(', ') || '—'}</dd>
+              {question.rarity && (
+                <>
+                  <dt>Rarity</dt>
+                  <dd>{question.rarity}</dd>
+                </>
+              )}
+              {question.types && (
+                <>
+                  <dt>Types</dt>
+                  <dd>{question.types.join(', ') || '—'}</dd>
+                </>
+              )}
             </dl>
 
             {!feedback ? (
@@ -294,6 +325,34 @@ function QuizQuestionView({
                     }
                     ariaLabel="Your guess"
                   />
+                ) : session.mode === 'guess_set_icon' && question.choices ? (
+                  // Easy/medium only — hard has no `choices` (see
+                  // build_set_icon_question) and falls through to the plain
+                  // input below. Same radiogroup/button/.active convention
+                  // already used for the mode/difficulty/length pickers
+                  // above, not a new pattern. `guess` is set to the
+                  // option's name (not its id) — the same human-readable
+                  // string shape every other mode's guess already is, so
+                  // checking/scoring/the breakdown all need no special
+                  // handling for this mode. See docs/decisions.md #096.
+                  <div
+                    className="quiz-picker quiz-set-icon-choices"
+                    role="radiogroup"
+                    aria-label="Your guess"
+                  >
+                    {question.choices.map((choice) => (
+                      <button
+                        key={choice.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={guess === choice.name}
+                        className={guess === choice.name ? 'active' : undefined}
+                        onClick={() => setGuess(choice.name)}
+                      >
+                        {choice.name}
+                      </button>
+                    ))}
+                  </div>
                 ) : (
                   <input
                     aria-label="Your guess"
@@ -383,8 +442,9 @@ function QuizSummary({
         quiz_mode: session.mode,
         difficulty: session.difficulty,
         answers: session.answers.map(
-          ({ card, guess, time_taken_seconds, order }) => ({
+          ({ card, set, guess, time_taken_seconds, order }) => ({
             card,
+            set,
             guess,
             time_taken_seconds,
             order,
@@ -509,7 +569,11 @@ function QuizPage() {
       <StartingQuestion
         questionCount={questionCount}
         ready={firstQuestion !== undefined}
-        rarity={firstQuestion?.rarity}
+        // guess_set_icon has no rarity at all — same fallback as
+        // QuizQuestionView's own StartingReel call, purely so the reel's
+        // "has real data arrived" check doesn't idle forever. See
+        // docs/decisions.md #096.
+        rarity={firstQuestion ? (firstQuestion.rarity ?? 'Common') : undefined}
         imageSrc={firstQuestion?.image}
         difficulty={difficulty}
         onFinish={() => {
