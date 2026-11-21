@@ -1367,6 +1367,20 @@ Why
 
 ---
 
+## Decision 093
+
+Quiz summary: persist the saved attempt's id so the breakdown survives navigating away and back
+
+Why
+
+- **Reported directly by the user**: finish a quiz, click a card's image in the breakdown to view its detail page, then hit the browser's back button — the full breakdown disappears, leaving only "Quiz complete! / Score: x/y / Play again." Root cause: `QuizSummary`'s breakdown data (`QuizAttemptAnswerDetail[]`, from the save response) lived only in that component's own local `useState`, which is necessarily lost on the remount a `/cards/:id` round-trip causes. The persisted Zustand session already had `submitted: true` from before (correctly preventing a duplicate save), but the fallback render for that case was a bare `<p>Score saved.</p>` — the breakdown was never re-fetched, just silently dropped.
+- **Fix: persist the saved attempt's `id`** in the already-persisted Zustand quiz session (`QuizSession.attemptId`, set by `markSubmitted(attemptId)`), then have `QuizSummary` re-fetch the breakdown via `getQuizAttemptDetail(id)` (the same function `QuizAttemptDetailPage` already uses) whenever it mounts already-submitted with no local save state to rely on. Same "always re-fetch by id instead of trusting fragile local/remounted state" principle already applied to the quiz-history detail page in #091, just applied one level up.
+- **No redirect to `/quiz-history/:id`** — the user is specifically returning to `/quiz`, where "Play again" lives; re-fetching in place keeps that intact rather than relocating the user somewhere else.
+- **Backward-compatible with sessions already in `localStorage`** — one persisted before this change simply deserializes with `attemptId: undefined`; the re-fetch is disabled (`enabled: session.submitted && session.attemptId != null`) and falls back to the same bare "Score saved." as before, rather than erroring.
+- 1 new regression test (unmounts and remounts `QuizPage` post-save, like the existing "resumes an in-progress quiz after remounting" test already does for an in-progress session — confirmed to fail against the pre-fix code first, asserting the breakdown reappears with no second `POST /api/v1/quiz-attempts/`). Full 298-test frontend suite green. Verified live in both themes: complete a quiz, open a card's detail page from the breakdown, hit back — the full breakdown (not just the score) is still there.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

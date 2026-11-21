@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   checkQuizAnswer,
+  getQuizAttemptDetail,
   getQuizQuestions,
   submitQuizAttempt,
 } from '../api/quiz';
@@ -346,10 +347,22 @@ function QuizSummary({
 }: {
   session: QuizSession;
   isAuthenticated: boolean;
-  onSaved: () => void;
+  onSaved: (attemptId: number) => void;
   onPlayAgain: () => void;
 }) {
   const score = session.answers.filter((a) => a.is_correct).length;
+
+  // Re-fetches the breakdown by id on a remount that finds the session
+  // already submitted (e.g. the user clicked a card's image, opened its
+  // detail page, then hit the browser's back button) — this component's
+  // own saveState is necessarily lost on remount, but the attempt id
+  // persisted in the Zustand session survives it. See docs/decisions.md
+  // #093.
+  const attemptDetailQuery = useQuery({
+    queryKey: ['quiz-attempt-detail', session.attemptId],
+    queryFn: () => getQuizAttemptDetail(session.attemptId as number),
+    enabled: session.submitted && session.attemptId != null,
+  });
 
   // Plain state, not useMutation — found live that useMutation's own
   // isSuccess/data got stuck mid-transition under React StrictMode
@@ -379,7 +392,7 @@ function QuizSummary({
         ),
       });
       setSaveState({ status: 'saved', attempt });
-      onSaved();
+      onSaved(attempt.id);
     } catch {
       setSaveState({ status: 'error' });
     }
@@ -418,11 +431,22 @@ function QuizSummary({
             <QuizAttemptBreakdown answers={saveState.attempt.answers} />
           </>
         ) : session.submitted ? (
-          // A page reload after a successful save (session.submitted
-          // persisted, but this mount's own save never ran) — the
-          // breakdown just isn't re-fetched here; it's still reachable
-          // from the history section below.
-          <p>Score saved.</p>
+          // A page reload, or a remount after navigating away and back
+          // (session.submitted persisted, but this mount's own save
+          // never ran) — re-fetch the breakdown by the persisted attempt
+          // id rather than showing just the bare score. Falls back to a
+          // bare "Score saved." for a session persisted before attemptId
+          // existed, or if the re-fetch itself fails.
+          attemptDetailQuery.data ? (
+            <>
+              <p>Score saved.</p>
+              <QuizAttemptBreakdown answers={attemptDetailQuery.data.answers} />
+            </>
+          ) : attemptDetailQuery.isLoading ? (
+            <p>Loading...</p>
+          ) : (
+            <p>Score saved.</p>
+          )
         ) : saveState.status === 'saving' ? (
           <p>Saving...</p>
         ) : saveState.status === 'error' ? (

@@ -306,6 +306,49 @@ describe('QuizPage', () => {
     expect(screen.getByText('Correct answer: Charizard')).toBeInTheDocument();
   });
 
+  it('shows the breakdown again after remounting post-save (e.g. navigating to a card page and back)', async () => {
+    useAuthStore.setState({ accessToken: 'test-token' });
+    let saveCallCount = 0;
+    server.use(
+      http.post(`${BASE_URL}/api/v1/quiz-attempts/`, () => {
+        saveCallCount += 1;
+        return HttpResponse.json(mockQuizAttemptDetail());
+      }),
+    );
+
+    const { unmount } = renderWithProviders(<QuizPage />);
+    await userEvent.click(
+      screen.getByRole('radio', { name: 'Guess the Card' }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Start Quiz' }));
+    await screen.findByLabelText(
+      'Your guess',
+      {},
+      { timeout: REEL_TIMEOUT_MS },
+    );
+    await userEvent.type(screen.getByLabelText('Your guess'), 'Charizard');
+    await userEvent.click(screen.getByRole('button', { name: 'Submit guess' }));
+    await screen.findByText('Correct!');
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByText('Quiz complete!');
+    await screen.findByText('Score saved.');
+    expect(saveCallCount).toBe(1);
+
+    // Simulates clicking a card image's link to its detail page, then
+    // hitting the browser's back button: QuizPage unmounts and remounts,
+    // losing QuizSummary's own local save-result state, while the
+    // persisted Zustand session still has submitted: true from before.
+    unmount();
+    renderWithProviders(<QuizPage />);
+
+    expect(await screen.findByText('Score saved.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Correct answer: Charizard'),
+    ).toBeInTheDocument();
+    // Re-fetched by id (GET), not saved again (POST).
+    expect(saveCallCount).toBe(1);
+  });
+
   it('only saves once even if the completion effect runs twice (React StrictMode)', async () => {
     // Caught live, not just theoretical: React re-runs effects in
     // StrictMode (and effects aren't guaranteed to run exactly once in

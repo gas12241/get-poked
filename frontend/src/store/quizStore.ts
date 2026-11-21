@@ -22,6 +22,11 @@ export interface QuizSession {
   // drawn from that difficulty's rarity pool, so the reel needs it for
   // every question, not just the first. See docs/decisions.md #049.
   difficulty: QuizDifficulty;
+  // The saved QuizAttempt's id, set once markSubmitted fires. Lets a
+  // remounted QuizSummary (e.g. after navigating to a card's detail page
+  // and back) re-fetch the breakdown by id instead of losing it — see
+  // docs/decisions.md #093.
+  attemptId: number | null;
 }
 
 interface QuizState {
@@ -33,7 +38,7 @@ interface QuizState {
   ) => void;
   recordAnswer: (answer: QuizAnswerInput) => void;
   revealCurrent: () => void;
-  markSubmitted: () => void;
+  markSubmitted: (attemptId: number) => void;
   abandonSession: () => void;
 }
 
@@ -55,6 +60,7 @@ export const useQuizStore = create<QuizState>()(
             submitted: false,
             currentRevealed: false,
             difficulty,
+            attemptId: null,
           },
         }),
       recordAnswer: (answer) =>
@@ -75,10 +81,10 @@ export const useQuizStore = create<QuizState>()(
             ? { session: { ...state.session, currentRevealed: true } }
             : state,
         ),
-      markSubmitted: () =>
+      markSubmitted: (attemptId) =>
         set((state) =>
           state.session
-            ? { session: { ...state.session, submitted: true } }
+            ? { session: { ...state.session, submitted: true, attemptId } }
             : state,
         ),
       abandonSession: () => set({ session: null }),
