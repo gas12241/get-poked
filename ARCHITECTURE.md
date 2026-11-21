@@ -186,6 +186,14 @@ word" heuristic, which would incorrectly loosen genuine multi-word species
 names (e.g. "Tapu Koko", "Mr. Mime") that aren't a prefix plus a Pokémon at
 all. See docs/decisions.md #036.
 
+### Guess the Set by Symbol
+
+A fourth quiz mode (`guess_set_icon`), distinct from Guess the Set above: that mode shows a real card with its printed symbol blurred out and asks you to infer the set from everything else on the card; this one shows *only* a set's own small icon (`Set.image_symbol`) and asks for the set directly — no card involved at all. Difficulty means answer format here, not a rarity pool (sets have no rarity): easy is multiple choice from 4 options, medium from 8, hard is free-text. Base Set is excluded as a target or distractor everywhere — its cards predate the printed symbol, so `image_symbol` (like `image_logo`) is just the generic franchise wordmark, not a set-specific icon.
+
+Because this mode's question is about a `Set`, not a `Card`, `QuizAttemptAnswer.card` is nullable and a parallel nullable `set` FK exists alongside it, with a `CheckConstraint` requiring exactly one of the two — every other mode populates `card`, this one populates `set`. The multiple-choice UI submits the chosen set's name as the answer, the same human-readable string every other mode's guess already is, so answer-checking is one case-insensitive name comparison regardless of difficulty, and the saved-attempt breakdown needs no special display logic for "Your guess"/"Correct answer" at all.
+
+Distractor sets for easy/medium are chosen to plausibly resemble the target's own icon: same `series` first (a series usually keeps one consistent symbol style), falling back to the nearest sets by `release_date` when a series is too thin to fill a round on its own (or isn't a real visual era at all, like the catalog's cross-era "Other" bucket). For a Scarlet & Violet-onward target, whose printed symbol is a literal 3-letter code rather than a pictogram (`Set.details["ptcgoCode"]`), distractors sharing the code's first letter are preferred within that same pool — two such codes look genuinely more alike than two random ones from the same era. See docs/decisions.md #096.
+
 ### Licensing
 
 Card artwork and data come from the Pokémon TCG API, an unofficial fan project — not an explicit license grant. The app is strictly non-commercial (no ads, no paid tiers) as a result. A non-affiliation disclaimer ("unofficial fan project, not affiliated with or endorsed by The Pokémon Company, Nintendo, Creatures, or GAME FREAK; card images and trademarks are property of their respective owners") is a required element of the React app's base layout, rendered on every page (e.g. in a shared footer component), not something added per-page. See docs/decisions.md #018.

@@ -253,15 +253,18 @@ Fields
 
 - id
 - quiz_attempt
-- card
+- card (nullable — populated for every mode except `guess_set_icon`)
+- set (nullable — populated only for `guess_set_icon`, whose question is about a set directly, not any particular card; see docs/decisions.md #096)
 - guess (the user's actual raw answer, added so correctness can be independently re-checked server-side rather than trusted from the client — see docs/decisions.md #088; defaults to "" purely for pre-existing rows)
 - is_correct (server-derived from `guess`, not client-writable)
 - time_taken_seconds
 - order (position within the attempt)
 
+A `CheckConstraint` (`quizattemptanswer_card_xor_set`) requires exactly one of `card`/`set` to be set, never both and never neither — enforced at the DB level, not just application code.
+
 Relationship
 
-Belongs to one QuizAttempt, references one Card.
+Belongs to one QuizAttempt, references one Card or one Set (`on_delete=PROTECT` on both — a card or set referenced by a historical answer can't be deleted).
 
 See docs/decisions.md #012 for why this tracks per-question detail rather than session-level only.
 

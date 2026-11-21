@@ -490,10 +490,10 @@ Returns a randomly generated quiz.
 
 Params
 
-- `mode` — `guess_card`, `guess_set`, `guess_hp` (required)
+- `mode` — `guess_card`, `guess_set`, `guess_hp`, `guess_set_icon` (required)
 - `count` — number of questions, default 5, capped at 20. The frontend's quiz-length picker (Short/Medium/Long) always sends this explicitly as 3/5/7 — see docs/decisions.md #041
-- `rarities` — comma-separated list (e.g. `Ultra Rare,Secret Rare,Special Illustration Rare`) further narrowing the card pool within whatever's already eligible for the mode. Applies to all modes. Omitted or empty means no additional restriction.
-- `difficulty` — `easy`, `medium`, or `hard` (optional; 400 if given and not one of these). The frontend's difficulty picker sends this explicitly. `easy` is the existing chase-rarity tier (Ultra Rare, Secret Rare, Special Illustration Rare, ...); `hard` is Common/Uncommon/Rare; `medium` is everything eligible that's neither — deliberately the reverse of what "rare" suggests, since most players recognize a distinctive chase card's set on sight more easily than a common's. See docs/decisions.md #047. Composable with `rarities` in principle, though nothing sends both at once today.
+- `rarities` — comma-separated list (e.g. `Ultra Rare,Secret Rare,Special Illustration Rare`) further narrowing the card pool within whatever's already eligible for the mode. Applies to the three card-based modes only — meaningless for `guess_set_icon`, which has no rarity concept.
+- `difficulty` — `easy`, `medium`, or `hard` (optional; 400 if given and not one of these). For `guess_card`/`guess_set`/`guess_hp`, this is a rarity-pool tier: `easy` is the existing chase-rarity tier (Ultra Rare, Secret Rare, Special Illustration Rare, ...); `hard` is Common/Uncommon/Rare; `medium` is everything eligible that's neither — deliberately the reverse of what "rare" suggests, since most players recognize a distinctive chase card's set on sight more easily than a common's. See docs/decisions.md #047. For `guess_set_icon`, difficulty instead means *answer format* (see below), since a set has no rarity at all. Composable with `rarities` in principle, though nothing sends both at once today.
 
 Description
 
@@ -501,11 +501,13 @@ Baseline card pool eligibility depends on `mode` and supertype (see ARCHITECTURE
 
 - `guess_card` — Pokémon cards, any rarity; Trainer cards, only at/above the special-rarity tier (Ultra Rare, Secret Rare, Special Illustration Rare, and future equivalents); Energy cards excluded.
 - `guess_hp` — Pokémon-only, any rarity (Trainer/Energy cards have no HP).
-- `guess_set` — same rule as `guess_card`.
+- `guess_set` — same rule as `guess_card`. Shows a real card with its printed set symbol blurred out — the question is "what set is this card from," inferred from everything else on it.
 
 The `rarities`/`difficulty` params narrow further within that baseline — neither can make an otherwise-ineligible card (a common Trainer, or any Energy card) eligible. See docs/decisions.md #017.
 
-Response is `{"questions": [...]}`, one object per question: `card` (id), `image` (absolute URL to the masked card image), `rarity`, `supertype`, `types`, plus whichever of `name`/`hp`/`set` are *not* the field being guessed for that mode. The guessed field itself is never present in the payload (see docs/decisions.md #029).
+Response is `{"questions": [...]}`, one object per question: `card` (id), `image` (absolute URL to the masked card image), `rarity`, `supertype`, `types`, plus whichever of `name`/`hp`/`card_set` (the card's own set — `{id, name}`, a hint, not an answer) are *not* the field being guessed for that mode. The guessed field itself is never present in the payload (see docs/decisions.md #029).
+
+- `guess_set_icon` — a different question entirely: the pool is `Set`, not `Card` (all synced sets except Base Set, which predates the printed symbol and has no set-specific icon). `difficulty` controls answer format, not a rarity pool: `easy`/`medium` return `choices` (4 or 8 `{id, name}` options, shuffled, with no marker for which is correct); `hard` omits `choices` entirely for a free-typed guess, same "never send the answer" principle. Response shape: `{"set": <id>, "image": "<absolute URL to the set's own icon, Set.image_symbol>", "choices"?: [{"id": <id>, "name": "<string>"}, ...]}` — no `card`/`rarity`/`supertype`/`types`/`name`/`hp`/`card_set` at all, since none of those exist for a set. Distractor sets for `choices` are chosen to plausibly resemble the target's own icon (same series, falling back to nearest-by-release-date; same-first-letter preference for a Scarlet & Violet-onward target's literal 3-letter code) — see ARCHITECTURE.md "Guess the Set by Symbol" and docs/decisions.md #096.
 
 No authentication required (see docs/decisions.md #011).
 
@@ -519,11 +521,11 @@ Implemented
 
 POST /api/v1/quiz/check/
 
-Body: `{"card": <id>, "mode": "guess_card" | "guess_set" | "guess_hp", "guess": "<string>"}`
+Body: `{"card": <id>, "mode": "guess_card" | "guess_set" | "guess_hp", "guess": "<string>"}`, or for the set-icon mode, `{"set": <id>, "mode": "guess_set_icon", "guess": "<string>"}` — exactly one of `card`/`set` is sent, matching whichever the question's own payload carried.
 
 Description
 
-Compares `guess` (trimmed, case-insensitive) against the actual value of the guessed field for `card` and `mode`. Returns `{"correct": <bool>, "answer": "<string>"}` — `answer` is always returned so the frontend can reveal the correct value, right or wrong.
+Compares `guess` (trimmed, case-insensitive) against the actual value of the guessed field for `card`/`set` and `mode`. For `guess_set_icon`, `guess` is the chosen set's *name* even in a multiple-choice round (the same human-readable string every other mode's guess already is), not its id. Returns `{"correct": <bool>, "answer": "<string>"}` — `answer` is always returned so the frontend can reveal the correct value, right or wrong.
 
 No authentication required (see docs/decisions.md #011).
 
@@ -539,7 +541,7 @@ POST /api/v1/quiz-attempts/
 
 Description
 
-Records a completed quiz session. Body: `{"quiz_mode": "...", "difficulty": "easy" | "medium" | "hard", "answers": [{"card": <id>, "guess": "<string>", "time_taken_seconds": <float>, "order": <int>}, ...]}`. `score`/`total_questions`/each answer's `is_correct` are all computed server-side by re-checking `guess` against `card`/`quiz_mode` — none of it is trusted from the client (see docs/decisions.md #088; this endpoint used to also accept a client-submitted `is_correct` per answer and trust it directly). The response is the same rich shape as Get Quiz Attempt Detail below (nested real card data, not the quiz's masked image), not a flat echo of the input — the frontend's post-quiz breakdown screen renders directly from it.
+Records a completed quiz session. Body: `{"quiz_mode": "...", "difficulty": "easy" | "medium" | "hard", "answers": [{"card": <id>, "guess": "<string>", "time_taken_seconds": <float>, "order": <int>}, ...]}` — for `guess_set_icon`, each answer has `set` instead of `card`. Exactly one of `card`/`set` is required per answer, enforced by a DB-level constraint on `QuizAttemptAnswer` (docs/database.md). `score`/`total_questions`/each answer's `is_correct` are all computed server-side by re-checking `guess` against `card`/`set`/`quiz_mode` — none of it is trusted from the client (see docs/decisions.md #088; this endpoint used to also accept a client-submitted `is_correct` per answer and trust it directly). The response is the same rich shape as Get Quiz Attempt Detail below (nested real card or set data, not the quiz's masked/icon image), not a flat echo of the input — the frontend's post-quiz breakdown screen renders directly from it.
 
 Requires authentication (see docs/decisions.md #011).
 
@@ -591,7 +593,7 @@ GET /api/v1/quiz-attempts/\<id\>/
 
 Description
 
-The full per-question breakdown for one of the requesting user's own attempts — same shape as the Save Quiz Attempt response: `{"id", "quiz_mode", "difficulty", "score", "total_questions", "completed_at", "answers": [{"card": {...real card fields...}, "guess", "correct_answer", "is_correct", "time_taken_seconds", "order"}, ...]}`. `card` is the real, fully unmasked card (not the quiz's masked question image) so the history view can show what was actually being guessed on and link to its own detail page. `correct_answer` is derived at read time from `card`/`quiz_mode`, not stored — see docs/decisions.md #088. Another user's attempt id 404s, same pattern as every other per-user detail view in this app.
+The full per-question breakdown for one of the requesting user's own attempts — same shape as the Save Quiz Attempt response: `{"id", "quiz_mode", "difficulty", "score", "total_questions", "completed_at", "answers": [{"card": {...real card fields...} | null, "set": {...real set fields, including image_symbol...} | null, "guess", "correct_answer", "is_correct", "time_taken_seconds", "order"}, ...]}`. Exactly one of `card`/`set` is ever non-null per answer. `card` is the real, fully unmasked card (not the quiz's masked question image) so the history view can show what was actually being guessed on and link to its own detail page; for a `guess_set_icon` answer, `set` is populated instead — the real set (icon included), with no detail page to link to. `correct_answer` is derived at read time from `card`/`set`/`quiz_mode`, not stored — see docs/decisions.md #088/#096. Another user's attempt id 404s, same pattern as every other per-user detail view in this app.
 
 Requires authentication.
 
