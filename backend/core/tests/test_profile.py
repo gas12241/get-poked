@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -111,17 +112,13 @@ class MeViewTests(APITestCase):
     def test_patch_can_turn_auto_remove_favorite_on_collect_on_and_off(self):
         self.client.force_authenticate(self.user)
 
-        on_response = self.client.patch(
-            reverse("me"), {"auto_remove_favorite_on_collect": True}
-        )
+        on_response = self.client.patch(reverse("me"), {"auto_remove_favorite_on_collect": True})
         self.assertEqual(on_response.status_code, 200)
         self.assertTrue(on_response.data["auto_remove_favorite_on_collect"])
         self.user.refresh_from_db()
         self.assertTrue(self.user.auto_remove_favorite_on_collect)
 
-        off_response = self.client.patch(
-            reverse("me"), {"auto_remove_favorite_on_collect": False}
-        )
+        off_response = self.client.patch(reverse("me"), {"auto_remove_favorite_on_collect": False})
         self.assertEqual(off_response.status_code, 200)
         self.user.refresh_from_db()
         self.assertFalse(self.user.auto_remove_favorite_on_collect)
@@ -151,9 +148,7 @@ class MeViewTests(APITestCase):
         Favorite.objects.create(user=self.user, card=unowned_card)
         self.client.force_authenticate(self.user)
 
-        response = self.client.patch(
-            reverse("me"), {"auto_remove_favorite_on_collect": True}
-        )
+        response = self.client.patch(reverse("me"), {"auto_remove_favorite_on_collect": True})
 
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Favorite.objects.filter(user=self.user, card=owned_card).exists())
@@ -162,9 +157,7 @@ class MeViewTests(APITestCase):
     def test_turning_on_with_nothing_owned_or_favorited_is_a_no_op(self):
         self.client.force_authenticate(self.user)
 
-        response = self.client.patch(
-            reverse("me"), {"auto_remove_favorite_on_collect": True}
-        )
+        response = self.client.patch(reverse("me"), {"auto_remove_favorite_on_collect": True})
 
         self.assertEqual(response.status_code, 200)
 
@@ -196,6 +189,10 @@ class MeViewTests(APITestCase):
 
 class ChangePasswordViewTests(APITestCase):
     def setUp(self):
+        # Shares the "login" throttle scope with token_obtain_pair/
+        # google-login — clear it per test so other test files don't
+        # carry a count into this one.
+        cache.clear()
         self.user = User.objects.create_user(
             email="tester@example.com", password="old-pass123!", is_verified=True
         )
@@ -247,6 +244,23 @@ class ChangePasswordViewTests(APITestCase):
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password("old-pass123!"))
 
+    def test_throttled_after_limit(self):
+        cache.clear()
+        self.client.force_authenticate(self.user)
+
+        for _ in range(5):
+            response = self.client.post(
+                reverse("change-password"),
+                {"current_password": "wrong-password", "new_password": "a-new-strong-passw0rd!"},
+            )
+            self.assertEqual(response.status_code, 400)
+
+        throttled_response = self.client.post(
+            reverse("change-password"),
+            {"current_password": "wrong-password", "new_password": "a-new-strong-passw0rd!"},
+        )
+        self.assertEqual(throttled_response.status_code, 429)
+
     def test_blacklists_other_sessions_but_keeps_current_one_working(self):
         # A session obtained independently of self.client — stands in for
         # "another device/browser" holding a refresh token at the time of
@@ -278,6 +292,10 @@ class ChangePasswordViewTests(APITestCase):
 
 class DeleteAccountViewTests(APITestCase):
     def setUp(self):
+        # Shares the "login" throttle scope with token_obtain_pair/
+        # google-login — clear it per test so other test files don't
+        # carry a count into this one.
+        cache.clear()
         self.user = User.objects.create_user(
             email="tester@example.com", password="s3cret-pass!", is_verified=True
         )

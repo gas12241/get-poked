@@ -1248,6 +1248,47 @@ Why
 
 ---
 
+## Decision 085
+
+Rate-limit the login endpoints
+
+Why
+
+- **Found during a user-requested security audit** (2026-11-19/20), not a reported bug: `RegisterView`, `ResendVerificationView`, `PasswordResetRequestView`, and `RequestEmailChangeView` (`backend/core/views.py`) each already set a `throttle_scope` matched to a rate in `DEFAULT_THROTTLE_RATES` (`backend/config/settings.py`), but `CookieTokenObtainPairView` and `GoogleLoginView` — the actual login endpoints — set none. DRF's `ScopedRateThrottle` is a no-op for a view with no scope, so login attempts were, until this decision, completely unthrottled: nothing in the app stopped repeated password guesses (brute force) or a leaked-credential list from some other breach being tried against every account here (credential stuffing).
+- **Both login views share one `"login"` scope** (`10/min`) rather than each getting its own — a `ScopedRateThrottle` counter is keyed by scope, not view, so sharing it caps an attacker's *total* login-style attempts per IP at 10/min regardless of which of the two endpoints they alternate between, rather than letting them double their effective budget by switching endpoints. `GoogleLoginView` can't be brute-forced the same way (an attacker would need a valid Google-issued ID token, which requires a real Google login), but it's throttled too, as cheap defense against sheer abuse.
+- **`10/min`, not something stricter like the `3/hour` used for password-reset/email-change** — those guard against spamming *other people's inboxes*; this guards a user's own login, where legitimate typo-retries are common and a too-strict limit would lock real users out faster than it stops an attacker. 10/min still makes brute force/stuffing impractically slow while barely affecting normal use.
+- **Test isolation fallout, not a design choice**: because both login views now share one cache-backed counter, and five different test files (`test_auth_flow.py`, `test_google_login.py`, `test_password_reset.py`, `test_profile.py`, `test_change_email.py`) each call one of the two endpoints as an incidental step in otherwise-unrelated tests, the combined call count across the full suite blew past 10/min the first time it was run end-to-end — three unrelated tests failed with 429s that had nothing to do with what they were actually testing. Fixed by adding `cache.clear()` to the `setUp()` of every affected test class (not just the one dedicated throttle test, following the existing pattern already used for the other throttled scopes) — confirmed by rerunning the full 304-test suite clean afterward. Worth remembering if a future endpoint picks up a `throttle_scope` that other tests also incidentally exercise: the existing single-file throttle tests (registration, password-reset, email-change) never needed this because nothing *else* in the suite happened to call those particular endpoints.
+- 1 new regression test (`test_throttled_after_limit` in `CookieJWTAuthFlowTests`), confirmed to fail against the unthrottled code first (11th rapid login succeeded with 200, not the expected 429) before the `throttle_scope`/rate were added and it was confirmed to pass; full 304-test suite green afterward.
+
+---
+
+## Decision 086
+
+Password reset tokens are now single-use, by binding to the password hash
+
+Why
+
+- **Found during the same user-requested security audit as #085**, on a follow-up pass over the whole app: `make_password_reset_token`/`read_password_reset_token` (`backend/core/tokens.py`) only ever encoded `{user_id}` in the signed payload, with nothing tracking whether a given token had already been used. Within its 1-hour validity window, the exact same reset link could be replayed to reset the password again — a real concern if that exact link string ever ends up somewhere it shouldn't (an email proxy's logs, shared browser history, a forwarded email), since whoever has it could use it more than once, including after the legitimate user already completed their own reset.
+- **Two ways to fix this were considered**: (1) bind the signed payload to the user's current password hash at issue time, checked again at confirm time, or (2) add a new model tracking consumed token identifiers (mirroring how `rest_framework_simplejwt`'s `OutstandingToken`/`BlacklistedToken` already track JWTs). Went with (1) — no new model or migration, reuses the exact `django.core.signing` mechanism already used for all three token types in this file, and needs no cleanup job (the existing `max_age` expiry already handles that). This matches the same "don't add a table for something a one-line change already solves" reasoning as #084's flat boolean over a settings table.
+- **A useful side effect, not just a workaround**: because the check is against the *current* live hash rather than a stored "used" flag, requesting a second reset link before using the first (two pending emails) and then completing a reset with either one immediately invalidates the other too, not just the one actually used — correct behavior, and it falls out of the approach for free rather than needing extra logic.
+- **Works for Google-only accounts too** — `set_password(None)` still stores a stable (if unusable) hash string on the user row, so the comparison works the same way whether this is someone's first real password (set via this exact flow, per #068) or a normal reset.
+- 1 new regression test (`test_token_cannot_be_reused_after_a_successful_reset`), confirmed to fail against the old code first (the second, replayed use of the same token succeeded with 200 and silently overwrote the just-set password). Full 305-test suite green afterward.
+
+---
+
+## Decision 087
+
+Rate-limit `ChangePasswordView` too
+
+Why
+
+- **Also from the same audit, flagged as lower-priority**: every other account-mutating auth endpoint (`login`, `registration`, `password-reset`, `email-change`) already has a `throttle_scope`; `ChangePasswordView` didn't. Lower severity than the login gap (#085) since it already requires a valid access token — an attacker would need to already be authenticated as the victim, which is a much higher bar than the unauthenticated login brute-force case — but still cheap, consistent defense-in-depth against guessing `current_password` while holding a stolen/forged token.
+- **Own `"change-password"` scope (5/min) rather than reusing `"login"`'s** — `ScopedRateThrottle` keys its counter on `(scope, ident)`, and `ident` is the authenticated user's pk here versus the calling IP for the anonymous login endpoints, so there's no actual collision risk either way; a dedicated scope was chosen purely so the rate itself (and any future tuning) stays legible per endpoint rather than implicitly tied to login's.
+- 1 new regression test, confirmed to fail against the unthrottled code first; full 306-test suite green afterward.
+
+---
+
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

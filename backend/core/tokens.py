@@ -24,7 +24,12 @@ def read_verification_token(token: str) -> dict:
 
 
 def make_password_reset_token(user) -> str:
-    return _make_token({"user_id": user.pk}, PASSWORD_RESET_SALT)
+    # Binding to the password hash at issue time makes the token
+    # single-use: the hash this compares against changes the moment any
+    # reset actually succeeds, so a replayed (or merely leaked-and-later-
+    # found) copy of the same link stops matching. See docs/decisions.md
+    # #086.
+    return _make_token({"user_id": user.pk, "password_hash": user.password}, PASSWORD_RESET_SALT)
 
 
 def read_password_reset_token(token: str) -> dict:

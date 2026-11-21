@@ -78,7 +78,7 @@ POST /api/v1/token/
 
 Description
 
-`{email, password}`. Returns `{access}` in the body; the refresh token is set as an httpOnly cookie (see docs/decisions.md #010). Rejects an unverified account with a clear, specific message (not genericized — the caller already proved they know the password, so there's no enumeration risk here, unlike Register/Resend above).
+`{email, password}`. Returns `{access}` in the body; the refresh token is set as an httpOnly cookie (see docs/decisions.md #010). Rejects an unverified account with a clear, specific message (not genericized — the caller already proved they know the password, so there's no enumeration risk here, unlike Register/Resend above). Throttled (10/min, shared with Google OAuth below — see docs/decisions.md #085).
 
 Status
 
@@ -120,7 +120,7 @@ POST /api/v1/google/
 
 Description
 
-`{credential}` — the signed ID token from Google Identity Services' frontend button, not an authorization code (no redirect flow). Verified server-side against Google's public keys and our own Client ID (the `audience` check). Resolves a `User` by Google's own stable per-account ID (the token's `sub` claim, stored as `google_sub`), falling back to matching by email only for accounts that signed in before this field existed — and backfilling it onto them the moment they're found that way (see docs/decisions.md #074). An existing unverified email/password account becomes verified and resolves to the same row. Google never supplies a username, so a new account gets one auto-generated from the email (see docs/decisions.md #071) — editable afterward from the profile page. Same response shape as Login (`{access}` in the body, refresh token set as an httpOnly cookie).
+`{credential}` — the signed ID token from Google Identity Services' frontend button, not an authorization code (no redirect flow). Verified server-side against Google's public keys and our own Client ID (the `audience` check). Resolves a `User` by Google's own stable per-account ID (the token's `sub` claim, stored as `google_sub`), falling back to matching by email only for accounts that signed in before this field existed — and backfilling it onto them the moment they're found that way (see docs/decisions.md #074). An existing unverified email/password account becomes verified and resolves to the same row. Google never supplies a username, so a new account gets one auto-generated from the email (see docs/decisions.md #071) — editable afterward from the profile page. Same response shape as Login (`{access}` in the body, refresh token set as an httpOnly cookie). Throttled (10/min, shared with Login above — see docs/decisions.md #085).
 
 Status
 
@@ -148,7 +148,7 @@ POST /api/v1/password-reset/confirm/
 
 Description
 
-`{token, password}`. Validates the reset token (signed, 1h expiry — shorter than email verification's, since a leaked reset link is a more immediate takeover risk) and sets the new password. Also blacklists every outstanding refresh token for the account (ends any other active session) and logs the user in — same response shape as Login (`{access}` in the body, refresh token set as an httpOnly cookie).
+`{token, password}`. Validates the reset token (signed, 1h expiry — shorter than email verification's, since a leaked reset link is a more immediate takeover risk) and sets the new password. The token is single-use — it's bound to the account's password hash at issue time, so it stops matching the moment any reset with it succeeds (see docs/decisions.md #086). Also blacklists every outstanding refresh token for the account (ends any other active session) and logs the user in — same response shape as Login (`{access}` in the body, refresh token set as an httpOnly cookie).
 
 Status
 
@@ -184,7 +184,7 @@ POST /api/v1/me/change-password/
 
 Description
 
-`{current_password, new_password}`. Rejects with the generic-sounding but specific "Current password is incorrect." if the current password doesn't match (no enumeration risk here — the caller is already authenticated as this account). On success, blacklists every other outstanding refresh token for the account (same as Password Reset above) but re-issues a fresh one for the request that made the change, so changing your own password doesn't log out the session you did it from.
+`{current_password, new_password}`. Rejects with the generic-sounding but specific "Current password is incorrect." if the current password doesn't match (no enumeration risk here — the caller is already authenticated as this account). On success, blacklists every other outstanding refresh token for the account (same as Password Reset above) but re-issues a fresh one for the request that made the change, so changing your own password doesn't log out the session you did it from. Throttled (5/min — see docs/decisions.md #087).
 
 Status
 

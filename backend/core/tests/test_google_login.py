@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
@@ -20,6 +21,12 @@ def _fake_payload(
 
 
 class GoogleLoginViewTests(APITestCase):
+    def setUp(self):
+        # google-login shares the "login" throttle scope with
+        # token_obtain_pair (see docs/decisions.md); clear it per test so
+        # this file's own multiple calls don't throttle each other.
+        cache.clear()
+
     @patch("core.views.id_token.verify_oauth2_token")
     def test_new_email_creates_a_verified_unusable_password_account(self, mock_verify):
         mock_verify.return_value = _fake_payload("new@example.com")

@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
@@ -15,6 +16,9 @@ class HealthCheckTests(APITestCase):
 
 class CookieJWTAuthFlowTests(APITestCase):
     def setUp(self):
+        # Shares the "login" throttle scope with google-login — clear it
+        # per test so other test files don't carry a count into this one.
+        cache.clear()
         self.user = User.objects.create_user(
             email="tester@example.com", password="s3cret-pass!", is_verified=True
         )
@@ -79,3 +83,25 @@ class CookieJWTAuthFlowTests(APITestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertNotIn("access", response.data)
+
+    def test_throttled_after_limit(self):
+        # Throttle counters live in Django's cache, shared across test
+        # methods/files in this run (same client "IP"), not reset
+        # automatically between tests — test_google_login.py,
+        # test_password_reset.py, and test_profile.py also hit this
+        # endpoint, so clean up afterward too, not just before.
+        cache.clear()
+        self.addCleanup(cache.clear)
+
+        for _ in range(10):
+            response = self.client.post(
+                reverse("token_obtain_pair"),
+                {"email": "tester@example.com", "password": "s3cret-pass!"},
+            )
+            self.assertEqual(response.status_code, 200)
+
+        throttled_response = self.client.post(
+            reverse("token_obtain_pair"),
+            {"email": "tester@example.com", "password": "s3cret-pass!"},
+        )
+        self.assertEqual(throttled_response.status_code, 429)

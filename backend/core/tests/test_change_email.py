@@ -95,6 +95,10 @@ class RequestEmailChangeViewTests(APITestCase):
 
 class ConfirmEmailChangeViewTests(APITestCase):
     def setUp(self):
+        # google-login shares the "login" throttle scope with
+        # token_obtain_pair — clear it per test so other test files don't
+        # carry a count into this one.
+        cache.clear()
         self.user = User.objects.create_user(
             email="tester@example.com", password="s3cret-pass!", is_verified=True
         )

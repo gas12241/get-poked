@@ -55,6 +55,10 @@ class PasswordResetRequestViewTests(APITestCase):
 
 class PasswordResetConfirmViewTests(APITestCase):
     def setUp(self):
+        # Shares the "login" throttle scope with token_obtain_pair/
+        # google-login — clear it per test so other test files' calls to
+        # those endpoints don't carry a count into this one.
+        cache.clear()
         self.user = User.objects.create_user(
             email="tester@example.com", password="old-pass123!", is_verified=True
         )
@@ -131,3 +135,21 @@ class PasswordResetConfirmViewTests(APITestCase):
         self.client.cookies[settings.REFRESH_TOKEN_COOKIE_NAME] = old_refresh_cookie
         refresh_after_reset = self.client.post(reverse("token_refresh"), {})
         self.assertEqual(refresh_after_reset.status_code, 401)
+
+    def test_token_cannot_be_reused_after_a_successful_reset(self):
+        token = make_password_reset_token(self.user)
+
+        first_response = self.client.post(
+            reverse("password-reset-confirm"),
+            {"token": token, "password": "a-new-strong-passw0rd!"},
+        )
+        self.assertEqual(first_response.status_code, 200)
+
+        second_response = self.client.post(
+            reverse("password-reset-confirm"),
+            {"token": token, "password": "another-strong-passw0rd!"},
+        )
+        self.assertEqual(second_response.status_code, 400)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("a-new-strong-passw0rd!"))
+        self.assertFalse(self.user.check_password("another-strong-passw0rd!"))

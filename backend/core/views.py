@@ -60,6 +60,7 @@ class CookieTokenObtainPairView(TokenObtainPairView):
     """Returns only the access token in the body; the refresh token goes in an httpOnly cookie."""
 
     serializer_class = EmailTokenObtainPairSerializer
+    throttle_scope = "login"
 
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
@@ -71,6 +72,7 @@ class CookieTokenObtainPairView(TokenObtainPairView):
 
 class GoogleLoginView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "login"
 
     def post(self, request, *args, **kwargs):
         credential = request.data.get("credential", "")
@@ -225,6 +227,14 @@ class PasswordResetConfirmView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Single-use: the hash this was bound to at issue time no longer
+        # matches once a reset actually succeeds (see make_password_reset_token).
+        if payload.get("password_hash") != user.password:
+            return Response(
+                {"detail": "This password reset link is invalid or has expired."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         user.set_password(serializer.validated_data["password"])
         user.save(update_fields=["password"])
 
@@ -328,6 +338,8 @@ class MeView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class ChangePasswordView(APIView):
+    throttle_scope = "change-password"
+
     def post(self, request, *args, **kwargs):
         serializer = ChangePasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
