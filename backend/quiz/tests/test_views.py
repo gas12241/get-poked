@@ -663,6 +663,107 @@ class QuizAttemptsByDateViewTests(QuizTestBase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
+class QuizAttemptStatsViewTests(QuizTestBase):
+    def setUp(self):
+        super().setUp()
+        self.user = User.objects.create_user(email="tester@example.com", password="s3cret-pass!")
+        self.other_user = User.objects.create_user(
+            email="other@example.com", password="s3cret-pass!"
+        )
+
+    def _attempt(self, user, mode, score, total_questions, when):
+        attempt = QuizAttempt.objects.create(
+            user=user,
+            quiz_mode=mode,
+            difficulty="medium",
+            score=score,
+            total_questions=total_questions,
+        )
+        return _set_completed_at(attempt, when)
+
+    def test_requires_authentication(self):
+        response = self.client.get(reverse("quiz-attempt-stats"), {"date": "2026-09-05"})
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_missing_date_returns_400(self):
+        self.client.force_authenticate(self.user)
+        response = self.client.get(reverse("quiz-attempt-stats"))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_malformed_date_returns_400(self):
+        self.client.force_authenticate(self.user)
+        response = self.client.get(reverse("quiz-attempt-stats"), {"date": "not-a-date"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_fresh_account_has_zero_totals_and_null_accuracy_not_zero(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(reverse("quiz-attempt-stats"), {"date": "2026-09-05"})
+
+        for period in ("today", "career"):
+            summary = response.data[period]
+            self.assertEqual(summary["attempts"], 0)
+            self.assertEqual(summary["total_questions"], 0)
+            self.assertIsNone(summary["accuracy"])
+            self.assertEqual(len(summary["by_mode"]), 4)
+            for mode_row in summary["by_mode"]:
+                self.assertEqual(mode_row["attempts"], 0)
+                self.assertIsNone(mode_row["accuracy"])
+
+    def test_today_only_counts_attempts_from_the_requested_date(self):
+        self._attempt(self.user, "guess_card", 3, 3, datetime(2026, 9, 5, 10, 0, tzinfo=UTC))
+        self._attempt(self.user, "guess_card", 1, 5, datetime(2026, 9, 4, 10, 0, tzinfo=UTC))
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(reverse("quiz-attempt-stats"), {"date": "2026-09-05"})
+
+        self.assertEqual(response.data["today"]["attempts"], 1)
+        self.assertEqual(response.data["today"]["correct"], 3)
+        self.assertEqual(response.data["today"]["total_questions"], 3)
+        self.assertEqual(response.data["career"]["attempts"], 2)
+        self.assertEqual(response.data["career"]["correct"], 4)
+        self.assertEqual(response.data["career"]["total_questions"], 8)
+
+    def test_accuracy_sums_correct_and_total_across_different_quiz_lengths(self):
+        # A 3-question quiz gone perfectly and a 7-question quiz gone
+        # entirely wrong should NOT average to 50% — summing raw
+        # correct/total (3/10 = 30%) is what makes combining quizzes of
+        # different lengths correct. See docs/decisions.md #097.
+        self._attempt(self.user, "guess_card", 3, 3, datetime(2026, 9, 5, 9, 0, tzinfo=UTC))
+        self._attempt(self.user, "guess_card", 0, 7, datetime(2026, 9, 5, 11, 0, tzinfo=UTC))
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(reverse("quiz-attempt-stats"), {"date": "2026-09-05"})
+
+        self.assertAlmostEqual(response.data["today"]["accuracy"], 0.3)
+        self.assertAlmostEqual(response.data["career"]["accuracy"], 0.3)
+
+    def test_by_mode_breaks_down_per_mode_and_lists_every_mode_even_unplayed(self):
+        self._attempt(self.user, "guess_card", 4, 5, datetime(2026, 9, 5, 9, 0, tzinfo=UTC))
+        self._attempt(self.user, "guess_hp", 1, 5, datetime(2026, 9, 5, 9, 0, tzinfo=UTC))
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(reverse("quiz-attempt-stats"), {"date": "2026-09-05"})
+
+        by_mode = {row["mode"]: row for row in response.data["career"]["by_mode"]}
+        self.assertEqual(set(by_mode), {"guess_card", "guess_set", "guess_hp", "guess_set_icon"})
+        self.assertEqual(by_mode["guess_card"]["attempts"], 1)
+        self.assertAlmostEqual(by_mode["guess_card"]["accuracy"], 0.8)
+        self.assertEqual(by_mode["guess_hp"]["attempts"], 1)
+        self.assertAlmostEqual(by_mode["guess_hp"]["accuracy"], 0.2)
+        self.assertEqual(by_mode["guess_set"]["attempts"], 0)
+        self.assertIsNone(by_mode["guess_set"]["accuracy"])
+
+    def test_does_not_include_another_users_attempts(self):
+        self._attempt(self.other_user, "guess_card", 5, 5, datetime(2026, 9, 5, 9, 0, tzinfo=UTC))
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(reverse("quiz-attempt-stats"), {"date": "2026-09-05"})
+
+        self.assertEqual(response.data["today"]["attempts"], 0)
+        self.assertEqual(response.data["career"]["attempts"], 0)
+
+
 class QuizAttemptDetailViewTests(QuizTestBase):
     def setUp(self):
         super().setUp()

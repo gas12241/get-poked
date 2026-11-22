@@ -19,6 +19,7 @@ from .serializers import (
     QuizAttemptSummarySerializer,
 )
 from .sets_quiz import ELIGIBLE_SETS, GUESS_SET_ICON, build_set_icon_question, check_set_icon_answer
+from .stats import summarize_attempts
 
 VALID_MODES = (GUESS_CARD, GUESS_SET, GUESS_HP, GUESS_SET_ICON)
 DEFAULT_QUESTION_COUNT = 5
@@ -164,6 +165,33 @@ class QuizAttemptsByDateView(APIView):
 
         attempts = QuizAttempt.objects.filter(user=request.user, completed_at__date=date_obj)
         return Response(QuizAttemptSummarySerializer(attempts, many=True).data)
+
+
+class QuizAttemptStatsView(APIView):
+    # No new model — everything here is derivable from QuizAttempt's own
+    # score/total_questions, the same "aggregation endpoint, not a new
+    # table" precedent as collection stats (docs/decisions.md #078). `date`
+    # is the frontend's own local "today" (see docs/decisions.md #097) —
+    # same required-query-param convention as QuizAttemptsByDateView's path
+    # param, just not gating anything, so there's no fallback default here.
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        try:
+            date_obj = datetime.date.fromisoformat(request.query_params.get("date", ""))
+        except ValueError:
+            return Response(
+                {"detail": "date must be in YYYY-MM-DD format."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        attempts = QuizAttempt.objects.filter(user=request.user)
+        return Response(
+            {
+                "today": summarize_attempts(attempts.filter(completed_at__date=date_obj)),
+                "career": summarize_attempts(attempts),
+            }
+        )
 
 
 class QuizAttemptDetailView(generics.RetrieveAPIView):

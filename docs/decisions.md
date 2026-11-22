@@ -1430,6 +1430,38 @@ Why
 
 ---
 
+## Decision 097
+
+Mode label clarity (`guess_card`/`guess_hp`), and a new "today vs career" quiz stats endpoint
+
+Why
+
+- **Two small label-only renames, requested directly by the user**: "Guess the Card" → "Guess the Card's Name" — `guess_card` isn't Pokémon-only (eligible Trainer cards at the chase-rarity tier too, see eligibility.py), so "the Card" alone didn't say what's actually being guessed. "Guess the HP" → "Guess the Pokémon's HP" — `guess_hp` is already Pokémon-only (Trainer/Energy cards have no HP), so the label now says so explicitly. Frontend `MODES` labels only (`quizOptions.ts`); the backend's own `QuizMode.CARD`/`.HP` TextChoices labels are internal, Django-admin-only metadata never exposed through the API, so they were deliberately left as-is rather than churning a cosmetic-only migration.
+- **Quiz stats, requested directly by the user**: "today" and "career" totals plus accuracy, given the real combinatorics concern the user raised directly — 4 modes × 3 difficulties × 3 lengths is a lot of cells to try to show at once. **The key design choice: sum raw `correct`/`total_questions` across attempts, rather than averaging each attempt's own percentage.** A 3-question quiz gone perfectly and a 7-question quiz gone entirely wrong is 30% (3 correct of 10 total), not 50% (naively averaging 100% and 0%) — summing is what makes combining quizzes of different lengths mathematically sound, which removes quiz length as an axis needing its own bucket entirely, for free.
+- **Breakdown granularity — explicitly discussed and decided with the user**: mode-only (4 rows), not mode×difficulty (up to 12), and not difficulty at all. Difficulty/length aren't really "skill" axes the way mode is (which quiz a player struggles with is the interesting signal, e.g. "good at HP, bad at Set"); a 12-row table would also be far sparser per day than 4 rows, most of it empty on an ordinary day.
+- **No new model** — same "aggregation endpoint over existing rows, not a new table" approach as Collection statistics (#078), since `QuizAttempt.score`/`total_questions` already carry everything needed; no join to `QuizAttemptAnswer` required. New `quiz/stats.py` (`summarize_attempts`), kept out of `views.py` the same way `sets_quiz.py`/`questions.py` already separate business logic from the view layer.
+- **`accuracy` is `null`, not `0`, when `total_questions` is 0** — a fresh account, or a mode never attempted, isn't "played and got 0% right"; the frontend shows an em dash instead of a misleading percentage.
+- **`by_mode` always lists all four modes**, even at zero attempts — small enough (4 rows) to show in full rather than omit the unplayed ones, unlike the rejected mode×difficulty table would have been.
+- **"Today" is the frontend's own UTC-day "today"** (`date` query param, required, same shape as `QuizAttemptsByDateView`'s own date handling), not the viewer's local calendar day — matching `QuizHistoryCalendar`'s own deliberate UTC-everywhere convention (#088) rather than introducing a second, inconsistent notion of "today" into the same page.
+- **Placement — explicitly discussed and decided with the user**: a new section on `/quiz` beside the existing history section, not a new route, matching the same "one feature, one page" precedent Collection statistics (#078) already set rather than nav entries multiplying per view.
+- 8 new backend tests (`QuizAttemptStatsViewTests` — auth required, malformed/missing date, fresh-account zero state with null-not-zero accuracy, today-vs-career date scoping, the mixed-length sum-not-average arithmetic itself, per-mode breakdown with an unplayed mode present, scoped to the requesting user only). Full 351-test backend suite (99% coverage) + 305-test frontend suite (4 new `QuizStatsSection` tests) both green. Verified live against a real seeded account in both light and dark mode: a 3/3 and a 4/5 attempt today plus an older 0/7 attempt summed to the exact hand-calculated 88% (today) and 47% (career) — not the naive per-attempt average — with the right mode split and unplayed modes showing "—".
+
+---
+
+## Decision 098
+
+Quiz stats follow-up: a dynamic "today" column tied to the history calendar, and raw counts alongside the percentage
+
+Why
+
+- **Two follow-up requests, both from the user, on top of #097's initial stats feature.**
+- **The "today" column now tracks whichever day is selected on the history calendar**, not always the real today — requested directly, since looking at a past day's history right next to a stats column that's stuck on "today" was an inconsistency once both existed on the same page. `QuizStatsSection` reads the exact same `date` URL search param `QuizHistorySection` already owns and sets when a calendar day is clicked — no prop drilling between the two sibling sections, no lifting state up into `QuizPage`, since react-router's `useSearchParams()` is itself backed by the shared URL/location state: two components independently calling it in the same page see (and re-render on) the same value. Falls back to the real UTC "today" when nothing's selected, same as before. No backend change at all — the `GET /api/v1/quiz-attempts/stats/?date=` contract was already "stats for whatever date you pass," labeled `today` in the response only because that's the common case; the frontend was the only thing that had hardcoded which date to ask for.
+- **The column label switches too** — "Today" only when the resolved date actually is today; otherwise the same `formatQuizHistoryDate` formatting `QuizHistorySection`'s own selected-day heading already uses (e.g. "September 5th, 2026"), so it's never mislabeled as "Today" while showing a different day's numbers.
+- **Raw correct/total counts now shown alongside the percentage** (e.g. "3/10 correct (30%)" on the summary line, "3/10 (30%)" per mode row), requested directly on top of the percentage-only version from #097 — the percentage alone hides how much data backs it (30% from 3/10 reads very differently than 30% from 300/1000), and the user wanted both visible rather than having to infer one from the other. New `formatScoreFraction` alongside the existing `formatAccuracy` in `quizAttemptFormatting.ts`; both null-safe the same way (an unplayed mode/day shows a bare "—", no fraction, no "correct" word).
+- 2 new backend-untouched frontend tests (`QuizStatsSection.test.tsx` — a selected calendar day is fetched and labeled by its own date instead of "Today"; no selection falls back to the real UTC today) + 3 existing tests updated for the new "X/Y correct (Z%)" wording. Full 307-test frontend suite passes (backend suite untouched — this entire follow-up was frontend-only). Verified live: selecting a past day on the history calendar swapped the stats column to that day's own numbers and label without a page reload, and the fraction/percentage pairing rendered correctly in both light and dark mode.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

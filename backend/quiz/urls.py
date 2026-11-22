@@ -5,6 +5,7 @@ from .views import (
     QuizAttemptDatesView,
     QuizAttemptDetailView,
     QuizAttemptsByDateView,
+    QuizAttemptStatsView,
     QuizCheckView,
     QuizQuestionsView,
 )
@@ -19,5 +20,6 @@ urlpatterns = [
         QuizAttemptsByDateView.as_view(),
         name="quiz-attempts-by-date",
     ),
+    path("quiz-attempts/stats/", QuizAttemptStatsView.as_view(), name="quiz-attempt-stats"),
     path("quiz-attempts/<int:pk>/", QuizAttemptDetailView.as_view(), name="quiz-attempt-detail"),
 ]

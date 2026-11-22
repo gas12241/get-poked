@@ -52,3 +52,16 @@ export function modeLabel(mode: QuizAttemptSummary['quiz_mode']) {
 export function difficultyLabel(difficulty: QuizAttemptSummary['difficulty']) {
   return DIFFICULTIES.find((d) => d.value === difficulty)?.label ?? difficulty;
 }
+
+// null means "never played," distinct from 0% — see docs/decisions.md
+// #097. Shown as an em dash rather than a misleading "0%".
+export function formatAccuracy(accuracy: number | null): string {
+  return accuracy === null ? '—' : `${Math.round(accuracy * 100)}%`;
+}
+
+export function formatScoreFraction(
+  correct: number,
+  totalQuestions: number,
+): string {
+  return `${correct}/${totalQuestions}`;
+}

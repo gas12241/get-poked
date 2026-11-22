@@ -44,7 +44,9 @@ const REEL_TIMEOUT_MS =
 
 async function startQuiz(ui = <QuizPage />) {
   renderWithProviders(ui);
-  await userEvent.click(screen.getByRole('radio', { name: 'Guess the Card' }));
+  await userEvent.click(
+    screen.getByRole('radio', { name: "Guess the Card's Name" }),
+  );
   await userEvent.click(screen.getByRole('button', { name: 'Start Quiz' }));
   await screen.findByLabelText('Your guess', {}, { timeout: REEL_TIMEOUT_MS });
 }
@@ -64,7 +66,7 @@ describe('QuizPage', () => {
     expect(screen.getByText('Question 1 of 1')).toBeInTheDocument();
   });
 
-  it('defaults to Guess the Card mode, does not start until Start Quiz is pressed, and sends the chosen mode', async () => {
+  it("defaults to Guess the Card's Name mode, does not start until Start Quiz is pressed, and sends the chosen mode", async () => {
     let capturedMode: string | null = null;
     server.use(
       http.get(`${BASE_URL}/api/v1/quiz/`, ({ request }) => {
@@ -86,14 +88,17 @@ describe('QuizPage', () => {
 
     renderWithProviders(<QuizPage />);
 
-    const cardRadio = screen.getByRole('radio', { name: 'Guess the Card' });
+    const cardRadio = screen.getByRole('radio', {
+      name: "Guess the Card's Name",
+    });
     expect(cardRadio).toHaveAttribute('aria-checked', 'true');
 
-    await userEvent.click(screen.getByRole('radio', { name: 'Guess the HP' }));
-    expect(screen.getByRole('radio', { name: 'Guess the HP' })).toHaveAttribute(
-      'aria-checked',
-      'true',
+    await userEvent.click(
+      screen.getByRole('radio', { name: "Guess the Pokémon's HP" }),
     );
+    expect(
+      screen.getByRole('radio', { name: "Guess the Pokémon's HP" }),
+    ).toHaveAttribute('aria-checked', 'true');
     expect(cardRadio).toHaveAttribute('aria-checked', 'false');
 
     // Picking a mode alone doesn't start anything — still on the
@@ -188,7 +193,7 @@ describe('QuizPage', () => {
     await waitFor(() => expect(capturedDifficulty).toBe('hard'));
   });
 
-  it('offers name suggestions for "Guess the Card" without scoping them to a set or series', async () => {
+  it(`offers name suggestions for "Guess the Card's Name" without scoping them to a set or series`, async () => {
     const requestedParams: URLSearchParams[] = [];
     server.use(
       http.get(`${BASE_URL}/api/v1/card-names/`, ({ request }) => {
@@ -371,7 +376,7 @@ describe('QuizPage', () => {
 
     const { unmount } = renderWithProviders(<QuizPage />);
     await userEvent.click(
-      screen.getByRole('radio', { name: 'Guess the Card' }),
+      screen.getByRole('radio', { name: "Guess the Card's Name" }),
     );
     await userEvent.click(screen.getByRole('button', { name: 'Start Quiz' }));
     await screen.findByLabelText(
@@ -468,7 +473,7 @@ describe('QuizPage', () => {
     );
 
     expect(
-      screen.getByRole('radio', { name: 'Guess the Card' }),
+      screen.getByRole('radio', { name: "Guess the Card's Name" }),
     ).toBeInTheDocument();
   });
 
@@ -481,7 +486,7 @@ describe('QuizPage', () => {
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Your guess')).toBeInTheDocument();
     expect(
-      screen.queryByRole('radio', { name: 'Guess the Card' }),
+      screen.queryByRole('radio', { name: "Guess the Card's Name" }),
     ).not.toBeInTheDocument();
   });
 

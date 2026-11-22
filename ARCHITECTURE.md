@@ -294,6 +294,14 @@ Saving no longer waits for a manual button — the summary screen auto-saves on 
 
 Unlike Horoscope's pull (capped at one per day), a day can have any number of quiz attempts — so the day's attempt list, not the calendar itself, is the one part of this that can grow unboundedly. Rather than promote quiz history to its own top-level page (which would make it inconsistent with Horoscope's own embedded pattern for no structural reason), the list itself is height-bounded and scrolls internally past a few rows, with an explicit hint once it does. See docs/decisions.md #092.
 
+### Quiz Attempt Statistics
+
+User-requested "how am I doing" summary (`GET /api/v1/quiz-attempts/stats/?date=<today>`), shown on `/quiz` alongside history. No new model — like Collection statistics, it's a read-time aggregation over `QuizAttempt`'s own `score`/`total_questions`, for "today" (the date the frontend passes, matching the same UTC day boundary the history calendar already uses) and "career" (no date filter) side by side.
+
+Totals are summed raw correct/total_questions, not averaged per-attempt percentages — a 3-question quiz and a 7-question quiz combine correctly this way without needing a separate bucket per quiz length, which also means `difficulty`/length never need their own breakdown row. The one real breakdown axis is quiz mode: each period always lists all four modes, even at zero attempts, with `accuracy: null` (not `0`) for a mode never played — shown in the frontend as "—" rather than a misleading 0%, with the raw `correct`/`total_questions` count shown alongside the percentage, not just the percentage alone. See docs/decisions.md #097.
+
+The "today" column is dynamic: `QuizStatsSection` reads the same `date` URL param `QuizHistorySection` already owns (via its own independent `useSearchParams()` call, not prop-drilled between the two sibling sections), so selecting a day on the history calendar swaps "Today" for that day's own stats, labeled with its actual date. No date selected falls back to the real UTC today. See docs/decisions.md #098.
+
 ---
 
 ## Caching & Deployment

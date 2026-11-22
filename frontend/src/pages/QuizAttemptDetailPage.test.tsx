@@ -17,7 +17,9 @@ describe('QuizAttemptDetailPage', () => {
       { route: '/quiz-history/1' },
     );
 
-    expect(await screen.findByText('Guess the Card')).toBeInTheDocument();
+    expect(
+      await screen.findByText("Guess the Card's Name"),
+    ).toBeInTheDocument();
     expect(screen.getByText('Medium')).toBeInTheDocument();
     expect(screen.getByText(/1 \/ 1/)).toBeInTheDocument();
     expect(screen.getByText('Your guess: Charizard')).toBeInTheDocument();

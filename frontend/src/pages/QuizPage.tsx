@@ -27,6 +27,7 @@ import { StartingReel } from '../components/CaseOpeningReel';
 import ConfirmDialog from '../components/ConfirmDialog';
 import QuizAttemptBreakdown from '../components/QuizAttemptBreakdown';
 import QuizHistorySection from '../components/QuizHistorySection';
+import QuizStatsSection from '../components/QuizStatsSection';
 import './pages.css';
 
 const QUESTION_COUNTS: { value: number; label: string }[] = [
@@ -600,6 +601,7 @@ function QuizPage() {
           }}
           error={startQuiz.isError ? (startQuiz.error as Error).message : null}
         />
+        <QuizStatsSection isAuthenticated={isAuthenticated} />
         <QuizHistorySection isAuthenticated={isAuthenticated} />
       </>
     );

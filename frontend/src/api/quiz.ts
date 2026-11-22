@@ -105,6 +105,31 @@ export interface QuizAttemptDatesResponse {
   dates: string[];
 }
 
+export interface QuizAttemptModeStats {
+  mode: QuizMode;
+  attempts: number;
+  correct: number;
+  total_questions: number;
+  // null (not 0) when total_questions is 0 — "never played this mode" is
+  // not the same as "played it and got 0% right". See docs/decisions.md
+  // #097.
+  accuracy: number | null;
+}
+
+export interface QuizAttemptStatsSummary {
+  attempts: number;
+  correct: number;
+  total_questions: number;
+  accuracy: number | null;
+  // Always one row per QuizMode, even at zero — see docs/decisions.md #097.
+  by_mode: QuizAttemptModeStats[];
+}
+
+export interface QuizAttemptStats {
+  today: QuizAttemptStatsSummary;
+  career: QuizAttemptStatsSummary;
+}
+
 export interface QuizQuestionsParams {
   mode: QuizMode;
   count?: number;
@@ -160,3 +185,10 @@ export const getQuizAttemptsByDate = (date: string) =>
 
 export const getQuizAttemptDetail = (id: number) =>
   apiClient<QuizAttemptDetail>(`/api/v1/quiz-attempts/${id}/`);
+
+// `date` is "today" in UTC terms — same day boundary QuizHistoryCalendar
+// already uses throughout (see docs/decisions.md #088), so a quiz taken
+// right after midnight UTC counts the same way for every viewer regardless
+// of their own timezone.
+export const getQuizAttemptStats = (date: string) =>
+  apiClient<QuizAttemptStats>(`/api/v1/quiz-attempts/stats/?date=${date}`);

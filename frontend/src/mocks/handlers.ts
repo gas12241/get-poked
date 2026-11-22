@@ -39,6 +39,34 @@ export function mockQuizAttemptDetail(overrides: Record<string, unknown> = {}) {
   };
 }
 
+const ZERO_MODE_STATS = [
+  'guess_card',
+  'guess_set',
+  'guess_hp',
+  'guess_set_icon',
+].map((mode) => ({
+  mode,
+  attempts: 0,
+  correct: 0,
+  total_questions: 0,
+  accuracy: null,
+}));
+
+export function mockQuizAttemptStats(overrides: Record<string, unknown> = {}) {
+  const zeroSummary = {
+    attempts: 0,
+    correct: 0,
+    total_questions: 0,
+    accuracy: null,
+    by_mode: ZERO_MODE_STATS,
+  };
+  return {
+    today: zeroSummary,
+    career: zeroSummary,
+    ...overrides,
+  };
+}
+
 const HOROSCOPE_SLOTS: { supertype: string; rarity_tier: string }[] = [
   { supertype: 'Pokémon', rarity_tier: 'common' },
   { supertype: 'Pokémon', rarity_tier: 'mid' },
@@ -173,6 +201,14 @@ export const handlers = [
 
   http.get(`${BASE_URL}/api/v1/quiz-attempts/by-date/:date/`, () => {
     return HttpResponse.json([]);
+  }),
+
+  // Registered before the :id/ handler below — same ordering reasoning as
+  // the backend's own urls.py (stats/ listed before <int:pk>/), since MSW
+  // (like Django) matches in registration order and :id/ would otherwise
+  // shadow this literal path.
+  http.get(`${BASE_URL}/api/v1/quiz-attempts/stats/`, () => {
+    return HttpResponse.json(mockQuizAttemptStats());
   }),
 
   http.get(`${BASE_URL}/api/v1/quiz-attempts/:id/`, () => {

@@ -603,6 +603,26 @@ Implemented
 
 ---
 
+### Get Quiz Attempt Statistics
+
+GET /api/v1/quiz-attempts/stats/?date=\<YYYY-MM-DD\>
+
+Params
+
+- `date` — required, in UTC terms (same day boundary `QuizHistoryCalendar` already uses). Despite the response key below being named `today`, this is any day the frontend asks for — it's the real UTC today by default, or whichever day is currently selected on the history calendar (see docs/decisions.md #098). 400 if missing or not a valid date.
+
+Description
+
+A read-time aggregation, not a stored record — everything here is derived from the requesting user's own `QuizAttempt` rows (`score`/`total_questions`), same "no new model" approach as the Collection stats endpoint. Response: `{"today": {...}, "career": {...}}`, each shaped `{"attempts", "correct", "total_questions", "accuracy", "by_mode": [{"mode", "attempts", "correct", "total_questions", "accuracy"}, ...]}`. `today` is filtered to the requested `date` (whatever day that actually is); `career` has no date filter. `accuracy` is `correct / total_questions`, `null` (not `0`) when `total_questions` is 0 — "never played" is distinct from "played and got 0% right". `by_mode` always lists all four `quiz_mode` values, even at zero attempts. `correct`/`total_questions` are summed across attempts rather than each attempt's own percentage being averaged, so quizzes of different lengths (3/5/7 questions) combine correctly without a separate bucket per length — see docs/decisions.md #097.
+
+Requires authentication (scoped to `request.user`, same pattern as every other quiz-attempts view).
+
+Status
+
+Implemented
+
+---
+
 ## Horoscope
 
 ### Pull Today's Horoscope

@@ -5,14 +5,19 @@ import type { QuizDifficulty, QuizMode } from '../api/quiz';
 // exported from QuizPage.tsx, which QuizHistorySection is itself imported
 // by, to avoid a circular import between the two.
 export const MODES: { value: QuizMode; label: string }[] = [
-  { value: 'guess_card', label: 'Guess the Card' },
+  // "...'s Name" — guess_card isn't Pokémon-only (eligible Trainer cards at
+  // the chase-rarity tier too, see eligibility.py), so "the Card" alone
+  // doesn't say what's actually being guessed.
+  { value: 'guess_card', label: "Guess the Card's Name" },
   // Relabeled alongside guess_set_icon's own addition below — both renamed
   // together so the two read as clearly different questions (this one is
   // about a real card shown with its set symbol blurred out; the other is
   // about a set's icon alone, no card involved) rather than looking like
   // duplicates. The underlying mode value is unchanged.
   { value: 'guess_set', label: "Guess the Pokémon's Set" },
-  { value: 'guess_hp', label: 'Guess the HP' },
+  // "the Pokémon's" — guess_hp is already Pokémon-only (Trainer/Energy
+  // cards have no HP), so the label now says so explicitly.
+  { value: 'guess_hp', label: "Guess the Pokémon's HP" },
   { value: 'guess_set_icon', label: 'Guess the Set by Symbol' },
 ];
 

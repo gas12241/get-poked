@@ -2110,6 +2110,63 @@
   font-size: 13px;
 }
 
+/* Quiz stats — today vs career, aggregated server-side at read time (no
+   new model, same pattern as Collection stats, docs/decisions.md #097).
+   Sits between the mode picker and history, so it gets the same
+   border-top separator both of its neighbors use. */
+.quiz-stats-section {
+  width: 100%;
+  max-width: 860px;
+  margin: 40px auto 0;
+  padding: 24px 20px 40px;
+  text-align: center;
+  border-top: 1px solid var(--accent-border);
+}
+
+.quiz-stats-columns {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 32px;
+  margin-top: 16px;
+}
+
+.quiz-stats-period {
+  flex: 1 1 320px;
+  max-width: 360px;
+}
+
+.quiz-stats-period h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: var(--text-h);
+}
+
+.quiz-stats-summary-line {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.quiz-stats-mode-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.quiz-stats-mode-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
 /* Quiz history — a calendar (same month-grid shape as
    .horoscope-calendar, kept separate since selecting a day here opens a
    *list* of that day's attempts rather than a single item) plus that
