@@ -49,6 +49,9 @@ function QuizAttemptDetailPage() {
           <span>
             {attempt.score} / {attempt.total_questions}
           </span>
+          {attempt.shared_by && (
+            <span>Shared by {attempt.shared_by.username}</span>
+          )}
         </p>
         <QuizAttemptBreakdown answers={attempt.answers} />
       </div>

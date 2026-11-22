@@ -27,6 +27,11 @@ export interface QuizSession {
   // and back) re-fetch the breakdown by id instead of losing it — see
   // docs/decisions.md #093.
   attemptId: number | null;
+  // Set when this quiz was started from someone else's shared link
+  // (/quiz/shared/:token) — carried through to the save request so the
+  // backend can stamp shared_by. Null for a quiz started normally from
+  // the mode picker. See docs/decisions.md #101.
+  sharedToken: string | null;
 }
 
 interface QuizState {
@@ -35,6 +40,7 @@ interface QuizState {
     mode: QuizMode,
     questions: QuizQuestion[],
     difficulty: QuizDifficulty,
+    sharedToken?: string | null,
   ) => void;
   recordAnswer: (answer: QuizAnswerInput) => void;
   revealCurrent: () => void;
@@ -50,7 +56,7 @@ export const useQuizStore = create<QuizState>()(
   persist(
     (set) => ({
       session: null,
-      startSession: (mode, questions, difficulty) =>
+      startSession: (mode, questions, difficulty, sharedToken = null) =>
         set({
           session: {
             mode,
@@ -61,6 +67,7 @@ export const useQuizStore = create<QuizState>()(
             currentRevealed: false,
             difficulty,
             attemptId: null,
+            sharedToken,
           },
         }),
       recordAnswer: (answer) =>

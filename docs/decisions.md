@@ -1495,6 +1495,24 @@ Why
 
 ---
 
+## Decision 101
+
+Shareable quiz links, and "Shared by" attribution in quiz history
+
+Why
+
+- **The user asked for a link at the bottom of a completed quiz that a friend could open to take the exact same quiz**, then asked two follow-ups directly: would an unauthenticated recipient taking it "just for fun" cause any problems, and could the recipient's quiz-history detail page say who shared it with them.
+- **No guest-mode work was needed to answer the first question.** Checked the actual code before assuming otherwise: `QuizQuestionsView`/`QuizCheckView` were already `permissions.AllowAny` — a guest can already play any quiz today, start to finish, and only `QuizAttemptCreateView` (the save step) requires auth. A shared link changes nothing about that: a guest opening one plays through and sees their score, same as a guest starting a quiz from the picker, and simply never gets a saved attempt. This is unrelated to — and doesn't require resolving — the separately-deferred guest-claim-on-signup idea for Quiz/Horoscope.
+- **New `QuizShare` model: a `OneToOneField` to the sharer's own `QuizAttempt`, nothing else.** Considered copying `quiz_mode`/`difficulty`/the ordered card-or-set targets onto the share row itself, but rejected it — everything a share needs to replay (mode, difficulty, length, and the exact ordered targets) already lives on `attempt`/`attempt.answers`, so a direct reference avoids duplicating any of it. `get_or_create(attempt=attempt)` in `QuizShareCreateView` is what makes repeat "Share this quiz" clicks idempotent (same link every time) rather than minting a new token per click — the `OneToOneField` enforces that at the DB level, not just in application code.
+- **Replaying a share rebuilds each question fresh through the same `build_question`/`build_set_icon_question` functions `QuizQuestionsView` already uses**, driven by the stored answers' card/set ids in order instead of a random sample. Images are re-masked on each open rather than cached from the original attempt, and `guess_set_icon`'s multiple-choice distractors are freshly re-rolled each time — only the *target* set is fixed by the share; the other options don't need to match the sharer's own original round for this to be "the same quiz."
+- **`QuizAttempt.shared_by` is a nullable FK to the sharer, set only when the attempt was saved from a shared link.** `SET_NULL`, not `CASCADE` — a saved attempt must never disappear just because the original sharer's account later goes away; it only loses the attribution, same graceful-degradation posture as everything else in this app. Resolved in `QuizAttemptCreateSerializer.create()` from a client-submitted `shared_token`; an unknown or stale token is silently ignored rather than failing the save, since losing attribution is a far smaller problem than losing the score.
+- **"Shared by X" only ever shows for an authenticated recipient**, because that's the only case an attempt is saved at all — no special-casing needed for a guest recipient beyond what already existed.
+- **`QuizShareDetailView` is `AllowAny` but throttled** (`quiz-share`, 30/min) — it's public and takes an opaque token as a direct DB lookup key, the same reasoning that already justifies the existing `email-verification` throttle scope, per this project's standing security rule that any endpoint resolving a token gets a scope.
+- **The recipient sees who shared it and the fixed mode/difficulty/length before committing** (`SharedQuizStart`, shown at `/quiz/shared/:token` in place of the mode picker) rather than being dropped straight into the first question — there's nothing to pick since the link fixes everything, but seeing whose quiz it is and what it's testing before starting seemed worth the one extra click.
+- 11 new backend tests (`QuizShareCreateViewTests`, `QuizShareDetailViewTests`, plus 3 added to `QuizAttemptCreateViewTests` for the `shared_token`→`shared_by` resolution) + full 104-test `quiz` suite green. 7 new frontend tests (`QuizPage.test.tsx`'s shared-link flow and "Share this quiz" button, `QuizAttemptDetailPage.test.tsx`'s "Shared by" display) + full 316-test frontend suite green. Hit the same `getByText` vs. bolded-value gotcha as #100 once more (bolding the shared username on `SharedQuizStart` broke a literal `'Shared by alex'` match) — same fix, querying the label and the `<strong>` value as two separate assertions.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

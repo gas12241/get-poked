@@ -1,10 +1,11 @@
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework import serializers
 
 from cards.models import Card, Set
 from cards.serializers import CardListSerializer, SetSerializer
 
-from .models import QuizAttempt, QuizAttemptAnswer
+from .models import QuizAttempt, QuizAttemptAnswer, QuizShare
 from .questions import check_answer
 from .sets_quiz import GUESS_SET_ICON, check_set_icon_answer
 
@@ -28,15 +29,39 @@ class QuizAttemptAnswerCreateSerializer(serializers.ModelSerializer):
 
 class QuizAttemptCreateSerializer(serializers.ModelSerializer):
     answers = QuizAttemptAnswerCreateSerializer(many=True)
+    # Present only when this attempt was saved from a shared quiz link —
+    # see QuizShareDetailView/docs/decisions.md #101. Write-only: the
+    # client never needs it echoed back, and it's resolved into shared_by
+    # below rather than stored verbatim.
+    shared_token = serializers.UUIDField(required=False, write_only=True)
 
     class Meta:
         model = QuizAttempt
-        fields = ["id", "quiz_mode", "difficulty", "score", "total_questions", "answers"]
+        fields = [
+            "id",
+            "quiz_mode",
+            "difficulty",
+            "score",
+            "total_questions",
+            "answers",
+            "shared_token",
+        ]
         read_only_fields = ["id", "score", "total_questions"]
 
     @transaction.atomic
     def create(self, validated_data):
         answers_data = validated_data.pop("answers")
+        # A stale or unknown token is ignored rather than failing the save
+        # — losing the "shared by" attribution is a much smaller problem
+        # than losing the score.
+        shared_token = validated_data.pop("shared_token", None)
+        shared_by = None
+        if shared_token:
+            share = (
+                QuizShare.objects.filter(token=shared_token).select_related("attempt__user").first()
+            )
+            if share:
+                shared_by = share.attempt.user
         quiz_mode = validated_data["quiz_mode"]
         # Re-derived here, not trusted from the client (see docs/decisions.md
         # #088) — a client could otherwise POST a fake perfect score, and
@@ -55,6 +80,7 @@ class QuizAttemptCreateSerializer(serializers.ModelSerializer):
             difficulty=validated_data["difficulty"],
             score=score,
             total_questions=len(answers_data),
+            shared_by=shared_by,
         )
         QuizAttemptAnswer.objects.bulk_create(
             QuizAttemptAnswer(quiz_attempt=attempt, **answer) for answer in answers_data
@@ -95,8 +121,18 @@ class QuizAttemptAnswerDetailSerializer(serializers.ModelSerializer):
         return answer
 
 
+class SharedBySerializer(serializers.ModelSerializer):
+    # Username only — the public, non-credential display identity (see
+    # core/models.py), never email. Nulls through automatically on read
+    # when an attempt has no shared_by.
+    class Meta:
+        model = get_user_model()
+        fields = ["id", "username"]
+
+
 class QuizAttemptDetailSerializer(serializers.ModelSerializer):
     answers = QuizAttemptAnswerDetailSerializer(many=True, read_only=True)
+    shared_by = SharedBySerializer(read_only=True)
 
     class Meta:
         model = QuizAttempt
@@ -108,10 +144,21 @@ class QuizAttemptDetailSerializer(serializers.ModelSerializer):
             "total_questions",
             "completed_at",
             "answers",
+            "shared_by",
         ]
 
 
 class QuizAttemptSummarySerializer(serializers.ModelSerializer):
+    shared_by = SharedBySerializer(read_only=True)
+
     class Meta:
         model = QuizAttempt
-        fields = ["id", "quiz_mode", "difficulty", "score", "total_questions", "completed_at"]
+        fields = [
+            "id",
+            "quiz_mode",
+            "difficulty",
+            "score",
+            "total_questions",
+            "completed_at",
+            "shared_by",
+        ]

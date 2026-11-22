@@ -541,7 +541,7 @@ POST /api/v1/quiz-attempts/
 
 Description
 
-Records a completed quiz session. Body: `{"quiz_mode": "...", "difficulty": "easy" | "medium" | "hard", "answers": [{"card": <id>, "guess": "<string>", "time_taken_seconds": <float>, "order": <int>}, ...]}` — for `guess_set_icon`, each answer has `set` instead of `card`. Exactly one of `card`/`set` is required per answer, enforced by a DB-level constraint on `QuizAttemptAnswer` (docs/database.md). `score`/`total_questions`/each answer's `is_correct` are all computed server-side by re-checking `guess` against `card`/`set`/`quiz_mode` — none of it is trusted from the client (see docs/decisions.md #088; this endpoint used to also accept a client-submitted `is_correct` per answer and trust it directly). The response is the same rich shape as Get Quiz Attempt Detail below (nested real card or set data, not the quiz's masked/icon image), not a flat echo of the input — the frontend's post-quiz breakdown screen renders directly from it.
+Records a completed quiz session. Body: `{"quiz_mode": "...", "difficulty": "easy" | "medium" | "hard", "shared_token"?: "<uuid>", "answers": [{"card": <id>, "guess": "<string>", "time_taken_seconds": <float>, "order": <int>}, ...]}` — for `guess_set_icon`, each answer has `set` instead of `card`. Exactly one of `card`/`set` is required per answer, enforced by a DB-level constraint on `QuizAttemptAnswer` (docs/database.md). `score`/`total_questions`/each answer's `is_correct` are all computed server-side by re-checking `guess` against `card`/`set`/`quiz_mode` — none of it is trusted from the client (see docs/decisions.md #088; this endpoint used to also accept a client-submitted `is_correct` per answer and trust it directly). `shared_token` is optional — present only when this attempt was started from a shared quiz link (see Get Shared Quiz below); when it resolves to a real `QuizShare`, the saved attempt's `shared_by` is stamped with that share's original sharer. An unknown or omitted token just leaves `shared_by` null — it's never required and never fails the save. The response is the same rich shape as Get Quiz Attempt Detail below (nested real card or set data, not the quiz's masked/icon image, plus `shared_by`), not a flat echo of the input — the frontend's post-quiz breakdown screen renders directly from it.
 
 Requires authentication (see docs/decisions.md #011).
 
@@ -577,7 +577,7 @@ GET /api/v1/quiz-attempts/by-date/\<date\>/
 
 Description
 
-A flat list of the requesting user's own attempts that day — `[{"id", "quiz_mode", "difficulty", "score", "total_questions", "completed_at"}, ...]`, no nested per-question detail. Unlike a Horoscope pull, there's no one-per-day limit on quiz attempts, so an empty list (not a 404) is the normal response for a date with nothing.
+A flat list of the requesting user's own attempts that day — `[{"id", "quiz_mode", "difficulty", "score", "total_questions", "completed_at", "shared_by": {"id", "username"} | null}, ...]`, no nested per-question detail. Unlike a Horoscope pull, there's no one-per-day limit on quiz attempts, so an empty list (not a 404) is the normal response for a date with nothing.
 
 Requires authentication.
 
@@ -593,9 +593,41 @@ GET /api/v1/quiz-attempts/\<id\>/
 
 Description
 
-The full per-question breakdown for one of the requesting user's own attempts — same shape as the Save Quiz Attempt response: `{"id", "quiz_mode", "difficulty", "score", "total_questions", "completed_at", "answers": [{"card": {...real card fields...} | null, "set": {...real set fields, including image_symbol...} | null, "guess", "correct_answer", "is_correct", "time_taken_seconds", "order"}, ...]}`. Exactly one of `card`/`set` is ever non-null per answer. `card` is the real, fully unmasked card (not the quiz's masked question image) so the history view can show what was actually being guessed on and link to its own detail page; for a `guess_set_icon` answer, `set` is populated instead — the real set (icon included), with no detail page to link to. `correct_answer` is derived at read time from `card`/`set`/`quiz_mode`, not stored — see docs/decisions.md #088/#096. Another user's attempt id 404s, same pattern as every other per-user detail view in this app.
+The full per-question breakdown for one of the requesting user's own attempts — same shape as the Save Quiz Attempt response: `{"id", "quiz_mode", "difficulty", "score", "total_questions", "completed_at", "shared_by": {"id", "username"} | null, "answers": [{"card": {...real card fields...} | null, "set": {...real set fields, including image_symbol...} | null, "guess", "correct_answer", "is_correct", "time_taken_seconds", "order"}, ...]}`. Exactly one of `card`/`set` is ever non-null per answer. `card` is the real, fully unmasked card (not the quiz's masked question image) so the history view can show what was actually being guessed on and link to its own detail page; for a `guess_set_icon` answer, `set` is populated instead — the real set (icon included), with no detail page to link to. `correct_answer` is derived at read time from `card`/`set`/`quiz_mode`, not stored — see docs/decisions.md #088/#096. `shared_by` is the user who shared the quiz link this attempt was taken from, or null for an attempt started normally — see docs/decisions.md #101. Another user's attempt id 404s, same pattern as every other per-user detail view in this app.
 
 Requires authentication.
+
+Status
+
+Implemented
+
+---
+
+### Create Quiz Share
+
+POST /api/v1/quiz-shares/
+
+Description
+
+Body: `{"attempt": <id>}`. Creates (or, on a repeat call for the same attempt, returns the existing) shareable link to one of the requesting user's own completed `QuizAttempt`s — `get_or_create` on the attempt, so clicking "Share this quiz" more than once never mints a second link. Response: `{"token": "<uuid>"}`. The attempt must belong to the requesting user, or 404 (same scoping pattern as every other per-user view in this app). See docs/decisions.md #101.
+
+Requires authentication.
+
+Status
+
+Implemented
+
+---
+
+### Get Shared Quiz
+
+GET /api/v1/quiz-shares/\<token\>/
+
+Description
+
+Replays the exact quiz behind a share token — same mode, difficulty, length, and ordered card/set targets as the original attempt it points at, rebuilt fresh through the same question-building logic Get Quiz Questions uses (so images are freshly re-masked, and `guess_set_icon`'s multiple-choice distractors are freshly re-rolled; only the *target* stays fixed). Response: `{"quiz_mode", "difficulty", "shared_by": {"id", "username"}, "questions": [...]}` — `questions` is the same shape Get Quiz Questions returns. 404 for an unknown or malformed token.
+
+No authentication required — a guest can open and play a shared link the same way they could already start any quiz from the picker (see docs/decisions.md #011, #101); only saving the resulting attempt requires login. Throttled (`quiz-share` scope, 30/min) since the token is a public, unauthenticated DB lookup key.
 
 Status
 

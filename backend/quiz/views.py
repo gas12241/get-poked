@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 from cards.models import Card, Set
 
 from .eligibility import DIFFICULTIES, GUESS_CARD, GUESS_HP, GUESS_SET, eligible_card_ids
-from .models import QuizAttempt
+from .models import QuizAttempt, QuizShare
 from .questions import build_question, check_answer
 from .serializers import (
     QuizAttemptCreateSerializer,
@@ -116,6 +116,58 @@ class QuizAttemptCreateView(generics.CreateAPIView):
         # see docs/decisions.md #088.
         output = QuizAttemptDetailSerializer(attempt, context=self.get_serializer_context())
         return Response(output.data, status=status.HTTP_201_CREATED)
+
+
+class QuizShareCreateView(APIView):
+    # Scoped to request.user, same pattern as every other per-user view in
+    # this app — another account's attempt id 404s rather than just being
+    # forbidden. See docs/decisions.md #101.
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        attempt = get_object_or_404(QuizAttempt, pk=request.data.get("attempt"), user=request.user)
+        # get_or_create, not create — repeat "Share this quiz" clicks on
+        # the same attempt return the same link rather than minting a new
+        # one each time.
+        share, _ = QuizShare.objects.get_or_create(attempt=attempt)
+        return Response({"token": str(share.token)}, status=status.HTTP_201_CREATED)
+
+
+class QuizShareDetailView(APIView):
+    # Public and unauthenticated by design — see docs/decisions.md #101
+    # (a guest can already play any quiz today; a shared link is no
+    # different). throttle_scope guards the token lookup itself, same
+    # reasoning as the existing email-verification scope.
+    permission_classes = [permissions.AllowAny]
+    throttle_scope = "quiz-share"
+
+    def get(self, request, token):
+        share = get_object_or_404(QuizShare.objects.select_related("attempt__user"), token=token)
+        attempt = share.attempt
+        answers = (
+            attempt.answers.select_related("card__set", "set")
+            .prefetch_related("card__types")
+            .order_by("order")
+        )
+        # Replays the exact targets the original attempt asked about, in
+        # order — rebuilt fresh through the same builders QuizQuestionsView
+        # already uses, so images are re-masked and guess_set_icon's
+        # multiple-choice distractors are freshly re-rolled each time the
+        # link is opened (only the target set itself stays fixed).
+        questions = [
+            build_set_icon_question(answer.set, attempt.difficulty)
+            if answer.set_id
+            else build_question(answer.card, attempt.quiz_mode, request)
+            for answer in answers
+        ]
+        return Response(
+            {
+                "quiz_mode": attempt.quiz_mode,
+                "difficulty": attempt.difficulty,
+                "shared_by": {"id": attempt.user_id, "username": attempt.user.username},
+                "questions": questions,
+            }
+        )
 
 
 class QuizAttemptDatesView(APIView):

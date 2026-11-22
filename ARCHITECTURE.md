@@ -302,6 +302,12 @@ Totals are summed raw correct/total_questions, not averaged per-attempt percenta
 
 The "today" column is dynamic: `QuizStatsSection` reads the same `date` URL param `QuizHistorySection` already owns (via its own independent `useSearchParams()` call, not prop-drilled between the two sibling sections), so selecting a day on the history calendar swaps "Today" for that day's own stats, labeled with its actual date. No date selected falls back to the real UTC today. See docs/decisions.md #098.
 
+### Shareable Quiz Links
+
+A completed quiz can be shared with a link that replays the exact same quiz for whoever opens it. `QuizShare` is a `OneToOneField` to the sharer's own `QuizAttempt` plus a public `token`, nothing else — mode, difficulty, length, and the ordered card/set targets all already live on the attempt and its answers, so none of it is duplicated. `POST /api/v1/quiz-shares/` creates (or, `get_or_create`, returns the existing) share for one of the caller's own attempts; `GET /api/v1/quiz-shares/<token>/` is public (same `AllowAny` posture as the rest of quiz-taking, throttled since it resolves a token) and rebuilds each question fresh through the same `build_question`/`build_set_icon_question` functions `GET /api/v1/quiz/` already uses, driven by the stored targets in order instead of a random sample — images are re-masked and `guess_set_icon`'s distractors are freshly re-rolled on every open, only the target itself stays fixed.
+
+Taking a shared quiz needs no special handling for an unauthenticated recipient — quiz-taking was already `AllowAny` end to end (see Quiz Access above); a guest opening a link plays through and sees their score exactly as a guest starting any quiz from the picker already could, and simply doesn't get a saved attempt. When the recipient *is* logged in and saves, the frontend passes the share's token back on `POST /api/v1/quiz-attempts/` as `shared_token`, and the saved `QuizAttempt.shared_by` is stamped with the original sharer (`SET_NULL` on that FK, so the attempt survives the sharer's account later disappearing — it only loses the attribution). `QuizAttemptDetailPage` shows "Shared by `<username>`" when set. See docs/decisions.md #101.
+
 ---
 
 ## Caching & Deployment

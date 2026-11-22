@@ -141,6 +141,7 @@ REST_FRAMEWORK = {
         "email-change": "3/hour",
         "login": "10/min",
         "change-password": "5/min",
+        "quiz-share": "30/min",
     },
 }
 

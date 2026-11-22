@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   checkQuizAnswer,
+  createQuizShare,
   getQuizAttemptDetail,
   getQuizQuestions,
+  getQuizShare,
   submitQuizAttempt,
 } from '../api/quiz';
 import type {
@@ -12,6 +15,7 @@ import type {
   QuizAttemptDetail,
   QuizDifficulty,
   QuizMode,
+  QuizShareDetail,
 } from '../api/quiz';
 import { filterSetNameSuggestions, getCardNames, getSets } from '../api/cards';
 import type { QuizSession } from '../store/quizStore';
@@ -459,6 +463,7 @@ function QuizSummary({
       const attempt = await submitQuizAttempt({
         quiz_mode: session.mode,
         difficulty: session.difficulty,
+        shared_token: session.sharedToken ?? undefined,
         answers: session.answers.map(
           ({ card, set, guess, time_taken_seconds, order }) => ({
             card,
@@ -539,6 +544,11 @@ function QuizSummary({
     statusText = <p>Log in to save your score.</p>;
   }
 
+  // Only once the attempt is actually saved — a share link has to point
+  // at a real QuizAttempt (see QuizShareCreateView), same reasoning as
+  // why the breakdown itself only renders once saved.
+  const canShare = isAuthenticated && session.attemptId != null;
+
   return (
     <div className="quiz-summary">
       <h2>Quiz complete!</h2>
@@ -573,19 +583,98 @@ function QuizSummary({
           </strong>
         </p>
         {statusText}
+        {canShare && <ShareQuizLink attemptId={session.attemptId as number} />}
       </div>
       <button onClick={onPlayAgain}>Play again</button>
     </div>
   );
 }
 
+// Shown in QuizSummary's footer once the attempt is saved — creates a
+// link that replays this exact quiz for whoever opens it (see
+// QuizShareDetailView), and shows it ready to copy. get_or_create on the
+// backend means clicking "Share this quiz" again just shows the same
+// link instead of minting a new one. See docs/decisions.md #101.
+function ShareQuizLink({ attemptId }: { attemptId: number }) {
+  const [copied, setCopied] = useState(false);
+  const shareMutation = useMutation({
+    mutationFn: () => createQuizShare(attemptId),
+  });
+
+  if (shareMutation.data) {
+    const url = `${window.location.origin}/quiz/shared/${shareMutation.data.token}`;
+    return (
+      <div className="quiz-share-link">
+        <input aria-label="Shareable quiz link" readOnly value={url} />
+        <button
+          type="button"
+          onClick={() => {
+            navigator.clipboard.writeText(url);
+            setCopied(true);
+          }}
+        >
+          {copied ? 'Copied!' : 'Copy link'}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button type="button" onClick={() => shareMutation.mutate()}>
+      {shareMutation.isPending ? 'Creating link...' : 'Share this quiz'}
+    </button>
+  );
+}
+
+// Shown in place of ModeSelection when arriving via /quiz/shared/:token —
+// mode/difficulty/length are all fixed by the original attempt the link
+// points at, so there's nothing to pick, just a chance to see whose quiz
+// it is before committing to it. See docs/decisions.md #101.
+function SharedQuizStart({
+  share,
+  onStart,
+}: {
+  share: QuizShareDetail;
+  onStart: () => void;
+}) {
+  return (
+    <div className="quiz-mode-selection">
+      <h1>Quiz</h1>
+      <p>
+        Shared by <strong>{share.shared_by.username}</strong>
+      </p>
+      <p>
+        {modeLabel(share.quiz_mode)} &middot;{' '}
+        {difficultyLabel(share.difficulty)} &middot; {share.questions.length}{' '}
+        {share.questions.length === 1 ? 'question' : 'questions'}
+      </p>
+      <button type="button" className="quiz-start-button" onClick={onStart}>
+        Start Quiz
+      </button>
+    </div>
+  );
+}
+
 function QuizPage() {
+  const { token: sharedToken } = useParams<{ token?: string }>();
+  const navigate = useNavigate();
   const session = useQuizStore((s) => s.session);
   const startSession = useQuizStore((s) => s.startSession);
   const recordAnswer = useQuizStore((s) => s.recordAnswer);
   const revealCurrent = useQuizStore((s) => s.revealCurrent);
   const markSubmitted = useQuizStore((s) => s.markSubmitted);
   const abandonSession = useQuizStore((s) => s.abandonSession);
+  // Plain abandonSession alone would leave the URL at /quiz/shared/:token,
+  // which re-shows SharedQuizStart for the same link forever — there'd be
+  // no way back to the normal mode picker/history. Navigate to the plain
+  // /quiz route too whenever leaving a shared session. See
+  // docs/decisions.md #101.
+  const exitSession = () => {
+    abandonSession();
+    if (sharedToken) {
+      navigate('/quiz');
+    }
+  };
   const isAuthenticated = useIsAuthenticated();
   const [mode, setMode] = useState<QuizMode>(MODES[0].value);
   const [questionCount, setQuestionCount] = useState(5);
@@ -607,6 +696,16 @@ function QuizPage() {
     // itself; QuizQuestionView's own currentRevealed check (#043) already
     // handles resuming an interrupted, not-yet-revealed first question.
     onSuccess: (data, mode) => startSession(mode, data.questions, difficulty),
+  });
+
+  // Arriving via /quiz/shared/:token with no session yet — fetches the
+  // fixed mode/difficulty/questions the link points at, shown through
+  // SharedQuizStart in place of the mode picker below. See
+  // docs/decisions.md #101.
+  const sharedQuizQuery = useQuery({
+    queryKey: ['quiz-share', sharedToken],
+    queryFn: () => getQuizShare(sharedToken as string),
+    enabled: Boolean(sharedToken) && !session,
   });
 
   // Covers both halves of starting a quiz: still fetching (session doesn't
@@ -636,6 +735,29 @@ function QuizPage() {
           revealCurrent();
           setPendingMode(null);
         }}
+      />
+    );
+  }
+
+  if (sharedToken && !session) {
+    if (sharedQuizQuery.isError) {
+      return <p>This quiz link wasn&apos;t found.</p>;
+    }
+    if (!sharedQuizQuery.data) {
+      return <p>Loading shared quiz...</p>;
+    }
+    const shareData = sharedQuizQuery.data;
+    return (
+      <SharedQuizStart
+        share={shareData}
+        onStart={() =>
+          startSession(
+            shareData.quiz_mode,
+            shareData.questions,
+            shareData.difficulty,
+            sharedToken,
+          )
+        }
       />
     );
   }
@@ -670,7 +792,7 @@ function QuizPage() {
         session={session}
         isAuthenticated={isAuthenticated}
         onSaved={markSubmitted}
-        onPlayAgain={abandonSession}
+        onPlayAgain={exitSession}
       />
     );
   }
@@ -680,7 +802,7 @@ function QuizPage() {
       key={session.currentIndex}
       session={session}
       onAnswered={recordAnswer}
-      onAbandon={abandonSession}
+      onAbandon={exitSession}
       onRevealed={revealCurrent}
     />
   );

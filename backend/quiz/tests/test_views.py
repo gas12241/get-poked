@@ -5,6 +5,7 @@ from io import BytesIO
 
 import responses
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import override_settings
 from django.urls import reverse
 from PIL import Image
@@ -12,7 +13,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from cards.models import Card, Set
-from quiz.models import QuizAttempt, QuizAttemptAnswer
+from quiz.models import QuizAttempt, QuizAttemptAnswer, QuizShare
 
 User = get_user_model()
 
@@ -532,6 +533,250 @@ class QuizAttemptCreateViewTests(QuizTestBase):
         self.assertEqual(answer["set"]["id"], target_set.id)
         self.assertEqual(answer["set"]["name"], "Sword & Shield")
         self.assertEqual(answer["set"]["image_symbol"], target_set.image_symbol)
+
+    def test_a_valid_shared_token_stamps_shared_by(self):
+        sharer = User.objects.create_user(email="sharer@example.com", password="s3cret-pass!")
+        original_attempt = QuizAttempt.objects.create(
+            user=sharer, quiz_mode="guess_card", difficulty="medium", score=1, total_questions=1
+        )
+        share = QuizShare.objects.create(attempt=original_attempt)
+        self.client.force_authenticate(self.user)
+        payload = {
+            "quiz_mode": "guess_card",
+            "difficulty": "medium",
+            "shared_token": str(share.token),
+            "answers": [
+                {
+                    "card": self.pokemon_card.id,
+                    "guess": "charizard",
+                    "time_taken_seconds": 1.0,
+                    "order": 0,
+                },
+            ],
+        }
+
+        response = self.client.post(reverse("quiz-attempt-create"), payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        attempt = QuizAttempt.objects.get(user=self.user)
+        self.assertEqual(attempt.shared_by, sharer)
+        self.assertEqual(response.data["shared_by"]["username"], sharer.username)
+
+    def test_an_unknown_shared_token_is_ignored_not_fatal(self):
+        self.client.force_authenticate(self.user)
+        payload = {
+            "quiz_mode": "guess_card",
+            "difficulty": "medium",
+            "shared_token": "00000000-0000-0000-0000-000000000000",
+            "answers": [
+                {
+                    "card": self.pokemon_card.id,
+                    "guess": "charizard",
+                    "time_taken_seconds": 1.0,
+                    "order": 0,
+                },
+            ],
+        }
+
+        response = self.client.post(reverse("quiz-attempt-create"), payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        attempt = QuizAttempt.objects.get(user=self.user)
+        self.assertIsNone(attempt.shared_by)
+
+    def test_no_shared_token_leaves_shared_by_null(self):
+        self.client.force_authenticate(self.user)
+        payload = {
+            "quiz_mode": "guess_card",
+            "difficulty": "medium",
+            "answers": [
+                {
+                    "card": self.pokemon_card.id,
+                    "guess": "charizard",
+                    "time_taken_seconds": 1.0,
+                    "order": 0,
+                },
+            ],
+        }
+
+        response = self.client.post(reverse("quiz-attempt-create"), payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(response.data["shared_by"])
+
+
+class QuizShareCreateViewTests(QuizTestBase):
+    def setUp(self):
+        super().setUp()
+        self.user = User.objects.create_user(email="tester@example.com", password="s3cret-pass!")
+        self.other_user = User.objects.create_user(
+            email="other@example.com", password="s3cret-pass!"
+        )
+
+    def _attempt(self, user):
+        return QuizAttempt.objects.create(
+            user=user, quiz_mode="guess_card", difficulty="medium", score=1, total_questions=1
+        )
+
+    def test_requires_authentication(self):
+        attempt = self._attempt(self.user)
+        response = self.client.post(
+            reverse("quiz-share-create"), {"attempt": attempt.id}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_creates_a_share_for_the_callers_own_attempt(self):
+        attempt = self._attempt(self.user)
+        self.client.force_authenticate(self.user)
+
+        response = self.client.post(
+            reverse("quiz-share-create"), {"attempt": attempt.id}, format="json"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        share = QuizShare.objects.get(attempt=attempt)
+        self.assertEqual(response.data["token"], str(share.token))
+
+    def test_returns_404_rather_than_sharing_another_users_attempt(self):
+        theirs = self._attempt(self.other_user)
+        self.client.force_authenticate(self.user)
+
+        response = self.client.post(
+            reverse("quiz-share-create"), {"attempt": theirs.id}, format="json"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertFalse(QuizShare.objects.filter(attempt=theirs).exists())
+
+    def test_repeat_calls_return_the_same_token(self):
+        attempt = self._attempt(self.user)
+        self.client.force_authenticate(self.user)
+
+        first = self.client.post(
+            reverse("quiz-share-create"), {"attempt": attempt.id}, format="json"
+        )
+        second = self.client.post(
+            reverse("quiz-share-create"), {"attempt": attempt.id}, format="json"
+        )
+
+        self.assertEqual(first.data["token"], second.data["token"])
+        self.assertEqual(QuizShare.objects.filter(attempt=attempt).count(), 1)
+
+
+class QuizShareDetailViewTests(QuizTestBase):
+    def setUp(self):
+        super().setUp()
+        cache.clear()
+        self.sharer = User.objects.create_user(email="sharer@example.com", password="s3cret-pass!")
+
+    def test_returns_404_for_an_unknown_token(self):
+        response = self.client.get(
+            reverse("quiz-share-detail", kwargs={"token": "00000000-0000-0000-0000-000000000000"})
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    @responses.activate
+    def test_replays_the_exact_card_targets_in_order(self):
+        responses.add(
+            responses.GET, self.pokemon_card.image_large, body=make_test_image_bytes(), status=200
+        )
+        responses.add(
+            responses.GET,
+            self.trainer_common_card.image_large,
+            body=make_test_image_bytes(),
+            status=200,
+        )
+        attempt = QuizAttempt.objects.create(
+            user=self.sharer,
+            quiz_mode="guess_card",
+            difficulty="medium",
+            score=2,
+            total_questions=2,
+        )
+        QuizAttemptAnswer.objects.create(
+            quiz_attempt=attempt,
+            card=self.pokemon_card,
+            guess="charizard",
+            is_correct=True,
+            time_taken_seconds=1.0,
+            order=0,
+        )
+        QuizAttemptAnswer.objects.create(
+            quiz_attempt=attempt,
+            card=self.trainer_common_card,
+            guess="professor oak",
+            is_correct=True,
+            time_taken_seconds=1.0,
+            order=1,
+        )
+        share = QuizShare.objects.create(attempt=attempt)
+
+        response = self.client.get(reverse("quiz-share-detail", kwargs={"token": share.token}))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["quiz_mode"], "guess_card")
+        self.assertEqual(response.data["difficulty"], "medium")
+        self.assertEqual(response.data["shared_by"]["username"], self.sharer.username)
+        questions = response.data["questions"]
+        self.assertEqual(len(questions), 2)
+        self.assertEqual(questions[0]["card"], self.pokemon_card.id)
+        self.assertEqual(questions[1]["card"], self.trainer_common_card.id)
+        # The field being guessed is never present — same principle as a
+        # freshly-sampled quiz (docs/decisions.md #029).
+        self.assertNotIn("name", questions[0])
+
+    def test_replays_a_guess_set_icon_target(self):
+        target_set = Set.objects.create(
+            tcg_id="swsh1",
+            name="Sword & Shield",
+            series="Sword & Shield",
+            release_date=date(2020, 2, 7),
+            image_symbol="https://example.com/swsh1-symbol.png",
+        )
+        attempt = QuizAttempt.objects.create(
+            user=self.sharer,
+            quiz_mode="guess_set_icon",
+            difficulty="easy",
+            score=1,
+            total_questions=1,
+        )
+        QuizAttemptAnswer.objects.create(
+            quiz_attempt=attempt,
+            set=target_set,
+            guess="Sword & Shield",
+            is_correct=True,
+            time_taken_seconds=1.0,
+            order=0,
+        )
+        share = QuizShare.objects.create(attempt=attempt)
+
+        response = self.client.get(reverse("quiz-share-detail", kwargs={"token": share.token}))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        questions = response.data["questions"]
+        self.assertEqual(questions[0]["set"], target_set.id)
+        self.assertIn("choices", questions[0])
+
+    def test_throttled_after_limit(self):
+        # Shares no scope with any other endpoint, but clean up either
+        # way so a later test run isn't left with a warm counter.
+        cache.clear()
+        self.addCleanup(cache.clear)
+        attempt = QuizAttempt.objects.create(
+            user=self.sharer,
+            quiz_mode="guess_card",
+            difficulty="medium",
+            score=0,
+            total_questions=1,
+        )
+        share = QuizShare.objects.create(attempt=attempt)
+
+        for _ in range(30):
+            response = self.client.get(reverse("quiz-share-detail", kwargs={"token": share.token}))
+            self.assertNotEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+        response = self.client.get(reverse("quiz-share-detail", kwargs={"token": share.token}))
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
 
 
 class QuizAttemptDatesViewTests(QuizTestBase):

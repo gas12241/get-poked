@@ -35,6 +35,27 @@ export function mockQuizAttemptDetail(overrides: Record<string, unknown> = {}) {
         order: 0,
       },
     ],
+    shared_by: null,
+    ...overrides,
+  };
+}
+
+export function mockQuizShareDetail(overrides: Record<string, unknown> = {}) {
+  return {
+    quiz_mode: 'guess_card',
+    difficulty: 'medium',
+    shared_by: { id: 2, username: 'alex' },
+    questions: [
+      {
+        card: 1,
+        image: 'https://example.com/masked.png',
+        rarity: 'Rare Holo',
+        supertype: 'Pokémon',
+        types: ['Fire'],
+        hp: '120',
+        card_set: { id: 1, name: 'Base' },
+      },
+    ],
     ...overrides,
   };
 }
@@ -193,6 +214,14 @@ export const handlers = [
 
   http.post(`${BASE_URL}/api/v1/quiz-attempts/`, () => {
     return HttpResponse.json(mockQuizAttemptDetail());
+  }),
+
+  http.post(`${BASE_URL}/api/v1/quiz-shares/`, () => {
+    return HttpResponse.json({ token: 'mock-share-token' }, { status: 201 });
+  }),
+
+  http.get(`${BASE_URL}/api/v1/quiz-shares/:token/`, () => {
+    return HttpResponse.json(mockQuizShareDetail());
   }),
 
   http.get(`${BASE_URL}/api/v1/quiz-attempts/dates/`, () => {

@@ -24,6 +24,7 @@ const router = createBrowserRouter([
       { path: '/', element: <CardListPage /> },
       { path: '/cards/:id', element: <CardDetailPage /> },
       { path: '/quiz', element: <QuizPage /> },
+      { path: '/quiz/shared/:token', element: <QuizPage /> },
       { path: '/quiz-history/:id', element: <QuizAttemptDetailPage /> },
       { path: '/horoscope', element: <HoroscopePage /> },
       { path: '/login', element: <LoginPage /> },

@@ -898,6 +898,33 @@
   }
 }
 
+/* The "Share this quiz" link row — input + Copy button side by side, so
+   this overrides .quiz-summary button's own block/auto-margin layout
+   (same specificity, later in the cascade) just for the button here. */
+.quiz-share-link {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.quiz-share-link input {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  width: 220px;
+}
+
+.quiz-share-link button {
+  margin: 0;
+  white-space: nowrap;
+}
+
 .quiz-question {
   /* Wider than the other two quiz screens (deliberately split out of their
      shared rule, not shared with them) — room for the image and its stats

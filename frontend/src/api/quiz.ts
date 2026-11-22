@@ -56,6 +56,9 @@ export interface QuizAnswerInput {
 export interface QuizAttemptCreateInput {
   quiz_mode: QuizMode;
   difficulty: QuizDifficulty;
+  // Present only when this attempt is being saved from a shared quiz
+  // link — lets the backend stamp shared_by on the saved attempt.
+  shared_token?: string;
   answers: {
     card?: number;
     set?: number;
@@ -63,6 +66,13 @@ export interface QuizAttemptCreateInput {
     time_taken_seconds: number;
     order: number;
   }[];
+}
+
+// Who shared the quiz link this attempt was taken from, if any — null for
+// an attempt started normally from the mode picker.
+export interface QuizSharedBy {
+  id: number;
+  username: string;
 }
 
 export interface QuizAttemptAnswerDetail {
@@ -87,6 +97,7 @@ export interface QuizAttemptDetail {
   total_questions: number;
   completed_at: string;
   answers: QuizAttemptAnswerDetail[];
+  shared_by: QuizSharedBy | null;
 }
 
 export interface QuizAttemptSummary {
@@ -96,6 +107,17 @@ export interface QuizAttemptSummary {
   score: number;
   total_questions: number;
   completed_at: string;
+  shared_by: QuizSharedBy | null;
+}
+
+// Returned by getQuizShare — mode/difficulty/length are all fixed by the
+// original attempt the link points at, so there's nothing left to pick;
+// `questions` is already the exact same shape getQuizQuestions returns.
+export interface QuizShareDetail {
+  quiz_mode: QuizMode;
+  difficulty: QuizDifficulty;
+  shared_by: QuizSharedBy;
+  questions: QuizQuestion[];
 }
 
 export interface QuizAttemptDatesResponse {
@@ -192,3 +214,12 @@ export const getQuizAttemptDetail = (id: number) =>
 // of their own timezone.
 export const getQuizAttemptStats = (date: string) =>
   apiClient<QuizAttemptStats>(`/api/v1/quiz-attempts/stats/?date=${date}`);
+
+export const createQuizShare = (attempt: number) =>
+  apiClient<{ token: string }>('/api/v1/quiz-shares/', {
+    method: 'POST',
+    body: JSON.stringify({ attempt }),
+  });
+
+export const getQuizShare = (token: string) =>
+  apiClient<QuizShareDetail>(`/api/v1/quiz-shares/${token}/`);

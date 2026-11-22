@@ -236,10 +236,32 @@ Fields
 - score (cached total correct, to avoid recomputing from QuizAttemptAnswer on every read)
 - total_questions
 - completed_at
+- shared_by (nullable FK to User, `on_delete=SET_NULL` — set only when this attempt was saved from someone else's shared quiz link; null for an attempt started normally. SET_NULL rather than CASCADE so the attempt survives the original sharer's account later going away, only losing the attribution. See docs/decisions.md #101.)
 
 Relationship
 
-Belongs to one User. Has many QuizAttemptAnswer.
+Belongs to one User. Has many QuizAttemptAnswer. May belong to a `shared_by` User (the original sharer), and may have one QuizShare (if this attempt itself has been shared onward).
+
+---
+
+### QuizShare
+
+Purpose
+
+A shareable link to replay someone else's completed quiz.
+
+Fields
+
+- id
+- token (UUID, unique, auto-generated — the public identifier used in the link, never the row's own integer id)
+- attempt (`OneToOneField` to QuizAttempt, `on_delete=CASCADE`)
+- created_at
+
+Nothing about the quiz itself (mode, difficulty, length, the ordered card/set targets) is duplicated here — all of it is read from `attempt`/`attempt.answers` when the link is opened. One share per attempt (the `OneToOneField` enforces this at the DB level), which is what makes repeat "Share this quiz" clicks idempotent — see docs/decisions.md #101.
+
+Relationship
+
+Belongs to one QuizAttempt (`on_delete=CASCADE` — a share has no meaning without the attempt it points at).
 
 ---
 

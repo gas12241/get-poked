@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Route, Routes } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
 import { mockQuizAttemptDetail } from '../mocks/handlers';
@@ -659,5 +660,137 @@ describe('QuizPage', () => {
     // entirely and the guess form is there immediately.
     expect(screen.getByLabelText('Your guess')).toBeInTheDocument();
     expect(screen.getByText('Question 1 of 1')).toBeInTheDocument();
+  });
+});
+
+function renderSharedQuiz(token = 'share-token-abc') {
+  renderWithProviders(
+    <Routes>
+      <Route path="/quiz/shared/:token" element={<QuizPage />} />
+    </Routes>,
+    { route: `/quiz/shared/${token}` },
+  );
+}
+
+describe('QuizPage shared quiz links', () => {
+  it('shows who shared it and the fixed mode/difficulty/length, skipping the mode picker', async () => {
+    renderSharedQuiz();
+
+    expect(
+      await screen.findByText('alex', { selector: 'strong' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Shared by', { exact: false })).toBeInTheDocument();
+    expect(screen.getByText(/Guess the Card's Name/)).toBeInTheDocument();
+    expect(screen.getByText(/Medium/)).toBeInTheDocument();
+    expect(screen.getByText(/1 question/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('radiogroup', { name: 'Quiz mode' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('starts the exact shared quiz once Start Quiz is clicked', async () => {
+    renderSharedQuiz();
+    await screen.findByText('alex', { selector: 'strong' });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Start Quiz' }));
+
+    await screen.findByLabelText(
+      'Your guess',
+      {},
+      { timeout: REEL_TIMEOUT_MS },
+    );
+    expect(screen.getByText('Question 1 of 1')).toBeInTheDocument();
+  });
+
+  it('shows an error for an unknown or expired link', async () => {
+    server.use(
+      http.get(`${BASE_URL}/api/v1/quiz-shares/:token/`, () => {
+        return new HttpResponse(null, { status: 404 });
+      }),
+    );
+
+    renderSharedQuiz();
+
+    expect(
+      await screen.findByText("This quiz link wasn't found."),
+    ).toBeInTheDocument();
+  });
+
+  it('sends the shared_token when saving an attempt started from a share link', async () => {
+    useAuthStore.setState({ accessToken: 'test-token' });
+    let capturedBody: { shared_token?: string } | null = null;
+    server.use(
+      http.post(`${BASE_URL}/api/v1/quiz-attempts/`, async ({ request }) => {
+        capturedBody = (await request.json()) as { shared_token?: string };
+        return HttpResponse.json(mockQuizAttemptDetail());
+      }),
+    );
+    renderSharedQuiz('share-token-xyz');
+    await screen.findByText('alex', { selector: 'strong' });
+    await userEvent.click(screen.getByRole('button', { name: 'Start Quiz' }));
+    await screen.findByLabelText(
+      'Your guess',
+      {},
+      { timeout: REEL_TIMEOUT_MS },
+    );
+    await userEvent.type(screen.getByLabelText('Your guess'), 'Charizard');
+    await userEvent.click(screen.getByRole('button', { name: 'Submit guess' }));
+    await screen.findByText('Correct!');
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByText('Quiz complete!');
+
+    await waitFor(() =>
+      expect(capturedBody?.shared_token).toBe('share-token-xyz'),
+    );
+  });
+
+  it('"Play again" after a shared quiz leaves /quiz/shared/:token for the normal mode picker', async () => {
+    renderWithProviders(
+      <Routes>
+        <Route path="/quiz" element={<QuizPage />} />
+        <Route path="/quiz/shared/:token" element={<QuizPage />} />
+      </Routes>,
+      { route: '/quiz/shared/share-token-abc' },
+    );
+    await screen.findByText('alex', { selector: 'strong' });
+    await userEvent.click(screen.getByRole('button', { name: 'Start Quiz' }));
+    await screen.findByLabelText(
+      'Your guess',
+      {},
+      { timeout: REEL_TIMEOUT_MS },
+    );
+    await userEvent.type(screen.getByLabelText('Your guess'), 'Charizard');
+    await userEvent.click(screen.getByRole('button', { name: 'Submit guess' }));
+    await screen.findByText('Correct!');
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByText('Quiz complete!');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Play again' }));
+
+    // Back on the normal mode picker, not SharedQuizStart again — the
+    // radio group only renders there, and the history section is only
+    // reachable from the plain /quiz route.
+    expect(
+      await screen.findByRole('radiogroup', { name: 'Quiz mode' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('alex', { selector: 'strong' }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('QuizPage "Share this quiz"', () => {
+  it('creates a share link and shows it ready to copy once the attempt is saved', async () => {
+    useAuthStore.setState({ accessToken: 'test-token' });
+    await completeOneQuestionQuiz();
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Share this quiz' }),
+    );
+
+    const link = await screen.findByLabelText('Shareable quiz link');
+    expect((link as HTMLInputElement).value).toContain(
+      '/quiz/shared/mock-share-token',
+    );
   });
 });

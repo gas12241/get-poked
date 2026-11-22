@@ -3,6 +3,7 @@ import { screen, within } from '@testing-library/react';
 import { Route, Routes } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
+import { mockQuizAttemptDetail } from '../mocks/handlers';
 import { renderWithProviders } from '../test/renderWithProviders';
 import QuizAttemptDetailPage from './QuizAttemptDetailPage';
 
@@ -49,6 +50,37 @@ describe('QuizAttemptDetailPage', () => {
     expect(
       await screen.findByText("Couldn't load this quiz attempt."),
     ).toBeInTheDocument();
+  });
+
+  it('shows who shared it when the attempt has shared_by set', async () => {
+    server.use(
+      http.get(`${BASE_URL}/api/v1/quiz-attempts/:id/`, () => {
+        return HttpResponse.json(
+          mockQuizAttemptDetail({ shared_by: { id: 2, username: 'alex' } }),
+        );
+      }),
+    );
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/quiz-history/:id" element={<QuizAttemptDetailPage />} />
+      </Routes>,
+      { route: '/quiz-history/1' },
+    );
+
+    expect(await screen.findByText('Shared by alex')).toBeInTheDocument();
+  });
+
+  it('shows nothing extra when the attempt has no shared_by', async () => {
+    renderWithProviders(
+      <Routes>
+        <Route path="/quiz-history/:id" element={<QuizAttemptDetailPage />} />
+      </Routes>,
+      { route: '/quiz-history/1' },
+    );
+
+    await screen.findByText("Guess the Card's Name");
+    expect(screen.queryByText(/Shared by/)).not.toBeInTheDocument();
   });
 
   it('shows a "Back to Quiz" button', async () => {
