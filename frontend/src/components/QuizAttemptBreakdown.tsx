@@ -11,41 +11,57 @@ function QuizAttemptBreakdown({
 }) {
   return (
     <ol className="quiz-attempt-breakdown">
-      {answers.map((answer) => (
-        <li key={answer.order} className="quiz-attempt-breakdown-row">
-          {answer.set ? (
-            // No set detail page exists in this app — a plain labeled
-            // icon, not a link to nowhere. See docs/decisions.md #096.
+      {answers.map((answer) => {
+        const content = (
+          <>
             <div className="quiz-attempt-breakdown-card">
-              <img src={answer.set.image_symbol} alt={answer.set.name} />
+              {answer.set ? (
+                <img src={answer.set.image_symbol} alt={answer.set.name} />
+              ) : (
+                answer.card && (
+                  <img src={answer.card.image_small} alt={answer.card.name} />
+                )
+              )}
             </div>
-          ) : (
-            answer.card && (
+            <div className="quiz-attempt-breakdown-text">
+              <p>Your guess: {answer.guess || '—'}</p>
+              <p>Correct answer: {answer.correct_answer}</p>
+              <p>Time: {answer.time_taken_seconds.toFixed(1)}s</p>
+            </div>
+            <span
+              className={
+                answer.is_correct
+                  ? 'quiz-feedback-correct'
+                  : 'quiz-feedback-incorrect'
+              }
+            >
+              {answer.is_correct ? 'Correct' : 'Incorrect'}
+            </span>
+          </>
+        );
+
+        return (
+          <li key={answer.order} className="quiz-attempt-breakdown-row">
+            {answer.card ? (
+              // The whole tile is the click target, not just the image —
+              // same hover affordance as the top-left nav links
+              // (.main-nav-links a), reused here via
+              // .quiz-attempt-breakdown-content's own :hover rule.
               <Link
                 to={`/cards/${answer.card.id}`}
                 state={{ from: 'quiz' }}
-                className="quiz-attempt-breakdown-card"
+                className="quiz-attempt-breakdown-content"
               >
-                <img src={answer.card.image_small} alt={answer.card.name} />
+                {content}
               </Link>
-            )
-          )}
-          <div className="quiz-attempt-breakdown-text">
-            <p>Your guess: {answer.guess || '—'}</p>
-            <p>Correct answer: {answer.correct_answer}</p>
-            <p>Time: {answer.time_taken_seconds.toFixed(1)}s</p>
-          </div>
-          <span
-            className={
-              answer.is_correct
-                ? 'quiz-feedback-correct'
-                : 'quiz-feedback-incorrect'
-            }
-          >
-            {answer.is_correct ? 'Correct' : 'Incorrect'}
-          </span>
-        </li>
-      ))}
+            ) : (
+              // No set detail page exists in this app — a plain labeled
+              // row, not a link to nowhere. See docs/decisions.md #096.
+              <div className="quiz-attempt-breakdown-content">{content}</div>
+            )}
+          </li>
+        );
+      })}
     </ol>
   );
 }

@@ -834,6 +834,43 @@
   text-align: center;
 }
 
+/* Same label-plus-bolded-value treatment as .cards-showing (CardListPage's
+   "Showing X from Y" line) rather than inventing a new one — one line per
+   quiz-type fact (mode/difficulty/length) rather than all three run
+   together, so .quiz-summary stays at .quiz-mode-selection's own 480px;
+   none of these lines are long enough on their own to need more room. */
+.quiz-summary-meta {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.quiz-summary-meta p {
+  margin: 2px 0 0;
+}
+
+.quiz-summary-meta strong {
+  color: var(--text-h);
+}
+
+/* Score/time/save-status, moved below the breakdown — margin-top (not the
+   breakdown's own, which stays 0 so it doesn't also push the breakdown
+   away from the meta lines above it) is what keeps this from sitting
+   right up against the last breakdown tile. */
+.quiz-summary-footer {
+  margin-top: 24px;
+}
+
+.quiz-summary-footer p {
+  margin: 2px 0 0;
+}
+
+/* Same bolded-value treatment as .quiz-summary-meta strong above, for
+   consistency across the whole summary screen. */
+.quiz-summary-footer strong {
+  color: var(--text-h);
+}
+
 /* "Save score" and "Play again" — plain, unstyled buttons by default
    (browser chrome), which stood out next to the rest of the Quiz page's
    consistent pill-button look (.quiz-picker button, .quiz-start-button,
@@ -2071,7 +2108,10 @@
   gap: 10px;
 }
 
-.quiz-attempt-breakdown-row {
+/* The clickable (card) and non-clickable (set, no detail page exists —
+   see docs/decisions.md #096) rows share this layout, whether it renders
+   as a <Link> or a plain <div> — see QuizAttemptBreakdown.tsx. */
+.quiz-attempt-breakdown-content {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -2079,6 +2119,18 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--bg);
+}
+
+/* Whole-tile hover, not just the image — same treatment as the top-left
+   nav links (.main-nav-links a's own :hover). Link-only: a set row has
+   nowhere to go, so it gets no hover cue. */
+a.quiz-attempt-breakdown-content {
+  text-decoration: none;
+  color: inherit;
+
+  &:hover {
+    background: var(--accent-bg);
+  }
 }
 
 .quiz-attempt-breakdown-card img {

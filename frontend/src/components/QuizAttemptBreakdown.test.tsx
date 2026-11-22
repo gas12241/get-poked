@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { renderWithProviders } from '../test/renderWithProviders';
 import QuizAttemptBreakdown from './QuizAttemptBreakdown';
 import type { QuizAttemptAnswerDetail } from '../api/quiz';
@@ -31,14 +31,17 @@ function makeCardAnswer(
 }
 
 describe('QuizAttemptBreakdown', () => {
-  it('links a card-based row to its own detail page', () => {
+  it('makes the whole tile a link to the card detail page, not just its image', () => {
     renderWithProviders(<QuizAttemptBreakdown answers={[makeCardAnswer()]} />);
 
-    expect(screen.getByRole('link', { name: 'Charizard' })).toHaveAttribute(
-      'href',
-      '/cards/1',
-    );
-    expect(screen.getByText('Your guess: Charizard')).toBeInTheDocument();
+    const link = screen.getByRole('link');
+    expect(link).toHaveAttribute('href', '/cards/1');
+    // The guess/answer/time text and the image both sit inside the same
+    // link, not just the image — the whole tile is the click target.
+    expect(
+      within(link).getByRole('img', { name: 'Charizard' }),
+    ).toBeInTheDocument();
+    expect(within(link).getByText('Your guess: Charizard')).toBeInTheDocument();
   });
 
   it('shows a set-based row as a plain icon with no link', () => {

@@ -319,7 +319,74 @@ describe('QuizPage', () => {
 
   it('shows feedback for a guess and advances to the summary', async () => {
     await completeOneQuestionQuiz();
-    expect(screen.getByText('Score: 1 / 1')).toBeInTheDocument();
+    // Bolded value, same pattern as the quiz-type meta lines below.
+    expect(
+      screen.getByText('1 / 1', { selector: 'strong' }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows the mode/difficulty/length and the total time taken on the summary', async () => {
+    await completeOneQuestionQuiz();
+
+    // Default difficulty (medium, see QuizPage's own useState default) —
+    // startQuiz only picks a mode, so this pins what's actually selected.
+    // Each fact is its own line; the bolded-value treatment is the same
+    // "selector: 'strong'" pattern CardListPage's own "Showing X from Y"
+    // tests already use.
+    expect(
+      screen.getByText("Guess the Card's Name", { selector: 'strong' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Medium', { selector: 'strong' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('1 question', { selector: 'strong' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Quiz Type:', { exact: false }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Difficulty:', { exact: false }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Quiz Length:', { exact: false }),
+    ).toBeInTheDocument();
+    // Real elapsed time, so not asserting an exact number — just the
+    // total/average shape, which for a one-question quiz are equal. The
+    // bolded value is its own element now, so matched separately from its
+    // "Time taken:" label.
+    expect(
+      screen.getByText('Time taken:', { exact: false }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/^\d+\.\d+s total \(\d+\.\d+s\/question\)$/, {
+        selector: 'strong',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows the breakdown, then score/time, then "Score saved.", then Play again — in that order', async () => {
+    useAuthStore.setState({ accessToken: 'test-token' });
+    await completeOneQuestionQuiz();
+
+    const breakdown = screen.getByText('Your guess: Charizard');
+    const scoreText = screen.getByText('Score:', { exact: false });
+    const timeText = screen.getByText('Time taken:', { exact: false });
+    const savedText = await screen.findByText('Score saved.');
+    const playAgainButton = screen.getByRole('button', {
+      name: 'Play again',
+    });
+
+    const inOrder = (first: Element, second: Element) =>
+      Boolean(
+        first.compareDocumentPosition(second) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+
+    expect(inOrder(breakdown, scoreText)).toBe(true);
+    expect(inOrder(scoreText, timeText)).toBe(true);
+    expect(inOrder(timeText, savedText)).toBe(true);
+    expect(inOrder(savedText, playAgainButton)).toBe(true);
   });
 
   it('prompts an unauthenticated user to log in instead of offering to save', async () => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   checkQuizAnswer,
@@ -22,6 +22,11 @@ import {
   MODES,
   SET_ICON_DIFFICULTY_DESCRIPTIONS,
 } from '../lib/quizOptions';
+import {
+  difficultyLabel,
+  formatSeconds,
+  modeLabel,
+} from '../lib/quizAttemptFormatting';
 import NameAutocomplete from '../components/NameAutocomplete';
 import { StartingReel } from '../components/CaseOpeningReel';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -412,6 +417,18 @@ function QuizSummary({
 }) {
   const score = session.answers.filter((a) => a.is_correct).length;
 
+  // Summed across every answer's own time_taken_seconds (the same value
+  // each breakdown row already shows individually), not re-timed here —
+  // one total/average pair for the whole quiz, computed from data that
+  // already exists rather than a new timer.
+  const totalSeconds = session.answers.reduce(
+    (sum, a) => sum + a.time_taken_seconds,
+    0,
+  );
+  const averageSecondsPerQuestion = session.answers.length
+    ? totalSeconds / session.answers.length
+    : 0;
+
   // Re-fetches the breakdown by id on a remount that finds the session
   // already submitted (e.g. the user clicked a card's image, opened its
   // detail page, then hit the browser's back button) — this component's
@@ -479,46 +496,84 @@ function QuizSummary({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Split out of the JSX below rather than nested ternaries three levels
+  // deep — `breakdown` is whatever sits between the quiz-type meta and the
+  // score/time footer (the per-question rows, a loading placeholder, or
+  // nothing at all), `statusText` is the one line (plus a retry button for
+  // the error case) that explains what happened to the save itself.
+  let breakdown: ReactNode = null;
+  let statusText: ReactNode = null;
+
+  if (isAuthenticated) {
+    if (saveState.status === 'saved') {
+      breakdown = <QuizAttemptBreakdown answers={saveState.attempt.answers} />;
+      statusText = <p>Score saved.</p>;
+    } else if (session.submitted) {
+      // A page reload, or a remount after navigating away and back
+      // (session.submitted persisted, but this mount's own save never
+      // ran) — re-fetch the breakdown by the persisted attempt id rather
+      // than showing just the bare score. Falls back to a bare "Score
+      // saved." for a session persisted before attemptId existed, or if
+      // the re-fetch itself fails.
+      if (attemptDetailQuery.data) {
+        breakdown = (
+          <QuizAttemptBreakdown answers={attemptDetailQuery.data.answers} />
+        );
+        statusText = <p>Score saved.</p>;
+      } else if (attemptDetailQuery.isLoading) {
+        breakdown = <p>Loading...</p>;
+      } else {
+        statusText = <p>Score saved.</p>;
+      }
+    } else if (saveState.status === 'saving') {
+      statusText = <p>Saving...</p>;
+    } else if (saveState.status === 'error') {
+      statusText = (
+        <>
+          <p>Failed to save score.</p>
+          <button onClick={save}>Try again</button>
+        </>
+      );
+    }
+  } else {
+    statusText = <p>Log in to save your score.</p>;
+  }
+
   return (
     <div className="quiz-summary">
       <h2>Quiz complete!</h2>
-      <p>
-        Score: {score} / {session.questions.length}
-      </p>
-      {isAuthenticated ? (
-        saveState.status === 'saved' ? (
-          <>
-            <p>Score saved.</p>
-            <QuizAttemptBreakdown answers={saveState.attempt.answers} />
-          </>
-        ) : session.submitted ? (
-          // A page reload, or a remount after navigating away and back
-          // (session.submitted persisted, but this mount's own save
-          // never ran) — re-fetch the breakdown by the persisted attempt
-          // id rather than showing just the bare score. Falls back to a
-          // bare "Score saved." for a session persisted before attemptId
-          // existed, or if the re-fetch itself fails.
-          attemptDetailQuery.data ? (
-            <>
-              <p>Score saved.</p>
-              <QuizAttemptBreakdown answers={attemptDetailQuery.data.answers} />
-            </>
-          ) : attemptDetailQuery.isLoading ? (
-            <p>Loading...</p>
-          ) : (
-            <p>Score saved.</p>
-          )
-        ) : saveState.status === 'saving' ? (
-          <p>Saving...</p>
-        ) : saveState.status === 'error' ? (
-          <>
-            <p>Failed to save score.</p>
-            <button onClick={save}>Try again</button>
-          </>
-        ) : null
-      ) : (
-        <p>Log in to save your score.</p>
-      )}
+      <div className="quiz-summary-meta">
+        <p>
+          Quiz Type: <strong>{modeLabel(session.mode)}</strong>
+        </p>
+        <p>
+          Difficulty: <strong>{difficultyLabel(session.difficulty)}</strong>
+        </p>
+        <p>
+          Quiz Length:{' '}
+          <strong>
+            {session.questions.length}{' '}
+            {session.questions.length === 1 ? 'question' : 'questions'}
+          </strong>
+        </p>
+      </div>
+      {breakdown}
+      <div className="quiz-summary-footer">
+        <p>
+          Score:{' '}
+          <strong>
+            {score} / {session.questions.length}
+          </strong>
+        </p>
+        <p>
+          Time taken:{' '}
+          <strong>
+            {formatSeconds(totalSeconds)} total (
+            {formatSeconds(averageSecondsPerQuestion)}/question)
+          </strong>
+        </p>
+        {statusText}
+      </div>
       <button onClick={onPlayAgain}>Play again</button>
     </div>
   );

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { Route, Routes } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
@@ -24,10 +24,12 @@ describe('QuizAttemptDetailPage', () => {
     expect(screen.getByText(/1 \/ 1/)).toBeInTheDocument();
     expect(screen.getByText('Your guess: Charizard')).toBeInTheDocument();
     expect(screen.getByText('Correct answer: Charizard')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Charizard' })).toHaveAttribute(
-      'href',
-      '/cards/1',
-    );
+    // The whole tile is the link now, not just the image.
+    const link = screen.getByRole('link');
+    expect(link).toHaveAttribute('href', '/cards/1');
+    expect(
+      within(link).getByRole('img', { name: 'Charizard' }),
+    ).toBeInTheDocument();
   });
 
   it('shows an error message for an attempt that fails to load (not found or another user’s)', async () => {
