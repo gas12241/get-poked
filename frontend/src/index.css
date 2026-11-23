@@ -315,6 +315,28 @@ p {
   min-width: 0;
 }
 
+/* .main-nav-brand's color/no-underline styling normally comes from the
+   ambient `.main-nav a` rule above — which never reaches here, since
+   this bar isn't .main-nav's descendant, so the brand rendered as a
+   bare, blue, underlined default link. Also gives it its own tap
+   feedback (an inset padding/negative-margin pair so it doesn't shift
+   the bar's layout) rather than relying on :hover, which a phone user
+   never triggers before tapping. */
+.mobile-top-bar a {
+  color: var(--text-h);
+  text-decoration: none;
+}
+
+.mobile-top-bar .main-nav-brand {
+  padding: 4px 8px;
+  margin: -4px -8px;
+  border-radius: 6px;
+
+  &:active {
+    background: var(--accent-bg);
+  }
+}
+
 .mobile-tab-bar {
   position: fixed;
   bottom: 0;
