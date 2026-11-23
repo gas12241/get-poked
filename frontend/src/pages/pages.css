@@ -2413,15 +2413,25 @@ a.quiz-attempt-breakdown-content {
   text-align: center;
 }
 
+/* A fixed-column grid, not the flex-row-with-space-between it used to be
+   — space-between redistributes the gaps to fill the row every time, so
+   each field's own start position drifted left/right from one row to
+   the next depending on how long *that* row's own text happened to be.
+   A grid's column widths are the same for every row using this class,
+   so the same field always starts at the same x position regardless of
+   its own or any other row's content length. Column widths sized to the
+   longest real value in each (verified live, not guessed); text that
+   still doesn't fit (not expected in practice — see .quiz-attempt-mode
+   below) truncates with an ellipsis rather than reflowing the grid. */
 .quiz-attempt-row-summary {
   /* Border/padding live here, not on the parent .quiz-attempt-row <li> —
      this link already fills the row, so the hover highlight below covers
      the whole bordered box cleanly instead of leaving an unhighlighted
      gap around it. */
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 4px 8px;
+  display: grid;
+  grid-template-columns: 1fr auto auto auto auto auto;
+  align-items: center;
+  gap: 4px 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 8px 12px;
@@ -2438,6 +2448,57 @@ a.quiz-attempt-breakdown-content {
   &:hover {
     background: var(--accent-bg);
   }
+}
+
+.quiz-attempt-mode,
+.quiz-attempt-difficulty,
+.quiz-attempt-length,
+.quiz-attempt-time,
+.quiz-attempt-score {
+  /* Every fixed-width column below gets the same safety net — without
+     white-space: nowrap specifically, text that doesn't fit wraps onto
+     a second line (found live: "20 questions", a real length for a
+     shared quiz's own attempt, did exactly this) instead of staying on
+     one line like every other row, which is its own kind of visual
+     misalignment. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quiz-attempt-mode {
+  /* The one field with real length variance between modes — even after
+     shortModeLabel() strips each label's own redundant "Guess the "
+     prefix, it still takes the remaining space (the other columns are
+     all a fixed, short, known shape) and truncates rather than pushing
+     every column after it out of alignment on whichever row has the
+     longest label. */
+}
+
+.quiz-attempt-difficulty {
+  width: 56px;
+}
+
+.quiz-attempt-length {
+  /* Sized for "20 questions" — a real length for an attempt saved from
+     a shared quiz link, not just this app's own 3/5/7 picker. */
+  width: 86px;
+}
+
+.quiz-attempt-time {
+  width: 68px;
+}
+
+.quiz-attempt-score {
+  /* Sized for "20 / 20", the same shared-quiz-length reasoning as
+     .quiz-attempt-length above. */
+  width: 56px;
+  text-align: right;
+}
+
+.quiz-attempt-chevron {
+  width: 10px;
+  color: var(--text);
 }
 
 /* QuizAttemptDetailPage's own summary line — same information as

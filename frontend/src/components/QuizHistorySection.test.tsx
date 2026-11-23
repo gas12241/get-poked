@@ -47,9 +47,7 @@ describe('QuizHistorySection', () => {
     // The click updated the URL's `date` param (not just local state) —
     // the calendar re-reads `selectedDate` from there, so it marking the
     // day as selected is the observable proof the URL actually changed.
-    expect(
-      await screen.findByText("Guess the Card's Name"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Card's Name")).toBeInTheDocument();
     expect(dayButton).toHaveClass('quiz-history-calendar-day-selected');
     expect(screen.getByText('Medium')).toBeInTheDocument();
     expect(screen.getByText('1 / 1')).toBeInTheDocument();
@@ -111,7 +109,7 @@ describe('QuizHistorySection', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: '5' }));
     const row = await screen.findByRole('link', {
-      name: /Guess the Pokémon's HP/,
+      name: /Pokémon's HP/,
     });
 
     expect(row).toHaveAttribute('href', '/quiz-history/42');
@@ -141,9 +139,7 @@ describe('QuizHistorySection', () => {
     });
 
     expect(await screen.findByText('September 5th, 2026')).toBeInTheDocument();
-    expect(
-      await screen.findByText("Guess the Card's Name"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Card's Name")).toBeInTheDocument();
   });
 
   function makeAttempts(count: number) {
@@ -173,7 +169,7 @@ describe('QuizHistorySection', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: '5' }));
 
-    expect(await screen.findAllByText("Guess the Card's Name")).toHaveLength(4);
+    expect(await screen.findAllByText("Card's Name")).toHaveLength(4);
     expect(screen.queryByText(/Scroll to see all/)).not.toBeInTheDocument();
   });
 

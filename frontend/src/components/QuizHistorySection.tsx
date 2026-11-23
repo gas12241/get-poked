@@ -6,7 +6,7 @@ import {
   difficultyLabel,
   formatQuizAttemptTime,
   formatQuizHistoryDate,
-  modeLabel,
+  shortModeLabel,
 } from '../lib/quizAttemptFormatting';
 import QuizHistoryCalendar, { currentUtcMonth } from './QuizHistoryCalendar';
 
@@ -23,14 +23,24 @@ function AttemptRow({ attempt }: { attempt: QuizAttemptSummary }) {
         state={{ from: 'quiz' }}
         className="quiz-attempt-row-summary"
       >
-        <span>{modeLabel(attempt.quiz_mode)}</span>
-        <span>{difficultyLabel(attempt.difficulty)}</span>
-        <span>{attempt.total_questions} questions</span>
-        <span>{formatQuizAttemptTime(attempt.completed_at)}</span>
-        <span>
+        <span className="quiz-attempt-mode">
+          {shortModeLabel(attempt.quiz_mode)}
+        </span>
+        <span className="quiz-attempt-difficulty">
+          {difficultyLabel(attempt.difficulty)}
+        </span>
+        <span className="quiz-attempt-length">
+          {attempt.total_questions} questions
+        </span>
+        <span className="quiz-attempt-time">
+          {formatQuizAttemptTime(attempt.completed_at)}
+        </span>
+        <span className="quiz-attempt-score">
           {attempt.score} / {attempt.total_questions}
         </span>
-        <span aria-hidden="true">›</span>
+        <span className="quiz-attempt-chevron" aria-hidden="true">
+          ›
+        </span>
       </Link>
     </li>
   );

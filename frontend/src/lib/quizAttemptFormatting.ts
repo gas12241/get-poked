@@ -49,6 +49,16 @@ export function modeLabel(mode: QuizAttemptSummary['quiz_mode']) {
   return MODES.find((m) => m.value === mode)?.label ?? mode;
 }
 
+// Every mode's own label already starts with the redundant "Guess the "
+// (the history row list it's for is obviously about guesses already) —
+// stripping it roughly halves the longest label (24 chars -> 13), which
+// is what actually lets that column's width stay fixed across every row
+// instead of needing to flex/truncate for the longest mode specifically.
+// See docs/decisions.md #104.
+export function shortModeLabel(mode: QuizAttemptSummary['quiz_mode']) {
+  return modeLabel(mode).replace(/^Guess the /, '');
+}
+
 export function difficultyLabel(difficulty: QuizAttemptSummary['difficulty']) {
   return DIFFICULTIES.find((d) => d.value === difficulty)?.label ?? difficulty;
 }

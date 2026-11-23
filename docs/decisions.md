@@ -1549,6 +1549,21 @@ Why
 
 ---
 
+## Decision 104
+
+Quiz history rows: fixed-column grid instead of flex, so every row's text starts at the same x-position
+
+Why
+
+- **The user asked that each quiz history row's text be vertically aligned column-to-column** — a longer mode name, difficulty, or question count shouldn't shift where the next field starts on that row, even at the cost of shortening some of the text.
+- **`.quiz-attempt-row-summary` was `display: flex; justify-content: space-between`**, which redistributes the gap between children based on each row's own total content width — so a short mode name on one row and a long one on another land their later fields (difficulty, length, time, score) at different x-positions row-to-row. Switched to `display: grid; grid-template-columns: 1fr auto auto auto auto auto;` — the mode column flexes, every other column is sized to its own fixed content and stays pinned at the same position on every row by construction, verified directly via `getBoundingClientRect()` across 4 attempts with deliberately varied mode/difficulty/length/score/time (every column's left edge was pixel-identical across all rows).
+- **That exposed two real wrapping/truncation bugs**, both only visible once rows were actually screenshotted rather than just measured:
+  - The `1fr` mode column only had wrapped: the longest existing mode label ("Guess the Set by Symbol", 24 chars) was truncating via ellipsis even though the grid had ample room, because the fixed columns plus gaps plus padding left too little of the panel's own capped width for it. Fixed by adding `shortModeLabel()` (`frontend/src/lib/quizAttemptFormatting.ts`) alongside the existing `modeLabel()` — every mode's label already starts with the redundant "Guess the " (the whole history list is self-evidently about guesses), so stripping it roughly halves the longest label (24 → 13 chars). `modeLabel()` itself is untouched and still used elsewhere (e.g. the stats breakdown); only `QuizHistorySection`'s row display switched to the short form.
+  - `.quiz-attempt-length`'s fixed 76px width wrapped "20 questions" (a real value — a quiz taken via a shared link, or a future longer picker option, can reach the backend's `MAX_QUESTION_COUNT`) onto two lines, which is its own kind of misalignment the user's request was explicitly trying to avoid. Fixed by widening `.quiz-attempt-length` (76px → 86px) and `.quiz-attempt-score` (48px → 56px, same "20 / 20" reasoning) and giving every fixed column (`mode`, `difficulty`, `length`, `time`, `score`) `white-space: nowrap` with `overflow: hidden; text-overflow: ellipsis` as a defensive fallback, rather than just the one column that happened to break in testing.
+- Pure frontend CSS/formatting change, no backend involvement. Updated the 4 existing `QuizHistorySection.test.tsx` assertions that matched on the old, full `"Guess the Card's Name"` text (the mode label shown on-screen genuinely changed, so the test expectations needed to change with it, not a sign the behavior was wrong) + full 328-test frontend suite green. Verified live in both light and dark mode against a seeded account with 4 attempts spanning the shortest and longest mode labels and a 20-question/20-score attempt: no wrapping, no unexpected truncation, and every column's left edge aligned exactly across all rows in both themes.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).
