@@ -2214,8 +2214,14 @@ a.quiz-attempt-breakdown-content {
   margin-top: 16px;
 }
 
+/* The 860px box above exists for the separator line, not for the panel's
+   own content — narrower and centered here (same 480px single-column
+   width as .quiz-mode-selection/.quiz-summary), or the stats text and
+   mode rows would stretch to within a hair of the divider itself. */
 .quiz-stats-period {
-  margin-top: 16px;
+  width: 100%;
+  max-width: 480px;
+  margin: 16px auto 0;
 }
 
 .quiz-stats-summary-line {

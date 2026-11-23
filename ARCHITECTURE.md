@@ -73,6 +73,29 @@ one continuous page regardless of which filters are active.
 
 ---
 
+## Responsive Layout
+
+Below a single breakpoint (`max-width: 768px`), `Layout.tsx` swaps the
+top nav entirely for a slim sticky top bar (branding + account) plus a
+fixed bottom tab bar (Cards/Quiz/Horoscope/Collection) — the pattern
+real mobile apps use for this many top-level destinations, and one that
+iPad-portrait apps commonly use too, rather than a separate in-between
+tablet treatment. Which variant renders is decided by `useIsMobileNav`
+(`frontend/src/hooks/useIsMobileNav.ts`), a `matchMedia`-backed hook that
+updates live on resize/rotation — deliberately JS-driven rather than
+CSS-hidden, since only one variant is ever in the DOM at a time this
+way, keeping every existing accessible-name-based nav test valid
+unchanged. See docs/decisions.md #103.
+
+The app also runs a sitewide `*, *::before, *::after { box-sizing:
+border-box; }` reset (`index.css`) — without it, any `width: 100%`
+element that also carries its own padding renders wider than its own
+width by that padding amount, a defect that had no way to surface until
+the nav fix above let the page actually shrink to phone widths for the
+first time.
+
+---
+
 ## Pokémon Data
 
 Cards are imported into the local database.

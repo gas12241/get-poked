@@ -8,6 +8,8 @@ Header — icon (original/stylized, inspired by a favorite Pokémon, not officia
 
 Home page — buttons linking to every major section
 
+Longer-term, possibly distant idea: wrapping the site as a native/PWA phone app — partly motivated the bottom-tab-bar nav redesign on narrow viewports (docs/decisions.md #103), which the eventual wrapper would inherit rather than needing its own nav rework later
+
 ---
 
 ## Collection

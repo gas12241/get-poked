@@ -177,3 +177,116 @@ describe('Layout', () => {
     );
   });
 });
+
+// Below useIsMobileNav's own breakpoint, Layout renders the bottom tab bar
+// + slim top bar instead of .main-nav — never both at once (see
+// docs/decisions.md #103), so these reuse the exact same accessible-name
+// queries as the desktop tests above without any container-scoping needed.
+function mockMobileMatchMedia() {
+  return vi.spyOn(window, 'matchMedia').mockReturnValue({
+    matches: true,
+    media: '(max-width: 768px)',
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  } as MediaQueryList);
+}
+
+describe('Layout mobile nav', () => {
+  beforeEach(() => {
+    useAuthStore.getState().clearAccessToken();
+  });
+
+  it('renders the tab bar instead of the desktop nav', () => {
+    const matchMediaSpy = mockMobileMatchMedia();
+
+    renderLayoutAt('/');
+
+    expect(
+      screen.getByRole('navigation', { name: 'Primary' }),
+    ).toBeInTheDocument();
+    expect(document.querySelector('.main-nav')).not.toBeInTheDocument();
+    matchMediaSpy.mockRestore();
+  });
+
+  it('highlights Quiz in the tab bar while on the quiz page', () => {
+    const matchMediaSpy = mockMobileMatchMedia();
+
+    renderLayoutAt('/quiz');
+
+    expect(screen.getByRole('link', { name: 'Quiz' })).toHaveClass('active');
+    expect(screen.getByRole('link', { name: 'Cards' })).not.toHaveClass(
+      'active',
+    );
+    matchMediaSpy.mockRestore();
+  });
+
+  it('hides the Collection tab when logged out', () => {
+    const matchMediaSpy = mockMobileMatchMedia();
+
+    renderLayoutAt('/');
+
+    expect(
+      screen.queryByRole('link', { name: 'Collection' }),
+    ).not.toBeInTheDocument();
+    matchMediaSpy.mockRestore();
+  });
+
+  it('shows the Collection tab when logged in', () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    const matchMediaSpy = mockMobileMatchMedia();
+
+    renderLayoutAt('/');
+
+    expect(screen.getByRole('link', { name: 'Collection' })).toHaveAttribute(
+      'href',
+      '/collection',
+    );
+    matchMediaSpy.mockRestore();
+  });
+
+  it('shows the brand, account links, and theme toggle in the slim top bar', () => {
+    const matchMediaSpy = mockMobileMatchMedia();
+
+    renderLayoutAt('/');
+
+    expect(screen.getByRole('link', { name: 'Get Poked' })).toHaveAttribute(
+      'href',
+      '/',
+    );
+    expect(screen.getByRole('link', { name: 'Log in' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Sign up' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Switch to (dark|light) mode/ }),
+    ).toBeInTheDocument();
+    matchMediaSpy.mockRestore();
+  });
+
+  it("shows the user's username in the top bar once logged in", async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    server.use(
+      http.get(`${BASE_URL}/api/v1/me/`, () => {
+        return HttpResponse.json({
+          email: 'tester@example.com',
+          username: 'pikachu',
+          first_name: '',
+          last_name: '',
+          is_verified: true,
+          date_joined: '2026-01-15T00:00:00Z',
+          has_usable_password: true,
+        });
+      }),
+    );
+    const matchMediaSpy = mockMobileMatchMedia();
+
+    renderLayoutAt('/');
+
+    expect(
+      await screen.findByRole('link', { name: 'pikachu' }),
+    ).toHaveAttribute('href', '/profile');
+    matchMediaSpy.mockRestore();
+  });
+});

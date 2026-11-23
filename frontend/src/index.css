@@ -1,3 +1,18 @@
+/* Without this, any `width: 100%` element that also has its own padding
+   (e.g. .quiz-history-section, .quiz-mode-selection) renders wider than
+   its own width by that padding amount — invisible as long as something
+   else (the old top nav's own overflow floor) kept the page from ever
+   getting narrow enough to expose it, but a real, previously-latent bug
+   once the page can actually shrink down to phone widths. #root and
+   .case-opening-item already set this individually for their own
+   specific reasons (now redundant, left as-is rather than churned); this
+   makes it the default everywhere. See docs/decisions.md #103. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :root {
   --text: #6b6375;
   --text-h: #08060d;
@@ -190,6 +205,12 @@ p {
   display: flex;
   gap: 16px;
   justify-self: start;
+  /* Grid items default to min-width: auto, which refuses to shrink below
+     this row's own content width — without this, the grid can't actually
+     compress it, forcing the whole page into a horizontal scrollbar on
+     a narrow viewport instead of the nav (and only the nav) just running
+     out of room gracefully. See docs/decisions.md #103. */
+  min-width: 0;
 }
 
 .main-nav-links a {
@@ -217,6 +238,8 @@ p {
   display: flex;
   align-items: center;
   gap: 12px;
+  /* Same reasoning as .main-nav-links above. */
+  min-width: 0;
 }
 
 .main-nav-auth-link {
@@ -228,6 +251,14 @@ p {
   padding: 6px 10px;
   border-radius: 6px;
   cursor: pointer;
+  /* A safety net for a long username specifically (the only variable-
+     length text here — "Log in"/"Sign up" never get close to this) —
+     caps it rather than letting it alone force .main-nav-right wider
+     than its siblings can make room for. */
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 
   &:hover {
     background: var(--accent-bg);
@@ -257,6 +288,70 @@ p {
     background: var(--accent-bg);
     color: var(--accent);
   }
+}
+
+/* Mobile nav — swapped in below useIsMobileNav's own 768px breakpoint
+   (see docs/decisions.md #103) in place of .main-nav entirely, not shown
+   alongside it: a slim sticky top bar for branding/account, plus a fixed
+   bottom tab bar for primary navigation, the pattern real mobile apps use
+   for this many (3-4) top-level destinations. */
+.mobile-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+}
+
+.mobile-top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mobile-tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  z-index: 10;
+}
+
+.mobile-tab-bar a {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 4px 6px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 500;
+
+  /* Color-only active state (no background tint, unlike the desktop
+     nav's own pill buttons) — the tab bar is meant to read as its own,
+     more native-app-flavored surface, not another pill-button row. */
+  &.active {
+    color: var(--accent);
+  }
+}
+
+/* Height kept in sync with .mobile-tab-bar's own real rendered height
+   (verified live, not guessed) — reserves room so the fixed bar never
+   covers the last bit of page content. */
+.mobile-tab-bar-spacer {
+  height: 60px;
 }
 
 code,
