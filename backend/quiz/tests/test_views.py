@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import override_settings
 from django.urls import reverse
+from django.utils import timezone
 from PIL import Image
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -930,15 +931,46 @@ class QuizAttemptStatsViewTests(QuizTestBase):
         response = self.client.get(reverse("quiz-attempt-stats"), {"date": "2026-09-05"})
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_missing_date_returns_400(self):
-        self.client.force_authenticate(self.user)
-        response = self.client.get(reverse("quiz-attempt-stats"))
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
     def test_malformed_date_returns_400(self):
         self.client.force_authenticate(self.user)
         response = self.client.get(reverse("quiz-attempt-stats"), {"date": "not-a-date"})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_omitted_date_resolves_to_the_most_recent_attempt(self):
+        self._attempt(self.user, "guess_card", 1, 1, datetime(2026, 9, 3, 10, 0, tzinfo=UTC))
+        self._attempt(self.user, "guess_card", 1, 1, datetime(2026, 9, 7, 10, 0, tzinfo=UTC))
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(reverse("quiz-attempt-stats"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["date"], "2026-09-07")
+        self.assertEqual(response.data["today"]["attempts"], 1)
+
+    def test_omitted_date_only_considers_the_requesting_users_own_attempts(self):
+        self._attempt(self.user, "guess_card", 1, 1, datetime(2026, 9, 3, 10, 0, tzinfo=UTC))
+        self._attempt(self.other_user, "guess_card", 1, 1, datetime(2026, 9, 20, 10, 0, tzinfo=UTC))
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(reverse("quiz-attempt-stats"))
+
+        self.assertEqual(response.data["date"], "2026-09-03")
+
+    def test_omitted_date_falls_back_to_real_today_with_no_attempts_at_all(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(reverse("quiz-attempt-stats"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["date"], timezone.now().date().isoformat())
+        self.assertEqual(response.data["today"]["attempts"], 0)
+
+    def test_explicit_date_is_echoed_back_in_the_response(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(reverse("quiz-attempt-stats"), {"date": "2026-09-05"})
+
+        self.assertEqual(response.data["date"], "2026-09-05")
 
     def test_fresh_account_has_zero_totals_and_null_accuracy_not_zero(self):
         self.client.force_authenticate(self.user)

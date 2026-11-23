@@ -148,6 +148,10 @@ export interface QuizAttemptStatsSummary {
 }
 
 export interface QuizAttemptStats {
+  // The day the `today` summary below actually covers — echoed back when
+  // the caller passed one, resolved server-side (to the most recent date
+  // with an attempt) when they didn't. See docs/decisions.md #102.
+  date: string;
   today: QuizAttemptStatsSummary;
   career: QuizAttemptStatsSummary;
 }
@@ -211,9 +215,13 @@ export const getQuizAttemptDetail = (id: number) =>
 // `date` is "today" in UTC terms — same day boundary QuizHistoryCalendar
 // already uses throughout (see docs/decisions.md #088), so a quiz taken
 // right after midnight UTC counts the same way for every viewer regardless
-// of their own timezone.
-export const getQuizAttemptStats = (date: string) =>
-  apiClient<QuizAttemptStats>(`/api/v1/quiz-attempts/stats/?date=${date}`);
+// of their own timezone. Omitting it lets the backend resolve its own
+// default (the most recently played date) instead — see docs/decisions.md
+// #102.
+export const getQuizAttemptStats = (date?: string) =>
+  apiClient<QuizAttemptStats>(
+    `/api/v1/quiz-attempts/stats/${toQueryString({ date })}`,
+  );
 
 export const createQuizShare = (attempt: number) =>
   apiClient<{ token: string }>('/api/v1/quiz-shares/', {

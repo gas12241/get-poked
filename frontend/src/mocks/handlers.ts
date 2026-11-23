@@ -82,6 +82,10 @@ export function mockQuizAttemptStats(overrides: Record<string, unknown> = {}) {
     by_mode: ZERO_MODE_STATS,
   };
   return {
+    // The real current date by default, same as the backend's own
+    // fallback for an account with no attempts at all — tests that care
+    // about a specific resolved day pass their own `date` override.
+    date: new Date().toISOString().slice(0, 10),
     today: zeroSummary,
     career: zeroSummary,
     ...overrides,

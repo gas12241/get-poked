@@ -1513,6 +1513,22 @@ Why
 
 ---
 
+## Decision 102
+
+Quiz stats: a single Career/last-played toggle instead of always-on columns
+
+Why
+
+- **The user pointed out that `/quiz` is otherwise one centered, single-focus control at a time** (mode/difficulty/length pickers, one calendar + one selected day) — `QuizStatsSection`'s always-visible "Today vs Career" two-column row was the only thing on the page showing two things side by side, and it stood out for it. Separately: "Today" defaulted to the real calendar day even when nothing was played today, so a quiz-taker who last played a few days ago landed on a blank stats panel by default.
+- **Both fixed by the same change**: the two always-visible columns became two toggle buttons — **Career** and the day actually last played — with the day panel the default/active one. That day is never blank by construction (unless the account has literally never played, in which case it's the real UTC today, which is the one case a blank panel is actually correct), and the page goes back to showing one thing at a time.
+- **`GET /api/v1/quiz-attempts/stats/`'s `date` param became optional**, not a new endpoint. Passing it behaves exactly as before (still 400s on a malformed value). Omitting it resolves server-side to the most recent date the requesting user has a `QuizAttempt` on (`timezone.now().date()` as the fallback for an account with none at all — matching `horoscope/views.py`'s own existing precedent for "today," not `datetime.date.today()`, since this project runs `TIME_ZONE="UTC"`/`USE_TZ=True`). The response gained one new field, `date` — the resolved value either way — so the frontend never separately computes or guesses which day it's looking at.
+- **The existing `today` response key keeps its name** despite no longer strictly meaning "today" — only *which* day it defaults to changed, not what the key represents ("the day half of this response"), so renaming it would have been churn across the frontend and docs for no behavioral reason.
+- **The toggle reuses `.quiz-picker`/`.quiz-picker button`** (the same `role="radiogroup"`/`role="radio"`/`.active`-class pattern the mode/difficulty/length pickers above it already use) rather than inventing new button styling, and `QuizStatsSection`'s own `<h3>` period headings were dropped entirely — the active toggle button already says which period is shown, so repeating it as a heading directly below would just be the same label twice.
+- **The toggle's own selection is local, ephemeral UI state, not written to the URL** — `QuizHistorySection`'s own `date`/`month` params remain the one durable, deep-linkable selection. Picking a day on the history calendar below still switches the stats toggle back to the day panel immediately (preserving the dynamic-tracking behavior from #098), implemented as a render-time state adjustment (React's documented "reset state when a derived value changes" pattern: compare against the previous value of `searchParams.get('date')` in a ref-like `useState`, not a `useEffect` calling `setState`, which eslint's `react-hooks/set-state-in-effect` rule correctly flags as an avoidable extra render).
+- 4 new/updated backend tests (`QuizAttemptStatsViewTests` — omitted `date` resolves to the requesting user's own most recent attempt, scoped per-user; falls back to real UTC today with zero attempts; an explicit `date` is echoed back unchanged; malformed `date` still 400s) + full 107-test `quiz` suite green. Rewrote `QuizStatsSection.test.tsx` for the single-panel shape (8 tests: log-in gate, fresh-account zero state, real totals with the `date` param omitted, singular "quiz" wording, the Career/day toggle itself, a past resolved date's own label, an explicitly-selected calendar day, and the toggle reverting to the day panel when a new day is selected while viewing Career) + full 319-test frontend suite green. Verified live in both light and dark mode against a seeded account whose most recent quiz was a past date: `/quiz` opened straight to that date's panel (not a blank "Today"), Career/day toggling worked, and selecting a different history day switched the toggle back to the day panel for that day.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).

@@ -4,6 +4,7 @@ import random
 from django.db.models.functions import TruncDate
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -222,24 +223,40 @@ class QuizAttemptsByDateView(APIView):
 class QuizAttemptStatsView(APIView):
     # No new model — everything here is derivable from QuizAttempt's own
     # score/total_questions, the same "aggregation endpoint, not a new
-    # table" precedent as collection stats (docs/decisions.md #078). `date`
-    # is the frontend's own local "today" (see docs/decisions.md #097) —
-    # same required-query-param convention as QuizAttemptsByDateView's path
-    # param, just not gating anything, so there's no fallback default here.
+    # table" precedent as collection stats (docs/decisions.md #078).
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        try:
-            date_obj = datetime.date.fromisoformat(request.query_params.get("date", ""))
-        except ValueError:
-            return Response(
-                {"detail": "date must be in YYYY-MM-DD format."},
-                status=status.HTTP_400_BAD_REQUEST,
+        date_param = request.query_params.get("date")
+        if date_param:
+            try:
+                date_obj = datetime.date.fromisoformat(date_param)
+            except ValueError:
+                return Response(
+                    {"detail": "date must be in YYYY-MM-DD format."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            # Omitted, not just unparseable — resolve to the day this user
+            # most recently played, so the frontend's default view is never
+            # a guaranteed-blank "today" for someone who hasn't played yet
+            # today. timezone.now().date() (not datetime.date.today()),
+            # matching horoscope/views.py's own precedent — already
+            # UTC-safe the same way completed_at__date= filtering below
+            # already is (TIME_ZONE="UTC", USE_TZ=True). See
+            # docs/decisions.md #102.
+            latest = (
+                QuizAttempt.objects.filter(user=request.user)
+                .order_by("-completed_at")
+                .values_list("completed_at", flat=True)
+                .first()
             )
+            date_obj = latest.date() if latest else timezone.now().date()
 
         attempts = QuizAttempt.objects.filter(user=request.user)
         return Response(
             {
+                "date": date_obj.isoformat(),
                 "today": summarize_attempts(attempts.filter(completed_at__date=date_obj)),
                 "career": summarize_attempts(attempts),
             }
