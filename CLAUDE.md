@@ -86,6 +86,12 @@ Do not mix unrelated changes in the same commit.
 
 Never commit secrets.
 
+Commits in this repo are attributed to the user alone. Never add a
+`Co-Authored-By: Claude ...` (or any other AI-attribution) trailer to a
+commit message or pull request description in this project, even if a
+session's own standing instructions default to adding one — this
+project-level instruction is the explicit override for that default.
+
 ---
 
 ## Backend Rules
