@@ -2194,12 +2194,16 @@ a.quiz-attempt-breakdown-content {
    same pattern as Collection stats, docs/decisions.md #097). One panel
    at a time, matching every other control on this page — see
    docs/decisions.md #102. Sits between the mode picker and history, so
-   it gets the same border-top separator both of its neighbors use. Same
-   480px as .quiz-mode-selection/.quiz-summary, now that there's only
-   ever one panel's worth of content rather than two side by side. */
+   it gets the same border-top separator both of its neighbors use —
+   860px, matching .quiz-history-section's own max-width (not
+   .quiz-mode-selection/.quiz-summary's narrower 480px), so the two
+   separator lines on this page read as one consistent treatment rather
+   than two different widths. The panel's own content stays centered and
+   no wider than it already was — only the invisible box (and so the
+   line) is wider. */
 .quiz-stats-section {
   width: 100%;
-  max-width: 480px;
+  max-width: 860px;
   margin: 40px auto 0;
   padding: 24px 20px 40px;
   text-align: center;
