@@ -1021,7 +1021,7 @@
 .quiz-picker-label {
   margin: 20px 0 8px;
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-h);
 }
 
 .quiz-picker {
@@ -2227,7 +2227,7 @@ a.quiz-attempt-breakdown-content {
 .quiz-stats-summary-line {
   margin: 0 0 8px;
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-h);
 }
 
 .quiz-stats-mode-list {
@@ -2247,6 +2247,7 @@ a.quiz-attempt-breakdown-content {
   border-radius: 8px;
   padding: 6px 12px;
   font-size: 13px;
+  color: var(--text-h);
 }
 
 /* Quiz history — a calendar (same month-grid shape as

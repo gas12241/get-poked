@@ -1564,6 +1564,19 @@ Why
 
 ---
 
+## Decision 105
+
+Quiz/Quiz stats text brightness, matched to Quiz history's
+
+Why
+
+- **The user reported that some text on `/quiz` was harder to read than the quiz-history rows below it**, especially in dark mode, and described it as a font-weight difference.
+- **Measured the actual computed styles rather than trusting the stated mechanism**: every text element in question — the `.quiz-picker-label`s ("Difficulty", "Quiz length"), `.quiz-stats-summary-line` ("4 quizzes · 27/35 correct (77%)"), and the `.quiz-stats-mode-list` breakdown rows — was already `font-weight: 400`, identical to `.quiz-attempt-row-summary`'s own weight in Quiz history. The real difference was color: those three rules used `var(--text)` (or no color at all, inheriting the page body's own `var(--text)`), the app's dimmer, de-emphasized gray (`#9ca3af` in dark mode), while Quiz history's row text is explicitly `var(--text-h)`, the high-contrast "heading" color (`#f3f4f6` in dark mode) — a much larger gap in dark mode than in light, since the two tokens sit closer together there, which lines up with the user's own "especially in dark mode" observation.
+- **Fixed by switching those three rules' color from `--text` to `--text-h`**, not by touching `font-weight` anywhere — moving a weight that was already identical to Quiz history's own wouldn't have changed anything. `.quiz-picker-description` (the smaller explanatory line under the difficulty picker, e.g. "Everything in between — Rare Holo...") was deliberately left at `--text` plus its existing `opacity: 0.75` — it's a genuinely different role (a secondary caption, not primary content comparable to a quiz-history row) and has no equivalent element in Quiz history to match against.
+- Pure CSS color change, three selectors, no component or markup changes — confirmed via `grep` that none of the three classes are used outside `QuizPage.tsx`/`QuizStatsSection.tsx`, so the change is fully scoped to the two sections the user named. No new tests (same reasoning as #048/#059/#102's own addendum); verified live via computed-style inspection (confirmed `color` now matches `.quiz-attempt-row-summary`'s own exactly) and screenshots in both light and dark mode.
+
+---
+
 ## Future Decisions
 
 Caching and deployment target — deferred to Phase 7 (see ARCHITECTURE.md).
